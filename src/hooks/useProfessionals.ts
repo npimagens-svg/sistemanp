@@ -20,11 +20,17 @@ export interface Professional {
 
 export interface ProfessionalInput {
   name: string;
+  nickname?: string;
+  cpf?: string;
+  role?: string;
   email?: string;
   phone?: string;
   specialty?: string;
   commission_percent?: number;
   is_active?: boolean;
+  can_be_assistant?: boolean;
+  has_schedule?: boolean;
+  create_access?: boolean;
 }
 
 export function useProfessionals() {

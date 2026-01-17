@@ -417,24 +417,30 @@ export type Database = {
       }
       professional_service_commissions: {
         Row: {
+          assistant_commission_percent: number | null
           commission_percent: number
           created_at: string
+          duration_minutes: number | null
           id: string
           professional_id: string
           service_id: string
           updated_at: string
         }
         Insert: {
+          assistant_commission_percent?: number | null
           commission_percent?: number
           created_at?: string
+          duration_minutes?: number | null
           id?: string
           professional_id: string
           service_id: string
           updated_at?: string
         }
         Update: {
+          assistant_commission_percent?: number | null
           commission_percent?: number
           created_at?: string
+          duration_minutes?: number | null
           id?: string
           professional_id?: string
           service_id?: string
@@ -460,13 +466,19 @@ export type Database = {
       professionals: {
         Row: {
           avatar_url: string | null
+          can_be_assistant: boolean | null
           commission_percent: number | null
+          cpf: string | null
+          create_access: boolean | null
           created_at: string
           email: string | null
+          has_schedule: boolean | null
           id: string
           is_active: boolean | null
           name: string
+          nickname: string | null
           phone: string | null
+          role: string | null
           salon_id: string
           specialty: string | null
           updated_at: string
@@ -474,13 +486,19 @@ export type Database = {
         }
         Insert: {
           avatar_url?: string | null
+          can_be_assistant?: boolean | null
           commission_percent?: number | null
+          cpf?: string | null
+          create_access?: boolean | null
           created_at?: string
           email?: string | null
+          has_schedule?: boolean | null
           id?: string
           is_active?: boolean | null
           name: string
+          nickname?: string | null
           phone?: string | null
+          role?: string | null
           salon_id: string
           specialty?: string | null
           updated_at?: string
@@ -488,13 +506,19 @@ export type Database = {
         }
         Update: {
           avatar_url?: string | null
+          can_be_assistant?: boolean | null
           commission_percent?: number | null
+          cpf?: string | null
+          create_access?: boolean | null
           created_at?: string
           email?: string | null
+          has_schedule?: boolean | null
           id?: string
           is_active?: boolean | null
           name?: string
+          nickname?: string | null
           phone?: string | null
+          role?: string | null
           salon_id?: string
           specialty?: string | null
           updated_at?: string

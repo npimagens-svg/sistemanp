@@ -1,66 +1,107 @@
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2, Save } from "lucide-react";
 import { useServices } from "@/hooks/useServices";
 import { useProfessionalCommissions, CommissionInput } from "@/hooks/useProfessionalCommissions";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Link } from "react-router-dom";
 
 interface ProfessionalCommissionsTabProps {
   professionalId: string;
   defaultCommission: number;
 }
 
+interface CategoryCommission {
+  category: string;
+  selected: boolean;
+  commission_percent: number;
+  assistant_commission_percent: number;
+  duration_minutes: number;
+}
+
 export function ProfessionalCommissionsTab({ professionalId, defaultCommission }: ProfessionalCommissionsTabProps) {
   const { services, isLoading: loadingServices } = useServices();
   const { commissions, isLoading: loadingCommissions, bulkUpsertCommissions, isUpserting } = useProfessionalCommissions(professionalId);
   
-  const [localCommissions, setLocalCommissions] = useState<Record<string, number>>({});
+  const [categoryData, setCategoryData] = useState<CategoryCommission[]>([]);
   const [hasChanges, setHasChanges] = useState(false);
 
-  // Group services by category
-  const servicesByCategory = services.reduce((acc, service) => {
-    const category = service.category || "Sem Categoria";
-    if (!acc[category]) acc[category] = [];
-    acc[category].push(service);
-    return acc;
-  }, {} as Record<string, typeof services>);
+  // Get unique categories from services
+  const categories = [...new Set(services.map(s => s.category || "Sem Categoria"))];
 
-  // Initialize local commissions from fetched data
+  // Initialize category data
   useEffect(() => {
-    const initial: Record<string, number> = {};
-    services.forEach((service) => {
-      const existing = commissions.find((c) => c.service_id === service.id);
-      initial[service.id] = existing ? existing.commission_percent : defaultCommission;
-    });
-    setLocalCommissions(initial);
-    setHasChanges(false);
-  }, [commissions, services, defaultCommission]);
+    const initialData: CategoryCommission[] = categories.map(category => {
+      // Find services in this category
+      const categoryServices = services.filter(s => (s.category || "Sem Categoria") === category);
+      
+      // Check if any service in this category has commission configured
+      const existingCommissions = commissions.filter(c => 
+        categoryServices.some(s => s.id === c.service_id)
+      );
 
-  const handleCommissionChange = (serviceId: string, value: string) => {
-    const numValue = parseFloat(value) || 0;
-    setLocalCommissions((prev) => ({ ...prev, [serviceId]: Math.min(100, Math.max(0, numValue)) }));
+      const hasSelected = existingCommissions.length > 0;
+      const avgCommission = hasSelected 
+        ? existingCommissions.reduce((sum, c) => sum + c.commission_percent, 0) / existingCommissions.length 
+        : defaultCommission;
+      const avgAssistant = hasSelected 
+        ? existingCommissions.reduce((sum, c) => sum + ((c as any).assistant_commission_percent || 0), 0) / existingCommissions.length 
+        : 0;
+      const avgDuration = hasSelected 
+        ? existingCommissions.reduce((sum, c) => sum + ((c as any).duration_minutes || 0), 0) / existingCommissions.length 
+        : 0;
+
+      return {
+        category,
+        selected: hasSelected,
+        commission_percent: avgCommission,
+        assistant_commission_percent: avgAssistant,
+        duration_minutes: avgDuration,
+      };
+    });
+
+    setCategoryData(initialData);
+    setHasChanges(false);
+  }, [commissions, services, defaultCommission, categories.length]);
+
+  const handleCategoryChange = (category: string, field: keyof CategoryCommission, value: any) => {
+    setCategoryData(prev => prev.map(item => 
+      item.category === category ? { ...item, [field]: value } : item
+    ));
     setHasChanges(true);
   };
 
   const handleSave = () => {
-    const inputs: CommissionInput[] = Object.entries(localCommissions).map(([serviceId, commission]) => ({
-      professional_id: professionalId,
-      service_id: serviceId,
-      commission_percent: commission,
-    }));
-    bulkUpsertCommissions(inputs);
-    setHasChanges(false);
-  };
-
-  const handleApplyToAll = (value: number) => {
-    const updated: Record<string, number> = {};
-    services.forEach((service) => {
-      updated[service.id] = value;
+    const inputs: CommissionInput[] = [];
+    
+    categoryData.forEach(catData => {
+      if (catData.selected) {
+        const categoryServices = services.filter(s => (s.category || "Sem Categoria") === catData.category);
+        categoryServices.forEach(service => {
+          inputs.push({
+            professional_id: professionalId,
+            service_id: service.id,
+            commission_percent: catData.commission_percent,
+            assistant_commission_percent: catData.assistant_commission_percent,
+            duration_minutes: catData.duration_minutes,
+          });
+        });
+      }
     });
-    setLocalCommissions(updated);
-    setHasChanges(true);
+
+    if (inputs.length > 0) {
+      bulkUpsertCommissions(inputs);
+    }
+    setHasChanges(false);
   };
 
   if (loadingServices || loadingCommissions) {
@@ -74,73 +115,111 @@ export function ProfessionalCommissionsTab({ professionalId, defaultCommission }
   if (services.length === 0) {
     return (
       <div className="text-center py-8 text-muted-foreground">
-        Nenhum serviço cadastrado. Cadastre serviços primeiro.
+        Nenhum serviço cadastrado. <Link to="/servicos" className="text-primary underline">Cadastre serviços primeiro</Link>.
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground">Aplicar a todos:</span>
-          <Button variant="outline" size="sm" onClick={() => handleApplyToAll(defaultCommission)}>
-            Padrão ({defaultCommission}%)
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => handleApplyToAll(0)}>
-            0%
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => handleApplyToAll(50)}>
-            50%
-          </Button>
-        </div>
-        <Button onClick={handleSave} disabled={!hasChanges || isUpserting}>
-          {isUpserting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-          Salvar Comissões
-        </Button>
+    <div className="space-y-6">
+      <div className="space-y-2">
+        <p className="text-sm text-muted-foreground">
+          Selecione as categorias de serviço desse profissional e qual o valor de comissão que ele deve receber.
+        </p>
+        <p className="text-sm text-muted-foreground">
+          Obs.: Não encontrou a categoria do profissional?{" "}
+          <Link to="/servicos" className="text-primary underline">Clique aqui</Link> para cadastrá-la!
+        </p>
       </div>
 
-      {Object.entries(servicesByCategory).map(([category, categoryServices]) => (
-        <Card key={category}>
-          <CardHeader className="py-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Badge variant="secondary">{category}</Badge>
-              <span className="text-muted-foreground text-sm">({categoryServices.length} serviços)</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <div className="grid gap-2">
-              {categoryServices.map((service) => (
-                <div key={service.id} className="flex items-center justify-between py-2 border-b last:border-0">
-                  <div className="flex-1">
-                    <p className="font-medium">{service.name}</p>
-                    <p className="text-sm text-muted-foreground">
-                      Preço: R$ {service.price.toFixed(2)} • Duração: {service.duration_minutes}min
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
+      <div className="border rounded-lg">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-12"></TableHead>
+              <TableHead className="w-48">Categoria</TableHead>
+              <TableHead className="text-center">Comissão</TableHead>
+              <TableHead className="text-center">Comissão Assistente</TableHead>
+              <TableHead className="text-center">Tempo</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {categoryData.map((item) => (
+              <TableRow key={item.category}>
+                <TableCell>
+                  <Checkbox
+                    checked={item.selected}
+                    onCheckedChange={(checked) => 
+                      handleCategoryChange(item.category, "selected", checked as boolean)
+                    }
+                  />
+                </TableCell>
+                <TableCell className="font-medium">{item.category}</TableCell>
+                <TableCell>
+                  <div className="flex items-center justify-center gap-1">
                     <Input
                       type="number"
                       min={0}
                       max={100}
                       step={0.5}
-                      value={localCommissions[service.id] ?? defaultCommission}
-                      onChange={(e) => handleCommissionChange(service.id, e.target.value)}
-                      className="w-20 text-right"
+                      value={item.commission_percent}
+                      onChange={(e) => 
+                        handleCategoryChange(item.category, "commission_percent", parseFloat(e.target.value) || 0)
+                      }
+                      className="w-20 text-center"
+                      disabled={!item.selected}
                     />
-                    <span className="text-sm text-muted-foreground w-4">%</span>
-                    {localCommissions[service.id] !== undefined && (
-                      <span className="text-sm text-muted-foreground w-24 text-right">
-                        = R$ {((service.price * localCommissions[service.id]) / 100).toFixed(2)}
-                      </span>
-                    )}
+                    <span className="text-sm text-muted-foreground">%</span>
                   </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      ))}
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center justify-center gap-1">
+                    <Input
+                      type="number"
+                      min={0}
+                      max={100}
+                      step={0.5}
+                      value={item.assistant_commission_percent}
+                      onChange={(e) => 
+                        handleCategoryChange(item.category, "assistant_commission_percent", parseFloat(e.target.value) || 0)
+                      }
+                      className="w-20 text-center"
+                      disabled={!item.selected}
+                    />
+                    <span className="text-sm text-muted-foreground">%</span>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center justify-center gap-1">
+                    <Input
+                      type="number"
+                      min={0}
+                      step={5}
+                      value={item.duration_minutes}
+                      onChange={(e) => 
+                        handleCategoryChange(item.category, "duration_minutes", parseInt(e.target.value) || 0)
+                      }
+                      className="w-20 text-center"
+                      disabled={!item.selected}
+                    />
+                    <span className="text-sm text-muted-foreground">min</span>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+
+      <div className="flex justify-end gap-2">
+        <Button variant="outline" onClick={() => setHasChanges(false)}>
+          Cancelar
+        </Button>
+        <Button onClick={handleSave} disabled={!hasChanges || isUpserting}>
+          {isUpserting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+          Salvar
+        </Button>
+      </div>
     </div>
   );
 }

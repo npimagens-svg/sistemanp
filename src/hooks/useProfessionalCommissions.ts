@@ -8,6 +8,8 @@ export interface ProfessionalServiceCommission {
   professional_id: string;
   service_id: string;
   commission_percent: number;
+  assistant_commission_percent: number;
+  duration_minutes: number;
   created_at: string;
   updated_at: string;
 }
@@ -16,6 +18,8 @@ export interface CommissionInput {
   professional_id: string;
   service_id: string;
   commission_percent: number;
+  assistant_commission_percent?: number;
+  duration_minutes?: number;
 }
 
 export function useProfessionalCommissions(professionalId?: string) {
