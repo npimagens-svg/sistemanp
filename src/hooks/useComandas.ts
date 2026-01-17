@@ -154,6 +154,45 @@ export function useComandas() {
   };
 }
 
+export function useClientComandas(clientId: string | null) {
+  const { salonId } = useAuth();
+
+  const query = useQuery({
+    queryKey: ["client_comandas", clientId, salonId],
+    queryFn: async () => {
+      if (!clientId || !salonId) return [];
+      const { data, error } = await supabase
+        .from("comandas")
+        .select(`
+          *,
+          professional:professionals(id, name),
+          items:comanda_items(
+            id,
+            description,
+            item_type,
+            quantity,
+            unit_price,
+            total_price,
+            service_id,
+            product_id
+          )
+        `)
+        .eq("salon_id", salonId)
+        .eq("client_id", clientId)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!clientId && !!salonId,
+  });
+
+  return {
+    comandas: query.data ?? [],
+    isLoading: query.isLoading,
+    error: query.error,
+  };
+}
+
 export function useComandaItems(comandaId: string | null) {
   const { toast } = useToast();
   const queryClient = useQueryClient();

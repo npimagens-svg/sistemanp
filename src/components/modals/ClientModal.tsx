@@ -15,7 +15,24 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 import { Client, ClientInput } from "@/hooks/useClients";
+import { useClientComandas } from "@/hooks/useComandas";
+import { useProfessionals } from "@/hooks/useProfessionals";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { Loader2 } from "lucide-react";
+
+const HOW_MET_OPTIONS = [
+  { value: "indicacao", label: "Indicação" },
+  { value: "google", label: "Google" },
+  { value: "instagram", label: "Instagram" },
+  { value: "facebook", label: "Facebook" },
+  { value: "localizacao", label: "Localização" },
+  { value: "tiktok", label: "TikTok" },
+  { value: "outro", label: "Outro" },
+];
 
 interface ClientModalProps {
   open: boolean;
@@ -141,8 +158,9 @@ export function ClientModal({ open, onOpenChange, client, onSubmit, isLoading }:
           <DialogTitle>{client ? "Editar Cliente" : "Cadastre um novo cliente"}</DialogTitle>
         </DialogHeader>
         <Tabs defaultValue="cadastro" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="cadastro">Cadastro</TabsTrigger>
+            <TabsTrigger value="comandas" disabled={!client}>Comandas</TabsTrigger>
             <TabsTrigger value="anamnese">Anamnese</TabsTrigger>
           </TabsList>
           <form onSubmit={handleSubmit}>
@@ -255,7 +273,8 @@ export function ClientModal({ open, onOpenChange, client, onSubmit, isLoading }:
                       id="email"
                       type="email"
                       value={formData.email}
-                      onChange={(e) => updateField("email", e.target.value)}
+                      onChange={(e) => updateField("email", e.target.value.toLowerCase())}
+                      className="lowercase"
                     />
                   </div>
                   <div className="space-y-2">
@@ -345,11 +364,18 @@ export function ClientModal({ open, onOpenChange, client, onSubmit, isLoading }:
                   <div className="space-y-4">
                     <div className="space-y-2">
                       <Label htmlFor="how_met">Como conheceu?</Label>
-                      <Input
-                        id="how_met"
-                        value={formData.how_met}
-                        onChange={(e) => updateField("how_met", e.target.value)}
-                      />
+                      <Select value={formData.how_met} onValueChange={(value) => updateField("how_met", value)}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione uma opção" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {HOW_MET_OPTIONS.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="profession">Profissão:</Label>
@@ -430,6 +456,10 @@ export function ClientModal({ open, onOpenChange, client, onSubmit, isLoading }:
                 </div>
               </TabsContent>
 
+              <TabsContent value="comandas" className="space-y-4 mt-4">
+                <ClientComandasTab clientId={client?.id || null} />
+              </TabsContent>
+
               <TabsContent value="anamnese" className="space-y-4 mt-4">
                 <div className="flex items-center justify-center h-40 text-muted-foreground">
                   <p>Funcionalidade de anamnese em breve.</p>
@@ -449,5 +479,101 @@ export function ClientModal({ open, onOpenChange, client, onSubmit, isLoading }:
         </Tabs>
       </DialogContent>
     </Dialog>
+  );
+}
+
+interface ClientComandasTabProps {
+  clientId: string | null;
+}
+
+function ClientComandasTab({ clientId }: ClientComandasTabProps) {
+  const { comandas, isLoading } = useClientComandas(clientId);
+  const { professionals } = useProfessionals();
+
+  const getProfessionalName = (professionalId: string | null) => {
+    if (!professionalId) return "—";
+    const professional = professionals.find((p) => p.id === professionalId);
+    return professional?.name || "—";
+  };
+
+  const formatPaymentMethod = (method: string) => {
+    const methods: Record<string, string> = {
+      cash: "Dinheiro",
+      pix: "PIX",
+      credit_card: "Cartão de Crédito",
+      debit_card: "Cartão de Débito",
+      other: "Outro",
+    };
+    return methods[method] || method;
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-40">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (comandas.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-40 text-muted-foreground">
+        <p>Nenhuma comanda encontrada para este cliente.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">Histórico de atendimentos e compras do cliente.</p>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Data</TableHead>
+            <TableHead>Profissional</TableHead>
+            <TableHead>Serviços/Produtos</TableHead>
+            <TableHead className="text-right">Total</TableHead>
+            <TableHead>Status</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {comandas.map((comanda: any) => (
+            <TableRow key={comanda.id}>
+              <TableCell>
+                {format(new Date(comanda.created_at), "dd/MM/yyyy", { locale: ptBR })}
+              </TableCell>
+              <TableCell>
+                {comanda.professional?.name || getProfessionalName(comanda.professional_id)}
+              </TableCell>
+              <TableCell>
+                <div className="flex flex-wrap gap-1">
+                  {comanda.items?.slice(0, 2).map((item: any) => (
+                    <Badge key={item.id} variant="outline" className="text-xs">
+                      {item.description}
+                    </Badge>
+                  ))}
+                  {comanda.items?.length > 2 && (
+                    <Badge variant="secondary" className="text-xs">
+                      +{comanda.items.length - 2}
+                    </Badge>
+                  )}
+                  {(!comanda.items || comanda.items.length === 0) && (
+                    <span className="text-muted-foreground text-sm">—</span>
+                  )}
+                </div>
+              </TableCell>
+              <TableCell className="text-right font-medium">
+                R$ {comanda.total?.toFixed(2) || "0.00"}
+              </TableCell>
+              <TableCell>
+                <Badge variant={comanda.is_paid ? "default" : "secondary"}>
+                  {comanda.is_paid ? "Pago" : "Em aberto"}
+                </Badge>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
   );
 }
