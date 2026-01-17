@@ -9,7 +9,8 @@ import Agenda from "./pages/Agenda";
 import Clientes from "./pages/Clientes";
 import Servicos from "./pages/Servicos";
 import Auth from "./pages/Auth";
-import { Profissionais, Comandas, Financeiro, Estoque, Marketing, Relatorios, Configuracoes } from "./pages/PlaceholderPages";
+import { Profissionais } from "./pages/Profissionais";
+import { Comandas, Financeiro, Estoque, Marketing, Relatorios, Configuracoes } from "./pages/PlaceholderPages";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();

@@ -20,7 +20,6 @@ function PlaceholderPage({ title }: PlaceholderPageProps) {
   );
 }
 
-export const Profissionais = () => <PlaceholderPage title="Profissionais" />;
 export const Comandas = () => <PlaceholderPage title="Comandas" />;
 export const Financeiro = () => <PlaceholderPage title="Financeiro" />;
 export const Estoque = () => <PlaceholderPage title="Estoque" />;

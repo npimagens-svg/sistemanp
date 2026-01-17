@@ -415,6 +415,48 @@ export type Database = {
           },
         ]
       }
+      professional_service_commissions: {
+        Row: {
+          commission_percent: number
+          created_at: string
+          id: string
+          professional_id: string
+          service_id: string
+          updated_at: string
+        }
+        Insert: {
+          commission_percent?: number
+          created_at?: string
+          id?: string
+          professional_id: string
+          service_id: string
+          updated_at?: string
+        }
+        Update: {
+          commission_percent?: number
+          created_at?: string
+          id?: string
+          professional_id?: string
+          service_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "professional_service_commissions_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "professional_service_commissions_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       professionals: {
         Row: {
           avatar_url: string | null
