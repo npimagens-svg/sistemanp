@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Professional, ProfessionalInput } from "@/hooks/useProfessionals";
+import { AvatarUpload } from "@/components/shared/AvatarUpload";
 
 interface ProfessionalModalProps {
   open: boolean;
@@ -54,6 +55,7 @@ export function ProfessionalModal({ open, onOpenChange, professional, onSubmit, 
     can_be_assistant: false,
     has_schedule: true,
     create_access: false,
+    avatar_url: null,
   });
 
   useEffect(() => {
@@ -71,6 +73,7 @@ export function ProfessionalModal({ open, onOpenChange, professional, onSubmit, 
         can_be_assistant: (professional as any).can_be_assistant || false,
         has_schedule: (professional as any).has_schedule ?? true,
         create_access: (professional as any).create_access || false,
+        avatar_url: professional.avatar_url || null,
       });
     } else {
       setFormData({
@@ -86,6 +89,7 @@ export function ProfessionalModal({ open, onOpenChange, professional, onSubmit, 
         can_be_assistant: false,
         has_schedule: true,
         create_access: false,
+        avatar_url: null,
       });
     }
   }, [professional, open]);
@@ -109,6 +113,17 @@ export function ProfessionalModal({ open, onOpenChange, professional, onSubmit, 
           </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Avatar Upload */}
+          <div className="flex justify-center">
+            <AvatarUpload
+              currentAvatarUrl={formData.avatar_url}
+              name={formData.name}
+              onAvatarChange={(url) => setFormData({ ...formData, avatar_url: url })}
+              folder="professionals"
+              size="lg"
+            />
+          </div>
+
           {/* Row 1: Nome e Apelido */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">

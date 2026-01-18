@@ -31,6 +31,7 @@ export interface ProfessionalInput {
   can_be_assistant?: boolean;
   has_schedule?: boolean;
   create_access?: boolean;
+  avatar_url?: string | null;
 }
 
 export function useProfessionals() {

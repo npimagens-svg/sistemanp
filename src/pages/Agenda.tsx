@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AppLayoutNew } from "@/components/layout/AppLayoutNew";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ChevronLeft, ChevronRight, Plus, Clock, Search, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -146,13 +146,13 @@ export default function Agenda() {
 
   return (
     <AppLayoutNew>
-      <div className="flex gap-4">
+      <div className="flex gap-4 h-full">
         {/* Left Sidebar - Calendar & Filters */}
-        <div className="w-64 shrink-0 space-y-4">
+        <div className="w-72 shrink-0 space-y-4">
           {/* Mini Calendar */}
           <Card>
-            <CardContent className="p-3">
-              <div className="flex items-center justify-between mb-2">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-3">
                 <Button variant="ghost" size="icon" onClick={goToPreviousMonth}>
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
@@ -166,7 +166,7 @@ export default function Agenda() {
                 selected={currentDate}
                 onSelect={(date) => date && setCurrentDate(date)}
                 locale={ptBR}
-                className="w-full"
+                className="w-full [&_.rdp-months]:flex [&_.rdp-months]:justify-center [&_.rdp-month]:w-full [&_.rdp-caption]:hidden [&_.rdp-table]:w-full"
               />
             </CardContent>
           </Card>
@@ -280,6 +280,9 @@ export default function Agenda() {
                       {filteredProfessionals.map((professional, index) => (
                         <div key={professional.id} className="p-2 border-r last:border-r-0 bg-muted/30 text-center">
                           <Avatar className="h-10 w-10 mx-auto mb-1">
+                            {professional.avatar_url && (
+                              <AvatarImage src={professional.avatar_url} alt={professional.name} />
+                            )}
                             <AvatarFallback className={`${getProfessionalColor(index)} text-white text-xs`}>
                               {getInitials(professional.name)}
                             </AvatarFallback>
