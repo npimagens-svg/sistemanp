@@ -3,7 +3,7 @@ import { AppLayoutNew } from "@/components/layout/AppLayoutNew";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ChevronLeft, ChevronRight, Plus, Clock, Search, Loader2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Clock, Search, Loader2, Ban } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Calendar } from "@/components/ui/calendar";
@@ -13,9 +13,14 @@ import { useProfessionals } from "@/hooks/useProfessionals";
 import { useClients } from "@/hooks/useClients";
 import { useServices } from "@/hooks/useServices";
 import { AppointmentModal } from "@/components/modals/AppointmentModal";
+import { BlockTimeModal, BlockTimeData } from "@/components/modals/BlockTimeModal";
 import { AppointmentHoverCard } from "@/components/agenda/AppointmentHoverCard";
 import { ClientModal } from "@/components/modals/ClientModal";
 import { format } from "date-fns";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { useQueryClient } from "@tanstack/react-query";
 
 const timeSlots = [
   "08:00", "08:30", "09:00", "09:30", "10:00", "10:30", 
@@ -31,6 +36,7 @@ const statusColors: Record<string, string> = {
   completed: "bg-emerald-600 text-white",
   no_show: "bg-gray-400 text-white",
   cancelled: "bg-gray-500 text-white",
+  blocked: "bg-slate-700 text-white",
 };
 
 const professionalColors = [
@@ -44,11 +50,16 @@ export default function Agenda() {
   const [searchProfessional, setSearchProfessional] = useState("");
   const [selectedProfessionalIds, setSelectedProfessionalIds] = useState<string[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
+  const [blockModalOpen, setBlockModalOpen] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<{ professionalId: string; time: string } | null>(null);
   const [selectedAppointment, setSelectedAppointment] = useState<any>(null);
   const [clientModalOpen, setClientModalOpen] = useState(false);
   const [pendingClientName, setPendingClientName] = useState("");
+  const [isBlocking, setIsBlocking] = useState(false);
 
+  const { toast } = useToast();
+  const { salonId } = useAuth();
+  const queryClient = useQueryClient();
   const { appointments, isLoading: appointmentsLoading, createAppointment, updateAppointment, isCreating, isUpdating } = useAppointments(currentDate);
   const { professionals, isLoading: professionalsLoading } = useProfessionals();
   const { clients, createClient } = useClients();
@@ -149,6 +160,42 @@ export default function Agenda() {
     });
   };
 
+  const handleBlockTime = async (data: BlockTimeData) => {
+    if (!salonId) return;
+    
+    setIsBlocking(true);
+    try {
+      const scheduled_at = new Date(`${data.date}T${data.time}`).toISOString();
+      
+      // Create a "blocked" appointment (no client, no service, with reason in notes)
+      const { error } = await supabase
+        .from("appointments")
+        .insert({
+          salon_id: salonId,
+          professional_id: data.professional_id,
+          scheduled_at,
+          duration_minutes: data.duration_minutes,
+          status: "cancelled", // Using cancelled status for blocked time
+          notes: `🔒 BLOQUEADO: ${data.reason}`,
+          client_id: null,
+          service_id: null,
+        });
+
+      if (error) throw error;
+      
+      queryClient.invalidateQueries({ queryKey: ["appointments", salonId] });
+      toast({ title: "Horário bloqueado com sucesso!" });
+    } catch (error: any) {
+      toast({ 
+        title: "Erro ao bloquear horário", 
+        description: error.message, 
+        variant: "destructive" 
+      });
+    } finally {
+      setIsBlocking(false);
+    }
+  };
+
   const getDefaultDateWithTime = () => {
     if (selectedSlot) {
       const date = new Date(currentDate);
@@ -242,7 +289,15 @@ export default function Agenda() {
               <Button variant="outline" size="sm" onClick={goToToday}>
                 Hoje
               </Button>
-              <Button variant="outline" size="sm">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => {
+                  setSelectedSlot(null);
+                  setBlockModalOpen(true);
+                }}
+              >
+                <Ban className="h-4 w-4 mr-1" />
                 Bloquear Horário
               </Button>
               <Button size="sm" onClick={() => { setSelectedAppointment(null); setSelectedSlot(null); setModalOpen(true); }}>
@@ -332,29 +387,49 @@ export default function Agenda() {
                               >
                                 {appointmentCount > 0 && (
                                   <div className="absolute inset-0 flex gap-0.5 p-0.5">
-                                    {slotAppointments.map((appointment, idx) => (
-                                      <AppointmentHoverCard key={appointment.id} appointment={appointment}>
-                                        <div
-                                          className={`flex-1 rounded-sm p-0.5 z-10 cursor-pointer transition-shadow hover:shadow-md overflow-hidden ${statusColors[appointment.status]}`}
-                                          style={{
-                                            height: `${Math.ceil(appointment.duration_minutes / 30) * 40 - 4}px`,
-                                          }}
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleSlotClick(professional.id, time, appointment);
-                                          }}
-                                        >
-                                          <div className="text-[9px] font-medium truncate">
-                                            {appointmentCount > 1 ? "" : `${time} `}{appointment.clients?.name || "Cliente"}
+                                    {slotAppointments.map((appointment, idx) => {
+                                      const isBlocked = appointment.notes?.startsWith("🔒 BLOQUEADO:");
+                                      const blockReason = isBlocked ? appointment.notes?.replace("🔒 BLOQUEADO: ", "") : null;
+                                      
+                                      return (
+                                        <AppointmentHoverCard key={appointment.id} appointment={appointment}>
+                                          <div
+                                            className={`flex-1 rounded-sm p-0.5 z-10 cursor-pointer transition-shadow hover:shadow-md overflow-hidden ${isBlocked ? "bg-slate-700 text-white" : statusColors[appointment.status]}`}
+                                            style={{
+                                              height: `${Math.ceil(appointment.duration_minutes / 30) * 40 - 4}px`,
+                                            }}
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              if (!isBlocked) {
+                                                handleSlotClick(professional.id, time, appointment);
+                                              }
+                                            }}
+                                          >
+                                            {isBlocked ? (
+                                              <>
+                                                <div className="text-[9px] font-medium truncate flex items-center gap-1">
+                                                  <Ban className="h-2 w-2" /> Bloqueado
+                                                </div>
+                                                <div className="text-[8px] opacity-90 truncate">
+                                                  {blockReason}
+                                                </div>
+                                              </>
+                                            ) : (
+                                              <>
+                                                <div className="text-[9px] font-medium truncate">
+                                                  {appointmentCount > 1 ? "" : `${time} `}{appointment.clients?.name || "Cliente"}
+                                                </div>
+                                                {appointment.services?.name && (
+                                                  <div className="text-[9px] opacity-90 truncate uppercase">
+                                                    {appointment.services.name}
+                                                  </div>
+                                                )}
+                                              </>
+                                            )}
                                           </div>
-                                          {appointment.services?.name && (
-                                            <div className="text-[9px] opacity-90 truncate uppercase">
-                                              {appointment.services.name}
-                                            </div>
-                                          )}
-                                        </div>
-                                      </AppointmentHoverCard>
-                                    ))}
+                                        </AppointmentHoverCard>
+                                      );
+                                    })}
                                   </div>
                                 )}
                               </div>
@@ -389,6 +464,17 @@ export default function Agenda() {
         defaultDate={getDefaultDateWithTime()}
         defaultProfessionalId={selectedSlot?.professionalId}
         onCreateClient={handleCreateClient}
+      />
+
+      <BlockTimeModal
+        open={blockModalOpen}
+        onOpenChange={setBlockModalOpen}
+        professionals={professionals.filter(p => p.is_active)}
+        onSubmit={handleBlockTime}
+        isLoading={isBlocking}
+        defaultDate={currentDate}
+        defaultProfessionalId={selectedSlot?.professionalId}
+        defaultTime={selectedSlot?.time}
       />
 
       <ClientModal

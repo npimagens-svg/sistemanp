@@ -3,10 +3,10 @@ import { AppLayoutNew } from "@/components/layout/AppLayoutNew";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Plus, Pencil, Trash2, Loader2, Phone, Merge, FileText, Settings } from "lucide-react";
+import { Search, Plus, Pencil, Trash2, Loader2, Merge, FileText, Settings, MessageCircle } from "lucide-react";
 import { useClients, Client, ClientInput } from "@/hooks/useClients";
 import { ClientModal } from "@/components/modals/ClientModal";
 import { DeleteConfirmModal } from "@/components/modals/DeleteConfirmModal";
@@ -81,6 +81,22 @@ export default function Clientes() {
       nao_informar: "Prefiro não dizer",
     };
     return gender ? genderMap[gender] || "" : "";
+  };
+
+  const openWhatsApp = (client: Client) => {
+    if (!client.phone) return;
+    
+    // Remove non-numeric characters
+    const phoneNumber = client.phone.replace(/\D/g, "");
+    const fullNumber = phoneNumber.startsWith("55") ? phoneNumber : `55${phoneNumber}`;
+    
+    // Creative pre-programmed message
+    const firstName = client.name.split(" ")[0];
+    const message = encodeURIComponent(
+      `Olá ${firstName}! 👋\n\nTudo bem? Passando aqui para saber como você está! ✨\n\nEstamos com novidades incríveis por aqui e adoraríamos te ver novamente! 💇‍♀️\n\nPodemos agendar um horário para você? Estamos te esperando! 💕`
+    );
+    
+    window.open(`https://wa.me/${fullNumber}?text=${message}`, "_blank");
   };
 
   if (isLoading) {
@@ -201,6 +217,9 @@ export default function Clientes() {
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <Avatar className="h-10 w-10">
+                            {client.avatar_url && (
+                              <AvatarImage src={client.avatar_url} alt={client.name} />
+                            )}
                             <AvatarFallback className="bg-muted text-muted-foreground text-sm">
                               {getInitials(client.name)}
                             </AvatarFallback>
@@ -220,8 +239,10 @@ export default function Clientes() {
                                 variant="ghost" 
                                 size="icon" 
                                 className="h-6 w-6 bg-green-500 hover:bg-green-600 text-white rounded-full"
+                                onClick={() => openWhatsApp(client)}
+                                title="Abrir WhatsApp"
                               >
-                                <Phone className="h-3 w-3" />
+                                <MessageCircle className="h-3 w-3" />
                               </Button>
                             </div>
                           )}

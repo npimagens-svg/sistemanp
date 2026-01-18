@@ -117,12 +117,21 @@ export function AppointmentModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate that both client and service are required
+    if (!formData.client_id) {
+      return;
+    }
+    if (!formData.service_id) {
+      return;
+    }
+    
     const scheduled_at = new Date(`${formData.date}T${formData.time}`).toISOString();
     
     const data: AppointmentInput = {
-      client_id: formData.client_id || undefined,
+      client_id: formData.client_id,
       professional_id: formData.professional_id,
-      service_id: formData.service_id || undefined,
+      service_id: formData.service_id,
       scheduled_at,
       duration_minutes: formData.duration_minutes,
       status: formData.status,
@@ -191,7 +200,7 @@ export function AppointmentModal({
         
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label>Cliente</Label>
+            <Label>Cliente *</Label>
             <ClientSearchSelect
               clients={clients}
               value={formData.client_id || null}
@@ -199,6 +208,9 @@ export function AppointmentModal({
               onCreateNew={onCreateClient}
               placeholder="Buscar cliente..."
             />
+            {!formData.client_id && (
+              <p className="text-xs text-destructive">Cliente é obrigatório</p>
+            )}
           </div>
           
           <div className="space-y-2">
@@ -222,7 +234,7 @@ export function AppointmentModal({
           </div>
 
           <div className="space-y-2">
-            <Label>Serviço</Label>
+            <Label>Serviço *</Label>
             <Select value={formData.service_id} onValueChange={handleServiceChange}>
               <SelectTrigger>
                 <SelectValue placeholder="Selecione um serviço" />
@@ -235,6 +247,9 @@ export function AppointmentModal({
                 ))}
               </SelectContent>
             </Select>
+            {!formData.service_id && (
+              <p className="text-xs text-destructive">Serviço é obrigatório</p>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -319,7 +334,10 @@ export function AppointmentModal({
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={isLoading || !formData.professional_id}>
+            <Button 
+              type="submit" 
+              disabled={isLoading || !formData.professional_id || !formData.client_id || !formData.service_id}
+            >
               {isLoading ? "Salvando..." : "Salvar"}
             </Button>
           </DialogFooter>
