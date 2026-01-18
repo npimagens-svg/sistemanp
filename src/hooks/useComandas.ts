@@ -285,12 +285,31 @@ export function useComandaItems(comandaId: string | null) {
 
   const addItemMutation = useMutation({
     mutationFn: async (input: ComandaItemInput) => {
+      // Insert the item
       const { data, error } = await supabase
         .from("comanda_items")
         .insert(input)
         .select()
         .single();
       if (error) throw error;
+
+      // Update comanda totals
+      const { data: allItems } = await supabase
+        .from("comanda_items")
+        .select("total_price")
+        .eq("comanda_id", input.comanda_id);
+      
+      if (allItems) {
+        const newSubtotal = allItems.reduce((acc, item) => acc + Number(item.total_price), 0);
+        await supabase
+          .from("comandas")
+          .update({
+            subtotal: newSubtotal,
+            total: newSubtotal, // Will subtract discount if exists
+          })
+          .eq("id", input.comanda_id);
+      }
+
       return data;
     },
     onSuccess: () => {
@@ -304,9 +323,32 @@ export function useComandaItems(comandaId: string | null) {
   });
 
   const removeItemMutation = useMutation({
-    mutationFn: async (itemId: string) => {
+    mutationFn: async ({ itemId, comandaId: cId }: { itemId: string; comandaId: string }) => {
+      // Get item to be removed
+      const { data: itemToRemove } = await supabase
+        .from("comanda_items")
+        .select("total_price")
+        .eq("id", itemId)
+        .single();
+
+      // Delete the item
       const { error } = await supabase.from("comanda_items").delete().eq("id", itemId);
       if (error) throw error;
+
+      // Update comanda totals
+      const { data: remainingItems } = await supabase
+        .from("comanda_items")
+        .select("total_price")
+        .eq("comanda_id", cId);
+      
+      const newSubtotal = remainingItems?.reduce((acc, item) => acc + Number(item.total_price), 0) || 0;
+      await supabase
+        .from("comandas")
+        .update({
+          subtotal: newSubtotal,
+          total: newSubtotal,
+        })
+        .eq("id", cId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["comanda_items", comandaId] });
@@ -322,7 +364,7 @@ export function useComandaItems(comandaId: string | null) {
     items: query.data ?? [],
     isLoading: query.isLoading,
     addItem: addItemMutation.mutate,
-    removeItem: removeItemMutation.mutate,
+    removeItem: (itemId: string) => removeItemMutation.mutate({ itemId, comandaId: comandaId! }),
     isAdding: addItemMutation.isPending,
     isRemoving: removeItemMutation.isPending,
   };

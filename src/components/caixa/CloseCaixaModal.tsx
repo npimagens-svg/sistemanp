@@ -1,11 +1,15 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertTriangle, Loader2 } from "lucide-react";
 import { Caixa } from "@/hooks/useCaixas";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface CloseCaixaModalProps {
   open: boolean;
@@ -18,12 +22,46 @@ interface CloseCaixaModalProps {
 export function CloseCaixaModal({ open, onClose, onConfirm, caixa, isLoading }: CloseCaixaModalProps) {
   const [closingBalance, setClosingBalance] = useState("");
   const [notes, setNotes] = useState("");
+  const [openComandasCount, setOpenComandasCount] = useState(0);
+  const [checkingComandas, setCheckingComandas] = useState(false);
+  const { salonId } = useAuth();
+
+  // Check for open comandas linked to this caixa
+  useEffect(() => {
+    if (open && caixa?.id && salonId) {
+      checkOpenComandas();
+    }
+  }, [open, caixa?.id, salonId]);
+
+  const checkOpenComandas = async () => {
+    if (!caixa?.id || !salonId) return;
+    
+    setCheckingComandas(true);
+    try {
+      const { data, error } = await supabase
+        .from("comandas")
+        .select("id", { count: "exact" })
+        .eq("salon_id", salonId)
+        .eq("caixa_id", caixa.id)
+        .is("closed_at", null);
+
+      if (!error) {
+        setOpenComandasCount(data?.length || 0);
+      }
+    } catch (error) {
+      console.error("Error checking open comandas:", error);
+    } finally {
+      setCheckingComandas(false);
+    }
+  };
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
   };
 
   const handleConfirm = () => {
+    if (openComandasCount > 0) return; // Block if there are open comandas
+    
     const balance = parseFloat(closingBalance.replace(",", ".")) || 0;
     onConfirm(balance, notes || undefined);
     setClosingBalance("");
@@ -41,6 +79,8 @@ export function CloseCaixaModal({ open, onClose, onConfirm, caixa, isLoading }: 
 
   const expectedCash = (caixa.opening_balance || 0) + (caixa.total_cash || 0);
 
+  const hasOpenComandas = openComandasCount > 0;
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-lg">
@@ -48,6 +88,22 @@ export function CloseCaixaModal({ open, onClose, onConfirm, caixa, isLoading }: 
           <DialogTitle>Fechar Caixa</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
+          {/* Warning for open comandas */}
+          {checkingComandas ? (
+            <div className="flex items-center justify-center py-2">
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              <span className="text-sm text-muted-foreground">Verificando comandas...</span>
+            </div>
+          ) : hasOpenComandas && (
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>
+                Existem <strong>{openComandasCount} comanda{openComandasCount > 1 ? "s" : ""} aberta{openComandasCount > 1 ? "s" : ""}</strong> vinculada{openComandasCount > 1 ? "s" : ""} a este caixa. 
+                Feche todas as comandas antes de fechar o caixa.
+              </AlertDescription>
+            </Alert>
+          )}
+
           {/* Summary */}
           <Card>
             <CardContent className="p-4 space-y-3">
@@ -88,6 +144,7 @@ export function CloseCaixaModal({ open, onClose, onConfirm, caixa, isLoading }: 
               placeholder="0,00"
               value={closingBalance}
               onChange={(e) => setClosingBalance(e.target.value)}
+              disabled={hasOpenComandas}
             />
             <p className="text-xs text-muted-foreground">
               Conte o dinheiro no caixa e informe o valor total
@@ -102,6 +159,7 @@ export function CloseCaixaModal({ open, onClose, onConfirm, caixa, isLoading }: 
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={3}
+              disabled={hasOpenComandas}
             />
           </div>
         </div>
@@ -109,7 +167,10 @@ export function CloseCaixaModal({ open, onClose, onConfirm, caixa, isLoading }: 
           <Button variant="outline" onClick={onClose} disabled={isLoading}>
             Cancelar
           </Button>
-          <Button onClick={handleConfirm} disabled={isLoading}>
+          <Button 
+            onClick={handleConfirm} 
+            disabled={isLoading || hasOpenComandas || checkingComandas}
+          >
             {isLoading ? "Fechando..." : "Fechar Caixa"}
           </Button>
         </DialogFooter>
