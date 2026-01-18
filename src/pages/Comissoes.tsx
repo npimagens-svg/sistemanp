@@ -40,7 +40,7 @@ export default function Comissoes() {
     });
   }, [comandas, dateStart, dateEnd]);
 
-  // Calculate commissions per professional
+  // Calculate commissions per professional based on comanda_items
   const professionalCommissions = useMemo(() => {
     const commissionMap = new Map<string, {
       professional: typeof professionals[0];
@@ -48,7 +48,7 @@ export default function Comissoes() {
       commission: number;
       discounts: number;
       totalToPay: number;
-      comandaCount: number;
+      itemCount: number;
     }>();
 
     professionals.forEach(prof => {
@@ -58,23 +58,31 @@ export default function Comissoes() {
         commission: 0,
         discounts: 0,
         totalToPay: 0,
-        comandaCount: 0,
+        itemCount: 0,
       });
     });
 
+    // Calculate by item (comanda_items.professional_id), with fallback to comanda.professional_id
     filteredComandas.forEach(comanda => {
-      if (!comanda.professional_id) return;
-      const profData = commissionMap.get(comanda.professional_id);
-      if (!profData) return;
+      const items = comanda.items || [];
+      
+      items.forEach(item => {
+        // Use item's professional_id, fallback to comanda's professional_id
+        const profId = item.professional_id || comanda.professional_id;
+        if (!profId) return;
+        
+        const profData = commissionMap.get(profId);
+        if (!profData) return;
 
-      const commissionPercent = profData.professional.commission_percent || 0;
-      const serviceTotal = comanda.subtotal || 0;
-      const commission = (serviceTotal * commissionPercent) / 100;
+        const commissionPercent = profData.professional.commission_percent || 0;
+        const itemTotal = item.total_price || 0;
+        const commission = (itemTotal * commissionPercent) / 100;
 
-      profData.totalServices += serviceTotal;
-      profData.commission += commission;
-      profData.totalToPay += commission;
-      profData.comandaCount += 1;
+        profData.totalServices += itemTotal;
+        profData.commission += commission;
+        profData.totalToPay += commission;
+        profData.itemCount += 1;
+      });
     });
 
     return Array.from(commissionMap.values());
@@ -234,12 +242,12 @@ export default function Comissoes() {
                             <div>
                               <div className="font-medium">{item.professional.name}</div>
                               <div className="text-xs text-muted-foreground">
-                                {item.comandaCount} comanda{item.comandaCount !== 1 ? "s" : ""}
+                                {item.itemCount} serviço{item.itemCount !== 1 ? "s" : ""}
                               </div>
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell>{item.professional.specialty || "-"}</TableCell>
+                        <TableCell>{(item.professional as any).role || "-"}</TableCell>
                         <TableCell className="text-right">{formatCurrency(item.commission)}</TableCell>
                         <TableCell className="text-right text-destructive">
                           {item.discounts > 0 ? `- ${formatCurrency(item.discounts)}` : formatCurrency(0)}

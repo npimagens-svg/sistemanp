@@ -8,12 +8,18 @@ export interface Professional {
   salon_id: string;
   user_id: string | null;
   name: string;
+  nickname: string | null;
+  cpf: string | null;
+  role: string | null;
   email: string | null;
   phone: string | null;
   avatar_url: string | null;
   specialty: string | null;
   commission_percent: number | null;
   is_active: boolean;
+  can_be_assistant: boolean | null;
+  has_schedule: boolean | null;
+  create_access: boolean | null;
   created_at: string;
   updated_at: string;
 }
@@ -57,17 +63,50 @@ export function useProfessionals() {
   const createMutation = useMutation({
     mutationFn: async (input: ProfessionalInput) => {
       if (!salonId) throw new Error("Salão não encontrado");
+      
+      // First create the professional record
       const { data, error } = await supabase
         .from("professionals")
-        .insert({ ...input, salon_id: salonId })
+        .insert({ ...input, salon_id: salonId, create_access: false }) // Always false initially
         .select()
         .single();
       if (error) throw error;
+
+      // If create_access is requested, call edge function to create user account
+      if (input.create_access && input.email) {
+        const tempPassword = `Temp${Math.random().toString(36).slice(2, 10)}!`;
+        const { error: accessError } = await supabase.functions.invoke("create-professional-access", {
+          body: {
+            email: input.email,
+            password: tempPassword,
+            fullName: input.name,
+            salonId: salonId,
+            professionalId: data.id,
+          },
+        });
+
+        if (accessError) {
+          // Professional was created but access failed - notify user
+          console.error("Error creating access:", accessError);
+          throw new Error(`Profissional criado, mas erro ao criar acesso: ${accessError.message}. Senha temporária: ${tempPassword}`);
+        }
+        
+        // Return with temp password info for toast
+        return { ...data, tempPassword };
+      }
+
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["professionals", salonId] });
-      toast({ title: "Profissional criado com sucesso!" });
+      if (data?.tempPassword) {
+        toast({ 
+          title: "Profissional criado com acesso!", 
+          description: `Senha temporária: ${data.tempPassword}. Anote e informe ao profissional.`,
+        });
+      } else {
+        toast({ title: "Profissional criado com sucesso!" });
+      }
     },
     onError: (error: Error) => {
       toast({ title: "Erro ao criar profissional", description: error.message, variant: "destructive" });
