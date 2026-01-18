@@ -23,6 +23,7 @@ import { useProfessionals } from "@/hooks/useProfessionals";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Loader2 } from "lucide-react";
+import { AvatarUpload } from "@/components/shared/AvatarUpload";
 
 const HOW_MET_OPTIONS = [
   { value: "indicacao", label: "Indicação" },
@@ -98,6 +99,7 @@ const initialFormData: ClientInput = {
   add_cpf_invoice: true,
   allow_ai_service: true,
   allow_whatsapp_campaigns: true,
+  avatar_url: null,
 };
 
 export function ClientModal({ open, onOpenChange, client, onSubmit, isLoading }: ClientModalProps) {
@@ -131,6 +133,7 @@ export function ClientModal({ open, onOpenChange, client, onSubmit, isLoading }:
         add_cpf_invoice: client.add_cpf_invoice ?? true,
         allow_ai_service: client.allow_ai_service ?? true,
         allow_whatsapp_campaigns: client.allow_whatsapp_campaigns ?? true,
+        avatar_url: client.avatar_url || null,
       });
     } else {
       setFormData(initialFormData);
@@ -166,6 +169,17 @@ export function ClientModal({ open, onOpenChange, client, onSubmit, isLoading }:
           <form onSubmit={handleSubmit}>
             <ScrollArea className="h-[60vh] pr-4">
               <TabsContent value="cadastro" className="space-y-6 mt-4">
+                {/* Avatar Upload */}
+                <div className="flex justify-center">
+                  <AvatarUpload
+                    currentAvatarUrl={formData.avatar_url}
+                    name={formData.name}
+                    onAvatarChange={(url) => updateField("avatar_url", url)}
+                    folder="clients"
+                    size="lg"
+                  />
+                </div>
+
                 {/* Nome e Data de Aniversário */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
