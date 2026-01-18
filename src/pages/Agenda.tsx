@@ -110,17 +110,16 @@ export default function Agenda() {
     return timeSlots.indexOf(time);
   };
 
-  const getAppointmentAtSlot = (professionalId: string, timeSlot: string) => {
-    return appointments.find(a => {
+  const getAppointmentsAtSlot = (professionalId: string, timeSlot: string) => {
+    return appointments.filter(a => {
       const appointmentTime = format(new Date(a.scheduled_at), "HH:mm");
       return a.professional_id === professionalId && appointmentTime === timeSlot;
     });
   };
 
-  const handleSlotClick = (professionalId: string, time: string) => {
-    const existingAppointment = getAppointmentAtSlot(professionalId, time);
-    if (existingAppointment) {
-      setSelectedAppointment(existingAppointment);
+  const handleSlotClick = (professionalId: string, time: string, appointment?: Appointment) => {
+    if (appointment) {
+      setSelectedAppointment(appointment);
     } else {
       setSelectedSlot({ professionalId, time });
       setSelectedAppointment(null);
@@ -322,7 +321,8 @@ export default function Agenda() {
                             {time}
                           </div>
                           {filteredProfessionals.map((professional) => {
-                            const appointment = getAppointmentAtSlot(professional.id, time);
+                            const slotAppointments = getAppointmentsAtSlot(professional.id, time);
+                            const appointmentCount = slotAppointments.length;
 
                             return (
                               <div
@@ -330,29 +330,32 @@ export default function Agenda() {
                                 className="relative border-r last:border-r-0 h-10 hover:bg-primary/10 transition-colors cursor-pointer"
                                 onClick={() => handleSlotClick(professional.id, time)}
                               >
-                                {appointment && (
-                                  <AppointmentHoverCard appointment={appointment}>
-                                    <div
-                                      className={`absolute left-0.5 right-0.5 top-0 rounded-sm p-1 z-10 cursor-pointer transition-shadow hover:shadow-md ${statusColors[appointment.status]}`}
-                                      style={{
-                                        height: `${Math.ceil(appointment.duration_minutes / 30) * 40 - 2}px`,
-                                      }}
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setSelectedAppointment(appointment);
-                                        setModalOpen(true);
-                                      }}
-                                    >
-                                      <div className="text-[10px] font-medium truncate">
-                                        {time} {appointment.clients?.name || "Cliente"}
-                                      </div>
-                                      {appointment.services?.name && (
-                                        <div className="text-[10px] opacity-90 truncate uppercase">
-                                          {appointment.services.name}
+                                {appointmentCount > 0 && (
+                                  <div className="absolute inset-0 flex gap-0.5 p-0.5">
+                                    {slotAppointments.map((appointment, idx) => (
+                                      <AppointmentHoverCard key={appointment.id} appointment={appointment}>
+                                        <div
+                                          className={`flex-1 rounded-sm p-0.5 z-10 cursor-pointer transition-shadow hover:shadow-md overflow-hidden ${statusColors[appointment.status]}`}
+                                          style={{
+                                            height: `${Math.ceil(appointment.duration_minutes / 30) * 40 - 4}px`,
+                                          }}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleSlotClick(professional.id, time, appointment);
+                                          }}
+                                        >
+                                          <div className="text-[9px] font-medium truncate">
+                                            {appointmentCount > 1 ? "" : `${time} `}{appointment.clients?.name || "Cliente"}
+                                          </div>
+                                          {appointment.services?.name && (
+                                            <div className="text-[9px] opacity-90 truncate uppercase">
+                                              {appointment.services.name}
+                                            </div>
+                                          )}
                                         </div>
-                                      )}
-                                    </div>
-                                  </AppointmentHoverCard>
+                                      </AppointmentHoverCard>
+                                    ))}
+                                  </div>
                                 )}
                               </div>
                             );
