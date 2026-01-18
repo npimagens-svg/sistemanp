@@ -13,6 +13,8 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Loader2, Pencil, Trash2, Printer, Eye, FileSpreadsheet, FileText, AlertTriangle } from "lucide-react";
 import { ComandaModal } from "@/components/modals/ComandaModal";
 import { DeleteComandaModal } from "@/components/modals/DeleteComandaModal";
+import { ClientModal } from "@/components/modals/ClientModal";
+import { ClientSearchSelect } from "@/components/shared/ClientSearchSelect";
 import { useComandas, Comanda, ComandaInput } from "@/hooks/useComandas";
 import { useClients } from "@/hooks/useClients";
 import { useProfessionals } from "@/hooks/useProfessionals";
@@ -59,11 +61,13 @@ export default function Comandas() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [editingClosedComanda, setEditingClosedComanda] = useState(false);
   const [userOpenCaixaId, setUserOpenCaixaId] = useState<string | null>(null);
+  const [clientModalOpen, setClientModalOpen] = useState(false);
+  const [newClientName, setNewClientName] = useState("");
 
   const { user, salonId } = useAuth();
   const queryClient = useQueryClient();
   const { comandas, isLoading, createComanda, findOrCreateTodayComanda, isCreating } = useComandas();
-  const { clients } = useClients();
+  const { clients, createClient } = useClients();
   const { professionals } = useProfessionals();
   const { services } = useServices();
   const { getCurrentUserOpenCaixa, openCaixas } = useCaixas();
@@ -573,21 +577,16 @@ export default function Comandas() {
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>Cliente</Label>
-              <Select
-                value={formData.client_id || ""}
-                onValueChange={(value) => setFormData({ ...formData, client_id: value || null })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione um cliente" />
-                </SelectTrigger>
-                <SelectContent>
-                  {clients.map((client) => (
-                    <SelectItem key={client.id} value={client.id}>
-                      {client.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <ClientSearchSelect
+                clients={clients}
+                value={formData.client_id || null}
+                onSelect={(clientId) => setFormData({ ...formData, client_id: clientId })}
+                onCreateNew={(name) => {
+                  setNewClientName(name);
+                  setClientModalOpen(true);
+                }}
+                placeholder="Digite para buscar cliente..."
+              />
             </div>
             <div className="space-y-2">
               <Label>Profissional</Label>
@@ -599,7 +598,7 @@ export default function Comandas() {
                   <SelectValue placeholder="Selecione um profissional" />
                 </SelectTrigger>
                 <SelectContent>
-                  {professionals.map((prof) => (
+                  {professionals.filter(p => p.is_active).map((prof) => (
                     <SelectItem key={prof.id} value={prof.id}>
                       {prof.name}
                     </SelectItem>
@@ -612,12 +611,34 @@ export default function Comandas() {
             <Button variant="outline" onClick={() => setModalOpen(false)}>
               Cancelar
             </Button>
-            <Button onClick={handleCreate} disabled={isCreating}>
+            <Button onClick={handleCreate} disabled={isCreating || !formData.client_id}>
               {isCreating ? "Criando..." : "Criar Comanda"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Client Modal for quick registration */}
+      <ClientModal
+        open={clientModalOpen}
+        onOpenChange={(open) => {
+          setClientModalOpen(open);
+          if (!open) setNewClientName("");
+        }}
+        client={newClientName ? { name: newClientName } as any : null}
+        onSubmit={(data) => {
+          // Create client and then select it
+          createClient(data, {
+            onSuccess: (newClient: any) => {
+              if (newClient?.id) {
+                setFormData({ ...formData, client_id: newClient.id });
+              }
+              setClientModalOpen(false);
+              setNewClientName("");
+            }
+          } as any);
+        }}
+      />
 
       {/* Comanda Modal */}
       <ComandaModal

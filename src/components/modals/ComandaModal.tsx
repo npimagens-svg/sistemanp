@@ -7,7 +7,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import { 
   Loader2, Receipt, CheckCircle, Calendar, Eye, Pencil, Trash2, 
@@ -20,6 +19,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQueryClient } from "@tanstack/react-query";
+import { ServiceSearchSelect } from "@/components/shared/ServiceSearchSelect";
 
 interface ComandaModalProps {
   comanda: Comanda | null;
@@ -529,30 +529,31 @@ export function ComandaModal({ comanda, open, onClose, professionals, services, 
                 </CardContent>
               </Card>
 
-              {/* Add Item Buttons */}
-              <div className="flex items-center justify-center gap-2 flex-wrap">
-                <Button variant="outline" size="sm" className="gap-2">
-                  <Receipt className="h-4 w-4" />
-                  Produto
-                </Button>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
+              {/* Add Item Section */}
+              <Card className="bg-muted/30">
+                <CardContent className="p-4 space-y-3">
+                  <Label className="text-sm font-medium">Adicionar Serviço</Label>
+                  <ServiceSearchSelect
+                    services={services}
+                    value={null}
+                    onSelect={(serviceId, service) => {
+                      if (serviceId && service) {
+                        handleAddService(serviceId);
+                      }
+                    }}
+                    placeholder="Buscar serviço..."
+                    showPrice
+                  />
+                  <div className="flex items-center gap-2 pt-2">
                     <Button variant="outline" size="sm" className="gap-2">
-                      <CheckCircle className="h-4 w-4" />
-                      Serviço
+                      <Receipt className="h-4 w-4" />
+                      Produto
                     </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent>
-                    {services.filter((s: any) => s.is_active).map((service: any) => (
-                      <DropdownMenuItem key={service.id} onClick={() => handleAddService(service.id)}>
-                        {service.name} - {formatCurrency(service.price)}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-                <Button variant="outline" size="sm">Pacote</Button>
-                <Button variant="outline" size="sm">Caixinha</Button>
-              </div>
+                    <Button variant="outline" size="sm">Pacote</Button>
+                    <Button variant="outline" size="sm">Caixinha</Button>
+                  </div>
+                </CardContent>
+              </Card>
             </TabsContent>
 
             <TabsContent value="pagamento" className="space-y-4 mt-4">
