@@ -25,6 +25,7 @@ export interface Comanda {
     id: string;
     name: string;
   };
+  items?: ComandaItem[];
 }
 
 export interface ComandaItem {
@@ -73,7 +74,17 @@ export function useComandas() {
         .select(`
           *,
           client:clients(id, name),
-          professional:professionals(id, name)
+          professional:professionals(id, name),
+          items:comanda_items(
+            id,
+            description,
+            item_type,
+            quantity,
+            unit_price,
+            total_price,
+            service_id,
+            product_id
+          )
         `)
         .eq("salon_id", salonId)
         .order("created_at", { ascending: false });

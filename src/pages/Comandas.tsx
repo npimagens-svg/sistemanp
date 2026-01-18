@@ -485,6 +485,9 @@ export default function Comandas() {
                     Cliente ▼
                   </TableHead>
                   <TableHead className="cursor-pointer hover:bg-muted/50">
+                    Serviços
+                  </TableHead>
+                  <TableHead className="cursor-pointer hover:bg-muted/50">
                     Data de abertura ▼
                   </TableHead>
                   <TableHead className="cursor-pointer hover:bg-muted/50 text-right">
@@ -496,7 +499,7 @@ export default function Comandas() {
               <TableBody>
                 {getDisplayComandas().length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                       Nenhuma comanda encontrada
                     </TableCell>
                   </TableRow>
@@ -512,6 +515,26 @@ export default function Comandas() {
                       </TableCell>
                       <TableCell className="uppercase">
                         {comanda.client?.name || "Cliente não definido"}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap gap-1 max-w-xs">
+                          {comanda.items && comanda.items.length > 0 ? (
+                            <>
+                              {comanda.items.slice(0, 2).map((item, idx) => (
+                                <Badge key={idx} variant="outline" className="text-xs">
+                                  {item.description}
+                                </Badge>
+                              ))}
+                              {comanda.items.length > 2 && (
+                                <Badge variant="secondary" className="text-xs">
+                                  +{comanda.items.length - 2}
+                                </Badge>
+                              )}
+                            </>
+                          ) : (
+                            <span className="text-muted-foreground text-sm">Sem itens</span>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell>
                         {format(new Date(comanda.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}
