@@ -12,6 +12,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Search, Loader2, DollarSign, Calendar } from "lucide-react";
 import { useProfessionals } from "@/hooks/useProfessionals";
 import { useComandas } from "@/hooks/useComandas";
+import { useServices } from "@/hooks/useServices";
+import { useProfessionalCommissions } from "@/hooks/useProfessionalCommissions";
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, isWithinInterval, subDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -26,6 +28,7 @@ export default function Comissoes() {
 
   const { professionals, isLoading: loadingProfessionals } = useProfessionals();
   const { comandas, isLoading: loadingComandas } = useComandas();
+  const { services, isLoading: loadingServices } = useServices();
 
   // Filter closed comandas within date range
   const filteredComandas = useMemo(() => {
@@ -62,6 +65,12 @@ export default function Comissoes() {
       });
     });
 
+    // Create a map of service commissions for quick lookup
+    const serviceCommissionMap = new Map<string, number>();
+    services.forEach(service => {
+      serviceCommissionMap.set(service.id, service.commission_percent || 0);
+    });
+
     // Calculate by item (comanda_items.professional_id), with fallback to comanda.professional_id
     filteredComandas.forEach(comanda => {
       const items = comanda.items || [];
@@ -74,7 +83,14 @@ export default function Comissoes() {
         const profData = commissionMap.get(profId);
         if (!profData) return;
 
-        const commissionPercent = profData.professional.commission_percent || 0;
+        // Get commission percent: service commission > professional default
+        let commissionPercent = 0;
+        if (item.service_id && serviceCommissionMap.has(item.service_id)) {
+          commissionPercent = serviceCommissionMap.get(item.service_id) || 0;
+        } else {
+          commissionPercent = profData.professional.commission_percent || 0;
+        }
+
         const itemTotal = item.total_price || 0;
         const commission = (itemTotal * commissionPercent) / 100;
 
@@ -86,7 +102,7 @@ export default function Comissoes() {
     });
 
     return Array.from(commissionMap.values());
-  }, [professionals, filteredComandas]);
+  }, [professionals, filteredComandas, services]);
 
   // Filter by selected professional
   const displayedCommissions = selectedProfessional === "all" 
@@ -122,7 +138,7 @@ export default function Comissoes() {
     );
   };
 
-  const isLoading = loadingProfessionals || loadingComandas;
+  const isLoading = loadingProfessionals || loadingComandas || loadingServices;
 
   if (isLoading) {
     return (
