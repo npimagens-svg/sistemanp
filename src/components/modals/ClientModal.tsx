@@ -482,8 +482,16 @@ export function ClientModal({ open, onOpenChange, client, onSubmit, isLoading, i
               </TabsContent>
             </ScrollArea>
 
-            <DialogFooter className="mt-4">
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <DialogFooter className="mt-4 pt-4 border-t">
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onOpenChange(false);
+                }}
+              >
                 Cancelar
               </Button>
               <Button type="submit" disabled={isLoading}>
