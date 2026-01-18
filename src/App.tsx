@@ -13,7 +13,9 @@ import SetupSalon from "./pages/SetupSalon";
 import { Profissionais } from "./pages/Profissionais";
 import Comandas from "./pages/Comandas";
 import Financeiro from "./pages/Financeiro";
-import { Estoque, Marketing, Relatorios, Configuracoes } from "./pages/PlaceholderPages";
+import Comissoes from "./pages/Comissoes";
+import Estoque from "./pages/Estoque";
+import { Marketing, Relatorios, Configuracoes } from "./pages/PlaceholderPages";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -133,6 +135,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <Financeiro />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/financeiro/comissoes"
+        element={
+          <ProtectedRoute>
+            <Comissoes />
           </ProtectedRoute>
         }
       />

@@ -3,17 +3,15 @@ import { useSearchParams, useLocation } from "react-router-dom";
 import { AppLayoutNew } from "@/components/layout/AppLayoutNew";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Plus, Loader2, CalendarIcon } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Plus, Loader2, CalendarIcon, ChevronLeft, ChevronRight } from "lucide-react";
 import { useCaixas, Caixa } from "@/hooks/useCaixas";
 import { useAuth } from "@/contexts/AuthContext";
 import { CaixaCard } from "@/components/caixa/CaixaCard";
 import { OpenCaixaModal } from "@/components/caixa/OpenCaixaModal";
 import { CloseCaixaModal } from "@/components/caixa/CloseCaixaModal";
-import { format, isSameDay, startOfMonth, endOfMonth, eachDayOfInterval } from "date-fns";
+import { format, isSameDay, getDaysInMonth, startOfMonth, setDate } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 
@@ -77,9 +75,6 @@ export default function Financeiro() {
   const caixasByDate = closedCaixas.filter(c => 
     isSameDay(new Date(c.opened_at), selectedDate)
   );
-
-  // Get dates with caixas for the calendar
-  const datesWithCaixas = closedCaixas.map(c => new Date(c.opened_at));
 
   if (isLoading) {
     return (
@@ -155,59 +150,141 @@ export default function Financeiro() {
               <h2 className="text-xl font-semibold">Histórico de Caixas</h2>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-              {/* Calendar */}
-              <Card className="lg:col-span-1">
+            <div className="space-y-4">
+              {/* Date Selector */}
+              <Card>
                 <CardContent className="p-4">
-                  <Calendar
-                    mode="single"
-                    selected={selectedDate}
-                    onSelect={(date) => date && setSelectedDate(date)}
-                    locale={ptBR}
-                    className="rounded-md border-0"
-                    modifiers={{
-                      hasCaixa: datesWithCaixas,
-                    }}
-                    modifiersStyles={{
-                      hasCaixa: {
-                        backgroundColor: "hsl(var(--primary) / 0.1)",
-                        fontWeight: "bold",
-                      }
-                    }}
-                  />
+                  <div className="flex items-center gap-4 flex-wrap">
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => {
+                          const newDate = new Date(selectedDate);
+                          newDate.setMonth(newDate.getMonth() - 1);
+                          setSelectedDate(newDate);
+                        }}
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </Button>
+                      
+                      {/* Month Selector */}
+                      <Select
+                        value={selectedDate.getMonth().toString()}
+                        onValueChange={(value) => {
+                          const newDate = new Date(selectedDate);
+                          newDate.setMonth(parseInt(value));
+                          setSelectedDate(newDate);
+                        }}
+                      >
+                        <SelectTrigger className="w-[140px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Array.from({ length: 12 }, (_, i) => (
+                            <SelectItem key={i} value={i.toString()}>
+                              {format(new Date(2024, i, 1), "MMMM", { locale: ptBR })}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      
+                      {/* Year Selector */}
+                      <Select
+                        value={selectedDate.getFullYear().toString()}
+                        onValueChange={(value) => {
+                          const newDate = new Date(selectedDate);
+                          newDate.setFullYear(parseInt(value));
+                          setSelectedDate(newDate);
+                        }}
+                      >
+                        <SelectTrigger className="w-[100px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Array.from({ length: 5 }, (_, i) => {
+                            const year = new Date().getFullYear() - 2 + i;
+                            return (
+                              <SelectItem key={year} value={year.toString()}>
+                                {year}
+                              </SelectItem>
+                            );
+                          })}
+                        </SelectContent>
+                      </Select>
+
+                      {/* Day Selector */}
+                      <Select
+                        value={selectedDate.getDate().toString()}
+                        onValueChange={(value) => {
+                          const newDate = setDate(selectedDate, parseInt(value));
+                          setSelectedDate(newDate);
+                        }}
+                      >
+                        <SelectTrigger className="w-[80px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Array.from({ length: getDaysInMonth(selectedDate) }, (_, i) => (
+                            <SelectItem key={i + 1} value={(i + 1).toString()}>
+                              {i + 1}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => {
+                          const newDate = new Date(selectedDate);
+                          newDate.setMonth(newDate.getMonth() + 1);
+                          setSelectedDate(newDate);
+                        }}
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setSelectedDate(new Date())}
+                    >
+                      Hoje
+                    </Button>
+
+                    <Badge variant="outline" className="ml-auto">
+                      {caixasByDate.length} caixa{caixasByDate.length !== 1 ? "s" : ""} encontrado{caixasByDate.length !== 1 ? "s" : ""}
+                    </Badge>
+                  </div>
                 </CardContent>
               </Card>
 
-              {/* Caixas for selected date */}
-              <div className="lg:col-span-3 space-y-4">
-                <div className="flex items-center gap-2">
-                  <CalendarIcon className="h-5 w-5 text-muted-foreground" />
-                  <h3 className="font-medium">
-                    {format(selectedDate, "EEEE, dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
-                  </h3>
-                  <Badge variant="outline">
-                    {caixasByDate.length} caixa{caixasByDate.length !== 1 ? "s" : ""}
-                  </Badge>
-                </div>
-
-                {caixasByDate.length === 0 ? (
-                  <Card>
-                    <CardContent className="py-8 text-center text-muted-foreground">
-                      Nenhum caixa fechado nesta data
-                    </CardContent>
-                  </Card>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {caixasByDate.map((caixa) => (
-                      <CaixaCard 
-                        key={caixa.id} 
-                        caixa={caixa}
-                        onView={() => {/* TODO: implement detail view */}}
-                      />
-                    ))}
-                  </div>
-                )}
+              {/* Selected Date Display */}
+              <div className="flex items-center gap-2 text-lg font-medium capitalize">
+                <CalendarIcon className="h-5 w-5 text-primary" />
+                {format(selectedDate, "EEEE, dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
               </div>
+
+              {/* Caixas List */}
+              {caixasByDate.length === 0 ? (
+                <Card>
+                  <CardContent className="py-12 text-center text-muted-foreground">
+                    Nenhum caixa fechado nesta data
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {caixasByDate.map((caixa) => (
+                    <CaixaCard 
+                      key={caixa.id} 
+                      caixa={caixa}
+                      onView={() => {/* TODO: implement detail view */}}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           </>
         )}

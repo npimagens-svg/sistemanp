@@ -124,6 +124,9 @@ export default function Agenda() {
   const getAppointmentsAtSlot = (professionalId: string, timeSlot: string) => {
     return appointments.filter(a => {
       const appointmentTime = format(new Date(a.scheduled_at), "HH:mm");
+      // Hide cancelled appointments unless they are blocked time slots
+      const isBlocked = a.notes?.startsWith("🔒 BLOQUEADO:");
+      if (a.status === "cancelled" && !isBlocked) return false;
       return a.professional_id === professionalId && appointmentTime === timeSlot;
     });
   };
