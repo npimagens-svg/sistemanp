@@ -41,6 +41,7 @@ interface ClientModalProps {
   client?: Client | null;
   onSubmit: (data: ClientInput & { id?: string }) => void;
   isLoading?: boolean;
+  initialName?: string;
 }
 
 const BRAZILIAN_STATES = [
@@ -102,8 +103,8 @@ const initialFormData: ClientInput = {
   avatar_url: null,
 };
 
-export function ClientModal({ open, onOpenChange, client, onSubmit, isLoading }: ClientModalProps) {
-  const [formData, setFormData] = useState<ClientInput>(initialFormData);
+export function ClientModal({ open, onOpenChange, client, onSubmit, isLoading, initialName }: ClientModalProps) {
+  const [formData, setFormData] = useState<ClientInput>({ ...initialFormData, name: initialName || "" });
 
   useEffect(() => {
     if (client) {
@@ -136,9 +137,9 @@ export function ClientModal({ open, onOpenChange, client, onSubmit, isLoading }:
         avatar_url: client.avatar_url || null,
       });
     } else {
-      setFormData(initialFormData);
+      setFormData({ ...initialFormData, name: initialName || "" });
     }
-  }, [client, open]);
+  }, [client, open, initialName]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

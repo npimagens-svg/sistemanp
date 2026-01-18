@@ -66,19 +66,30 @@ export function ClientSearchSelect({
   }, [value]);
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={setOpen} modal={false}>
       <PopoverTrigger asChild>
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
           <Input
             ref={inputRef}
             placeholder={placeholder}
             value={open ? search : (selectedClient?.name || "")}
             onChange={(e) => {
+              e.stopPropagation();
               setSearch(e.target.value);
               if (!open) setOpen(true);
             }}
-            onFocus={() => setOpen(true)}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (!open) setOpen(true);
+            }}
+            onFocus={() => {
+              if (!open) setOpen(true);
+            }}
+            onKeyDown={(e) => {
+              // Prevent popover from closing on typing
+              e.stopPropagation();
+            }}
             disabled={disabled}
             className="pl-9 pr-10"
           />

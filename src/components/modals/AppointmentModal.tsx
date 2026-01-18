@@ -23,7 +23,8 @@ import { Client } from "@/hooks/useClients";
 import { Professional } from "@/hooks/useProfessionals";
 import { Service } from "@/hooks/useServices";
 import { DollarSign } from "lucide-react";
-import { startOfDay, isSameDay } from "date-fns";
+import { isSameDay } from "date-fns";
+import { ClientSearchSelect } from "@/components/shared/ClientSearchSelect";
 
 interface AppointmentModalProps {
   open: boolean;
@@ -37,6 +38,7 @@ interface AppointmentModalProps {
   defaultDate?: Date;
   defaultProfessionalId?: string;
   onOpenComanda?: (appointmentId: string) => void;
+  onCreateClient?: (name: string) => void;
 }
 
 export function AppointmentModal({
@@ -51,6 +53,7 @@ export function AppointmentModal({
   defaultDate,
   defaultProfessionalId,
   onOpenComanda,
+  onCreateClient,
 }: AppointmentModalProps) {
   const navigate = useNavigate();
   const [formData, setFormData] = useState<AppointmentInput & { date: string; time: string }>({
@@ -185,18 +188,13 @@ export function AppointmentModal({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label>Cliente</Label>
-            <Select value={formData.client_id} onValueChange={(v) => setFormData({ ...formData, client_id: v })}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione um cliente" />
-              </SelectTrigger>
-              <SelectContent>
-                {clients.map((client) => (
-                  <SelectItem key={client.id} value={client.id}>
-                    {client.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <ClientSearchSelect
+              clients={clients}
+              value={formData.client_id || null}
+              onSelect={(clientId) => setFormData({ ...formData, client_id: clientId || "" })}
+              onCreateNew={onCreateClient}
+              placeholder="Buscar cliente..."
+            />
           </div>
           
           <div className="space-y-2">

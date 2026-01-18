@@ -14,6 +14,7 @@ import { useClients } from "@/hooks/useClients";
 import { useServices } from "@/hooks/useServices";
 import { AppointmentModal } from "@/components/modals/AppointmentModal";
 import { AppointmentHoverCard } from "@/components/agenda/AppointmentHoverCard";
+import { ClientModal } from "@/components/modals/ClientModal";
 import { format } from "date-fns";
 
 const timeSlots = [
@@ -45,10 +46,12 @@ export default function Agenda() {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<{ professionalId: string; time: string } | null>(null);
   const [selectedAppointment, setSelectedAppointment] = useState<any>(null);
+  const [clientModalOpen, setClientModalOpen] = useState(false);
+  const [pendingClientName, setPendingClientName] = useState("");
 
   const { appointments, isLoading: appointmentsLoading, createAppointment, updateAppointment, isCreating, isUpdating } = useAppointments(currentDate);
   const { professionals, isLoading: professionalsLoading } = useProfessionals();
-  const { clients } = useClients();
+  const { clients, createClient } = useClients();
   const { services } = useServices();
 
   useEffect(() => {
@@ -131,6 +134,20 @@ export default function Agenda() {
     } else {
       createAppointment(data);
     }
+  };
+
+  const handleCreateClient = (name: string) => {
+    setPendingClientName(name);
+    setClientModalOpen(true);
+  };
+
+  const handleClientSubmit = (data: any) => {
+    createClient(data, {
+      onSuccess: () => {
+        setClientModalOpen(false);
+        setPendingClientName("");
+      }
+    });
   };
 
   const getDefaultDateWithTime = () => {
@@ -368,6 +385,14 @@ export default function Agenda() {
         isLoading={isCreating || isUpdating}
         defaultDate={getDefaultDateWithTime()}
         defaultProfessionalId={selectedSlot?.professionalId}
+        onCreateClient={handleCreateClient}
+      />
+
+      <ClientModal
+        open={clientModalOpen}
+        onOpenChange={setClientModalOpen}
+        onSubmit={handleClientSubmit}
+        initialName={pendingClientName}
       />
     </AppLayoutNew>
   );
