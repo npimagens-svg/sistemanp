@@ -110,11 +110,12 @@ export function ComandaModal({ comanda, open, onClose, professionals, services, 
     return comanda.id.slice(0, 4).toUpperCase();
   };
 
-  const handleAddService = (serviceId: string) => {
-    if (!comanda) return;
+  const handleAddService = async (serviceId: string) => {
+    if (!comanda || !salonId) return;
     const service = services.find((s: any) => s.id === serviceId);
     if (!service) return;
 
+    // Add item to comanda
     addItem({
       comanda_id: comanda.id,
       service_id: serviceId,
@@ -124,6 +125,37 @@ export function ComandaModal({ comanda, open, onClose, professionals, services, 
       unit_price: Number(service.price),
       total_price: Number(service.price),
     });
+
+    // Create appointment for this service if comanda has a professional
+    const professionalId = comanda.professional_id;
+    if (professionalId) {
+      try {
+        // Schedule for current time today
+        const now = new Date();
+        
+        const { error } = await supabase
+          .from("appointments")
+          .insert({
+            salon_id: salonId,
+            client_id: comanda.client_id,
+            professional_id: professionalId,
+            service_id: serviceId,
+            scheduled_at: now.toISOString(),
+            duration_minutes: service.duration_minutes || 30,
+            price: Number(service.price),
+            status: "in_progress",
+            notes: `Criado via comanda ${comanda.id.slice(0, 4).toUpperCase()}`,
+          });
+
+        if (error) {
+          console.error("Error creating appointment:", error);
+        } else {
+          queryClient.invalidateQueries({ queryKey: ["appointments", salonId] });
+        }
+      } catch (error) {
+        console.error("Error creating appointment:", error);
+      }
+    }
   };
 
   const toggleEditItem = (itemId: string) => {
