@@ -3,20 +3,17 @@ import { AppLayoutNew } from "@/components/layout/AppLayoutNew";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { ChevronLeft, ChevronRight, Plus, Clock, Filter, Search, Check } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Clock, Search, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Calendar } from "@/components/ui/calendar";
 import { ptBR } from "date-fns/locale";
-
-const professionals = [
-  { id: "1", name: "Ana Paula", initials: "AP", color: "bg-red-500" },
-  { id: "2", name: "Carla Mendes", initials: "CM", color: "bg-blue-500" },
-  { id: "3", name: "Beatriz Rocha", initials: "BR", color: "bg-purple-500" },
-  { id: "4", name: "Juliana Lima", initials: "JL", color: "bg-emerald-500" },
-  { id: "5", name: "Maria Santos", initials: "MS", color: "bg-pink-500" },
-  { id: "6", name: "Fernanda Costa", initials: "FC", color: "bg-amber-500" },
-];
+import { useAppointments, AppointmentInput } from "@/hooks/useAppointments";
+import { useProfessionals } from "@/hooks/useProfessionals";
+import { useClients } from "@/hooks/useClients";
+import { useServices } from "@/hooks/useServices";
+import { AppointmentModal } from "@/components/modals/AppointmentModal";
+import { format } from "date-fns";
 
 const timeSlots = [
   "08:00", "08:30", "09:00", "09:30", "10:00", "10:30", 
@@ -25,40 +22,40 @@ const timeSlots = [
   "17:00", "17:30", "18:00", "18:30", "19:00", "19:30",
 ];
 
-interface Appointment {
-  id: string;
-  professionalId: string;
-  clientName: string;
-  service: string;
-  startTime: string;
-  duration: number;
-  status: "scheduled" | "confirmed" | "in-progress" | "completed" | "cancelled" | "blocked";
-}
-
-const mockAppointments: Appointment[] = [
-  { id: "1", professionalId: "1", clientName: "Maria Silva", service: "Corte + Escova", startTime: "09:00", duration: 3, status: "confirmed" },
-  { id: "2", professionalId: "1", clientName: "Fernanda Costa", service: "Coloração", startTime: "11:00", duration: 4, status: "scheduled" },
-  { id: "3", professionalId: "2", clientName: "Juliana Santos", service: "Manicure + Pedicure", startTime: "10:00", duration: 2, status: "in-progress" },
-  { id: "4", professionalId: "2", clientName: "Patricia Lima", service: "Design Sobrancelhas", startTime: "14:00", duration: 1, status: "scheduled" },
-  { id: "5", professionalId: "3", clientName: "Camila Alves", service: "Hidratação", startTime: "09:30", duration: 2, status: "confirmed" },
-  { id: "6", professionalId: "3", clientName: "Amanda Souza", service: "Escova Progressiva", startTime: "15:00", duration: 4, status: "scheduled" },
-  { id: "7", professionalId: "4", clientName: "Renata Oliveira", service: "Corte Feminino", startTime: "10:00", duration: 2, status: "confirmed" },
-  { id: "8", professionalId: "5", clientName: "Bloqueio", service: "", startTime: "08:00", duration: 2, status: "blocked" },
-];
-
 const statusColors: Record<string, string> = {
   scheduled: "bg-red-500 text-white",
   confirmed: "bg-green-500 text-white",
-  "in-progress": "bg-amber-500 text-white",
-  completed: "bg-emerald-500 text-white",
-  cancelled: "bg-gray-400 text-white",
-  blocked: "bg-gray-500 text-white",
+  in_progress: "bg-amber-500 text-white",
+  completed: "bg-emerald-600 text-white",
+  no_show: "bg-gray-400 text-white",
+  cancelled: "bg-gray-500 text-white",
 };
+
+const professionalColors = [
+  "bg-red-500", "bg-blue-500", "bg-purple-500", "bg-emerald-500", 
+  "bg-pink-500", "bg-amber-500", "bg-cyan-500", "bg-indigo-500",
+  "bg-rose-500", "bg-teal-500", "bg-orange-500", "bg-violet-500"
+];
 
 export default function Agenda() {
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [selectedProfessionals, setSelectedProfessionals] = useState<string[]>(professionals.map(p => p.id));
   const [searchProfessional, setSearchProfessional] = useState("");
+  const [selectedProfessionalIds, setSelectedProfessionalIds] = useState<string[]>([]);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedSlot, setSelectedSlot] = useState<{ professionalId: string; time: string } | null>(null);
+  const [selectedAppointment, setSelectedAppointment] = useState<any>(null);
+
+  const { appointments, isLoading: appointmentsLoading, createAppointment, updateAppointment, isCreating, isUpdating } = useAppointments(currentDate);
+  const { professionals, isLoading: professionalsLoading } = useProfessionals();
+  const { clients } = useClients();
+  const { services } = useServices();
+
+  // Initialize selected professionals when they load
+  useState(() => {
+    if (professionals.length > 0 && selectedProfessionalIds.length === 0) {
+      setSelectedProfessionalIds(professionals.map(p => p.id));
+    }
+  });
 
   const formatMonthYear = (date: Date) => {
     return date.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
@@ -76,16 +73,8 @@ export default function Agenda() {
     setCurrentDate(new Date());
   };
 
-  const getAppointmentsForProfessional = (professionalId: string) => {
-    return mockAppointments.filter((a) => a.professionalId === professionalId);
-  };
-
-  const getSlotIndex = (time: string) => {
-    return timeSlots.indexOf(time);
-  };
-
   const toggleProfessional = (id: string) => {
-    setSelectedProfessionals(prev => 
+    setSelectedProfessionalIds(prev => 
       prev.includes(id) 
         ? prev.filter(p => p !== id)
         : [...prev, id]
@@ -93,17 +82,68 @@ export default function Agenda() {
   };
 
   const toggleAll = () => {
-    if (selectedProfessionals.length === professionals.length) {
-      setSelectedProfessionals([]);
+    if (selectedProfessionalIds.length === professionals.length) {
+      setSelectedProfessionalIds([]);
     } else {
-      setSelectedProfessionals(professionals.map(p => p.id));
+      setSelectedProfessionalIds(professionals.map(p => p.id));
     }
   };
 
+  const getInitials = (name: string) => {
+    return name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
+  };
+
+  const getProfessionalColor = (index: number) => {
+    return professionalColors[index % professionalColors.length];
+  };
+
   const filteredProfessionals = professionals.filter(p => 
-    selectedProfessionals.includes(p.id) &&
+    p.is_active && 
+    (selectedProfessionalIds.length === 0 || selectedProfessionalIds.includes(p.id)) &&
     p.name.toLowerCase().includes(searchProfessional.toLowerCase())
   );
+
+  const getSlotIndex = (time: string) => {
+    return timeSlots.indexOf(time);
+  };
+
+  const getAppointmentAtSlot = (professionalId: string, timeSlot: string) => {
+    return appointments.find(a => {
+      const appointmentTime = format(new Date(a.scheduled_at), "HH:mm");
+      return a.professional_id === professionalId && appointmentTime === timeSlot;
+    });
+  };
+
+  const handleSlotClick = (professionalId: string, time: string) => {
+    const existingAppointment = getAppointmentAtSlot(professionalId, time);
+    if (existingAppointment) {
+      setSelectedAppointment(existingAppointment);
+    } else {
+      setSelectedSlot({ professionalId, time });
+      setSelectedAppointment(null);
+    }
+    setModalOpen(true);
+  };
+
+  const handleSubmit = (data: AppointmentInput & { id?: string }) => {
+    if (data.id) {
+      updateAppointment(data as AppointmentInput & { id: string });
+    } else {
+      createAppointment(data);
+    }
+  };
+
+  const getDefaultDateWithTime = () => {
+    if (selectedSlot) {
+      const date = new Date(currentDate);
+      const [hours, minutes] = selectedSlot.time.split(":");
+      date.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+      return date;
+    }
+    return currentDate;
+  };
+
+  const isLoading = appointmentsLoading || professionalsLoading;
 
   return (
     <AppLayoutNew>
@@ -149,7 +189,7 @@ export default function Agenda() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Checkbox 
-                      checked={selectedProfessionals.length === professionals.length}
+                      checked={selectedProfessionalIds.length === professionals.length}
                       onCheckedChange={toggleAll}
                     />
                     <span className="text-sm">Todos</span>
@@ -158,15 +198,21 @@ export default function Agenda() {
                     Expandir Tudo
                   </button>
                 </div>
-                {professionals.filter(p => p.name.toLowerCase().includes(searchProfessional.toLowerCase())).map(prof => (
+                {professionals.filter(p => p.is_active && p.name.toLowerCase().includes(searchProfessional.toLowerCase())).map((prof, index) => (
                   <div key={prof.id} className="flex items-center gap-2">
                     <Checkbox 
-                      checked={selectedProfessionals.includes(prof.id)}
+                      checked={selectedProfessionalIds.includes(prof.id)}
                       onCheckedChange={() => toggleProfessional(prof.id)}
                     />
+                    <div className={`w-3 h-3 rounded-full ${getProfessionalColor(index)}`} />
                     <span className="text-sm">{prof.name}</span>
                   </div>
                 ))}
+                {professionals.filter(p => p.is_active).length === 0 && (
+                  <p className="text-sm text-muted-foreground text-center py-2">
+                    Nenhum profissional cadastrado
+                  </p>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -182,6 +228,10 @@ export default function Agenda() {
               </Button>
               <Button variant="outline" size="sm">
                 Bloquear Horário
+              </Button>
+              <Button size="sm" onClick={() => { setSelectedAppointment(null); setSelectedSlot(null); setModalOpen(true); }}>
+                <Plus className="h-4 w-4 mr-1" />
+                Novo Agendamento
               </Button>
             </div>
             <div className="flex items-center gap-2">
@@ -205,79 +255,115 @@ export default function Agenda() {
           {/* Calendar Grid */}
           <Card>
             <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <div className="min-w-[900px]">
-                  {/* Professionals Header */}
-                  <div 
-                    className="grid border-b" 
-                    style={{ gridTemplateColumns: `60px repeat(${filteredProfessionals.length}, 1fr)` }}
-                  >
-                    <div className="p-2 border-r bg-muted/30">
-                      <Clock className="h-4 w-4 text-muted-foreground mx-auto" />
-                    </div>
-                    {filteredProfessionals.map((professional) => (
-                      <div key={professional.id} className="p-2 border-r last:border-r-0 bg-muted/30 text-center">
-                        <Avatar className="h-10 w-10 mx-auto mb-1">
-                          <AvatarFallback className={`${professional.color} text-white text-xs`}>
-                            {professional.initials}
-                          </AvatarFallback>
-                        </Avatar>
-                        <span className="font-medium text-xs block uppercase">{professional.name}</span>
+              {isLoading ? (
+                <div className="flex items-center justify-center py-20">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                </div>
+              ) : filteredProfessionals.length === 0 ? (
+                <div className="text-center py-20 text-muted-foreground">
+                  <p className="mb-4">Nenhum profissional cadastrado para exibir na agenda.</p>
+                  <Button onClick={() => window.location.href = '/profissionais'}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Cadastrar Profissional
+                  </Button>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <div className="min-w-[900px]">
+                    {/* Professionals Header */}
+                    <div 
+                      className="grid border-b" 
+                      style={{ gridTemplateColumns: `60px repeat(${filteredProfessionals.length}, 1fr)` }}
+                    >
+                      <div className="p-2 border-r bg-muted/30">
+                        <Clock className="h-4 w-4 text-muted-foreground mx-auto" />
                       </div>
-                    ))}
-                  </div>
-
-                  {/* Time Slots */}
-                  <div className="relative max-h-[600px] overflow-y-auto">
-                    {timeSlots.map((time, index) => (
-                      <div
-                        key={time}
-                        className="grid border-b last:border-b-0"
-                        style={{ gridTemplateColumns: `60px repeat(${filteredProfessionals.length}, 1fr)` }}
-                      >
-                        <div className="p-1 border-r text-xs text-muted-foreground text-center bg-muted/10 flex items-center justify-center">
-                          {time}
+                      {filteredProfessionals.map((professional, index) => (
+                        <div key={professional.id} className="p-2 border-r last:border-r-0 bg-muted/30 text-center">
+                          <Avatar className="h-10 w-10 mx-auto mb-1">
+                            <AvatarFallback className={`${getProfessionalColor(index)} text-white text-xs`}>
+                              {getInitials(professional.name)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="font-medium text-xs block uppercase">{professional.name}</span>
                         </div>
-                        {filteredProfessionals.map((professional) => {
-                          const appointments = getAppointmentsForProfessional(professional.id);
-                          const appointmentAtSlot = appointments.find(
-                            (a) => getSlotIndex(a.startTime) === index
-                          );
+                      ))}
+                    </div>
 
-                          return (
-                            <div
-                              key={`${professional.id}-${time}`}
-                              className="relative border-r last:border-r-0 h-10 hover:bg-muted/30 transition-colors cursor-pointer"
-                            >
-                              {appointmentAtSlot && (
-                                <div
-                                  className={`absolute left-0.5 right-0.5 top-0 rounded-sm p-1 z-10 cursor-pointer transition-shadow hover:shadow-md ${statusColors[appointmentAtSlot.status]}`}
-                                  style={{
-                                    height: `${appointmentAtSlot.duration * 40 - 2}px`,
-                                  }}
-                                >
-                                  <div className="text-[10px] font-medium truncate">
-                                    {time} {appointmentAtSlot.clientName}
-                                  </div>
-                                  {appointmentAtSlot.service && (
-                                    <div className="text-[10px] opacity-90 truncate uppercase">
-                                      {appointmentAtSlot.service}
+                    {/* Time Slots */}
+                    <div className="relative max-h-[600px] overflow-y-auto">
+                      {timeSlots.map((time, timeIndex) => (
+                        <div
+                          key={time}
+                          className="grid border-b last:border-b-0"
+                          style={{ gridTemplateColumns: `60px repeat(${filteredProfessionals.length}, 1fr)` }}
+                        >
+                          <div className="p-1 border-r text-xs text-muted-foreground text-center bg-muted/10 flex items-center justify-center">
+                            {time}
+                          </div>
+                          {filteredProfessionals.map((professional) => {
+                            const appointment = getAppointmentAtSlot(professional.id, time);
+
+                            return (
+                              <div
+                                key={`${professional.id}-${time}`}
+                                className="relative border-r last:border-r-0 h-10 hover:bg-primary/10 transition-colors cursor-pointer"
+                                onClick={() => handleSlotClick(professional.id, time)}
+                              >
+                                {appointment && (
+                                  <div
+                                    className={`absolute left-0.5 right-0.5 top-0 rounded-sm p-1 z-10 cursor-pointer transition-shadow hover:shadow-md ${statusColors[appointment.status]}`}
+                                    style={{
+                                      height: `${Math.ceil(appointment.duration_minutes / 30) * 40 - 2}px`,
+                                    }}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setSelectedAppointment(appointment);
+                                      setModalOpen(true);
+                                    }}
+                                  >
+                                    <div className="text-[10px] font-medium truncate">
+                                      {time} {appointment.clients?.name || "Cliente"}
                                     </div>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ))}
+                                    {appointment.services?.name && (
+                                      <div className="text-[10px] opacity-90 truncate uppercase">
+                                        {appointment.services.name}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
             </CardContent>
           </Card>
         </div>
       </div>
+
+      <AppointmentModal
+        open={modalOpen}
+        onOpenChange={(open) => {
+          setModalOpen(open);
+          if (!open) {
+            setSelectedSlot(null);
+            setSelectedAppointment(null);
+          }
+        }}
+        appointment={selectedAppointment}
+        clients={clients}
+        professionals={professionals.filter(p => p.is_active)}
+        services={services.filter(s => s.is_active)}
+        onSubmit={handleSubmit}
+        isLoading={isCreating || isUpdating}
+        defaultDate={getDefaultDateWithTime()}
+        defaultProfessionalId={selectedSlot?.professionalId}
+      />
     </AppLayoutNew>
   );
 }

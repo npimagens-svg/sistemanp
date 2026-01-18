@@ -32,6 +32,7 @@ interface AppointmentModalProps {
   onSubmit: (data: AppointmentInput & { id?: string }) => void;
   isLoading?: boolean;
   defaultDate?: Date;
+  defaultProfessionalId?: string;
 }
 
 export function AppointmentModal({
@@ -44,6 +45,7 @@ export function AppointmentModal({
   onSubmit,
   isLoading,
   defaultDate,
+  defaultProfessionalId,
 }: AppointmentModalProps) {
   const [formData, setFormData] = useState<AppointmentInput & { date: string; time: string }>({
     client_id: "",
@@ -77,7 +79,7 @@ export function AppointmentModal({
       const date = defaultDate || new Date();
       setFormData({
         client_id: "",
-        professional_id: "",
+        professional_id: defaultProfessionalId || "",
         service_id: "",
         scheduled_at: "",
         duration_minutes: 30,
@@ -85,10 +87,10 @@ export function AppointmentModal({
         notes: "",
         price: 0,
         date: date.toISOString().split("T")[0],
-        time: "09:00",
+        time: date.toTimeString().slice(0, 5),
       });
     }
-  }, [appointment, open, defaultDate]);
+  }, [appointment, open, defaultDate, defaultProfessionalId]);
 
   const handleServiceChange = (serviceId: string) => {
     const service = services.find((s) => s.id === serviceId);
