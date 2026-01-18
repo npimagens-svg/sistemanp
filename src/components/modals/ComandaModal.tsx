@@ -37,6 +37,7 @@ interface EditableItem extends ComandaItem {
   editQuantity?: number;
   editUnitPrice?: number;
   editDiscount?: number;
+  editProfessionalId?: string | null;
 }
 
 interface Payment {
@@ -74,9 +75,10 @@ export function ComandaModal({ comanda, open, onClose, professionals, services, 
         editQuantity: item.quantity,
         editUnitPrice: item.unit_price,
         editDiscount: 0,
+        editProfessionalId: (item as any).professional_id || comanda?.professional_id || null,
       })));
     }
-  }, [items]);
+  }, [items, comanda?.professional_id]);
 
   // Load existing payments
   useEffect(() => {
@@ -162,6 +164,44 @@ export function ComandaModal({ comanda, open, onClose, professionals, services, 
     setEditableItems(prev => prev.map(item => 
       item.id === itemId ? { ...item, isEditing: !item.isEditing } : item
     ));
+  };
+
+  const updateItemProfessional = async (itemId: string, professionalId: string) => {
+    // Update local state immediately
+    setEditableItems(prev => prev.map(item => 
+      item.id === itemId ? { ...item, editProfessionalId: professionalId, professional_id: professionalId } : item
+    ));
+
+    // Save to database
+    const { error } = await supabase
+      .from("comanda_items")
+      .update({ professional_id: professionalId })
+      .eq("id", itemId);
+
+    if (error) {
+      toast({ title: "Erro ao atualizar profissional", variant: "destructive" });
+      return;
+    }
+
+    // Record in client history
+    if (comanda?.client_id && salonId) {
+      const user = (await supabase.auth.getUser()).data.user;
+      const professional = professionals.find(p => p.id === professionalId);
+      const item = editableItems.find(i => i.id === itemId);
+      if (user && professional && item) {
+        await supabase.from("client_history").insert({
+          client_id: comanda.client_id,
+          salon_id: salonId,
+          action_type: "professional_change",
+          description: `Profissional alterado para "${professional.name}" no serviço "${item.description}"`,
+          new_value: { professional_id: professionalId, professional_name: professional.name },
+          performed_by: user.id,
+        });
+      }
+    }
+
+    queryClient.invalidateQueries({ queryKey: ["comanda_items", comanda?.id] });
+    toast({ title: "Profissional atualizado!" });
   };
 
   const updateItemField = (itemId: string, field: string, value: number) => {
@@ -456,7 +496,10 @@ export function ComandaModal({ comanda, open, onClose, professionals, services, 
                           <TableRow key={item.id}>
                             <TableCell className="font-medium">{item.description}</TableCell>
                             <TableCell>
-                              <Select defaultValue={comanda.professional?.id}>
+                              <Select 
+                                value={item.editProfessionalId || item.professional_id || comanda.professional_id || ""}
+                                onValueChange={(value) => updateItemProfessional(item.id, value)}
+                              >
                                 <SelectTrigger className="w-36 h-8">
                                   <SelectValue placeholder="Selecionar" />
                                 </SelectTrigger>

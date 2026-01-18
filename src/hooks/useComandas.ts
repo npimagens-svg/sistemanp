@@ -33,12 +33,17 @@ export interface ComandaItem {
   comanda_id: string;
   service_id: string | null;
   product_id: string | null;
+  professional_id: string | null;
   description: string;
   item_type: string;
   quantity: number;
   unit_price: number;
   total_price: number;
   created_at: string;
+  professional?: {
+    id: string;
+    name: string;
+  };
 }
 
 export interface ComandaInput {
@@ -53,6 +58,7 @@ export interface ComandaItemInput {
   comanda_id: string;
   service_id?: string | null;
   product_id?: string | null;
+  professional_id?: string | null;
   description: string;
   item_type: string;
   quantity: number;
@@ -83,7 +89,9 @@ export function useComandas() {
             unit_price,
             total_price,
             service_id,
-            product_id
+            product_id,
+            professional_id,
+            professional:professionals(id, name)
           )
         `)
         .eq("salon_id", salonId)
@@ -274,7 +282,10 @@ export function useComandaItems(comandaId: string | null) {
       if (!comandaId) return [];
       const { data, error } = await supabase
         .from("comanda_items")
-        .select("*")
+        .select(`
+          *,
+          professional:professionals(id, name)
+        `)
         .eq("comanda_id", comandaId)
         .order("created_at");
       if (error) throw error;
