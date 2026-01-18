@@ -233,6 +233,31 @@ export function ComandaModal({ comanda, open, onClose, professionals, services, 
   const handleFinalizeComanda = async () => {
     if (!comanda || !salonId) return;
 
+    // Validate user has open caixa
+    if (!userCaixaId) {
+      toast({ 
+        title: "Caixa não aberto", 
+        description: "Você precisa abrir um caixa para finalizar comandas.",
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    // Validate comanda is from today (can't close old comandas with current caixa)
+    const comandaDate = new Date(comanda.created_at);
+    const today = new Date();
+    comandaDate.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0);
+    
+    if (comandaDate.getTime() < today.getTime()) {
+      toast({ 
+        title: "Comanda de outro dia", 
+        description: "Comandas de dias anteriores precisam ser tratadas como pendentes. Entre em contato com o gerente.",
+        variant: "destructive" 
+      });
+      return;
+    }
+
     // Validate payments
     if (difference > 0.01) {
       toast({ 
@@ -256,7 +281,16 @@ export function ComandaModal({ comanda, open, onClose, professionals, services, 
     setIsClosing(true);
 
     try {
-      // Save new payments
+      // Calculate payment totals by method for caixa update
+      const paymentTotals = {
+        cash: 0,
+        pix: 0,
+        credit_card: 0,
+        debit_card: 0,
+        other: 0,
+      };
+
+      // Save new payments and track totals
       for (const payment of payments) {
         if (payment.id.startsWith("temp_")) {
           await supabase.from("payments").insert({
@@ -267,9 +301,33 @@ export function ComandaModal({ comanda, open, onClose, professionals, services, 
             notes: payment.info,
           });
         }
+        // Track totals for all payments (new and existing)
+        if (payment.method in paymentTotals) {
+          paymentTotals[payment.method as keyof typeof paymentTotals] += payment.amount;
+        }
       }
 
-      // Close comanda
+      // Update caixa totals
+      const { data: currentCaixa } = await supabase
+        .from("caixas")
+        .select("*")
+        .eq("id", userCaixaId)
+        .single();
+
+      if (currentCaixa) {
+        await supabase
+          .from("caixas")
+          .update({
+            total_cash: (currentCaixa.total_cash || 0) + paymentTotals.cash,
+            total_pix: (currentCaixa.total_pix || 0) + paymentTotals.pix,
+            total_credit_card: (currentCaixa.total_credit_card || 0) + paymentTotals.credit_card,
+            total_debit_card: (currentCaixa.total_debit_card || 0) + paymentTotals.debit_card,
+            total_other: (currentCaixa.total_other || 0) + paymentTotals.other,
+          })
+          .eq("id", userCaixaId);
+      }
+
+      // Close comanda and link to caixa
       await supabase
         .from("comandas")
         .update({ 
@@ -277,10 +335,12 @@ export function ComandaModal({ comanda, open, onClose, professionals, services, 
           is_paid: true,
           subtotal: subtotal,
           total: subtotal,
+          caixa_id: userCaixaId,
         })
         .eq("id", comanda.id);
 
       queryClient.invalidateQueries({ queryKey: ["comandas", salonId] });
+      queryClient.invalidateQueries({ queryKey: ["caixas", salonId] });
       toast({ title: "Comanda finalizada com sucesso!" });
       onClose();
     } catch (error: any) {
