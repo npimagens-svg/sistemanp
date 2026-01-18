@@ -31,6 +31,7 @@ export interface Client {
   add_cpf_invoice: boolean;
   allow_ai_service: boolean;
   allow_whatsapp_campaigns: boolean;
+  avatar_url: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -61,6 +62,7 @@ export interface ClientInput {
   add_cpf_invoice?: boolean;
   allow_ai_service?: boolean;
   allow_whatsapp_campaigns?: boolean;
+  avatar_url?: string | null;
 }
 
 export function useClients() {

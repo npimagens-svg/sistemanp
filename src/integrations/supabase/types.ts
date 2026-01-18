@@ -99,6 +99,7 @@ export type Database = {
           allow_online_booking: boolean | null
           allow_sms_campaigns: boolean | null
           allow_whatsapp_campaigns: boolean | null
+          avatar_url: string | null
           birth_date: string | null
           cep: string | null
           city: string | null
@@ -130,6 +131,7 @@ export type Database = {
           allow_online_booking?: boolean | null
           allow_sms_campaigns?: boolean | null
           allow_whatsapp_campaigns?: boolean | null
+          avatar_url?: string | null
           birth_date?: string | null
           cep?: string | null
           city?: string | null
@@ -161,6 +163,7 @@ export type Database = {
           allow_online_booking?: boolean | null
           allow_sms_campaigns?: boolean | null
           allow_whatsapp_campaigns?: boolean | null
+          avatar_url?: string | null
           birth_date?: string | null
           cep?: string | null
           city?: string | null
