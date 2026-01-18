@@ -3,16 +3,16 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import { AppLayoutNew } from "@/components/layout/AppLayoutNew";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, Plus, MoreHorizontal, Loader2, Receipt, CheckCircle, Clock, Pencil, Trash2, Printer, Calendar, Eye, FileSpreadsheet, FileText } from "lucide-react";
-import { useComandas, Comanda, ComandaInput, useComandaItems } from "@/hooks/useComandas";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Plus, Loader2, Pencil, Trash2, Printer, Eye, FileSpreadsheet, FileText } from "lucide-react";
+import { ComandaModal } from "@/components/modals/ComandaModal";
+import { useComandas, Comanda, ComandaInput } from "@/hooks/useComandas";
 import { useClients } from "@/hooks/useClients";
 import { useProfessionals } from "@/hooks/useProfessionals";
 import { useServices } from "@/hooks/useServices";
@@ -48,13 +48,13 @@ export default function Comandas() {
     professional_id: null,
   });
   const [selectedComanda, setSelectedComanda] = useState<Comanda | null>(null);
+  const [comandaModalOpen, setComandaModalOpen] = useState(false);
   const [isProcessingAppointment, setIsProcessingAppointment] = useState(false);
 
-  const { comandas, isLoading, createComanda, closeComanda, findOrCreateTodayComanda, isCreating, isClosing } = useComandas();
+  const { comandas, isLoading, createComanda, findOrCreateTodayComanda, isCreating } = useComandas();
   const { clients } = useClients();
   const { professionals } = useProfessionals();
   const { services } = useServices();
-  const { items: comandaItems, addItem, isAdding } = useComandaItems(selectedComanda?.id || null);
 
   // Process appointment parameter from URL
   useEffect(() => {
@@ -163,8 +163,9 @@ export default function Comandas() {
         }
       }
 
-      // Set as selected comanda
+      // Set as selected comanda and open modal
       setSelectedComanda(comanda);
+      setComandaModalOpen(true);
       
       // Clear URL parameter
       searchParams.delete("appointment");
@@ -210,6 +211,12 @@ export default function Comandas() {
 
   const handleOpenComanda = (comanda: Comanda) => {
     setSelectedComanda(comanda);
+    setComandaModalOpen(true);
+  };
+
+  const handleCloseComandaModal = () => {
+    setSelectedComanda(null);
+    setComandaModalOpen(false);
   };
 
   if (isLoading || isProcessingAppointment) {
@@ -221,20 +228,6 @@ export default function Comandas() {
             <span className="ml-2 text-muted-foreground">Processando agendamento...</span>
           )}
         </div>
-      </AppLayoutNew>
-    );
-  }
-
-  // If a comanda is selected, show detail view
-  if (selectedComanda) {
-    return (
-      <AppLayoutNew>
-        <ComandaDetailView 
-          comanda={selectedComanda} 
-          onClose={() => setSelectedComanda(null)}
-          professionals={professionals}
-          services={services}
-        />
       </AppLayoutNew>
     );
   }
@@ -437,270 +430,15 @@ export default function Comandas() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Comanda Modal */}
+      <ComandaModal
+        comanda={selectedComanda}
+        open={comandaModalOpen}
+        onClose={handleCloseComandaModal}
+        professionals={professionals}
+        services={services}
+      />
     </AppLayoutNew>
-  );
-}
-
-// Comanda Detail View Component
-interface ComandaDetailViewProps {
-  comanda: Comanda;
-  onClose: () => void;
-  professionals: any[];
-  services: any[];
-}
-
-function ComandaDetailView({ comanda, onClose, professionals, services }: ComandaDetailViewProps) {
-  const [activeTab, setActiveTab] = useState("itens");
-  const { items, isLoading, addItem, removeItem, isAdding, isRemoving } = useComandaItems(comanda.id);
-  const { closeComanda, isClosing } = useComandas();
-
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
-  };
-
-  const getComandaNumber = () => {
-    const date = new Date(comanda.created_at);
-    return comanda.id.slice(0, 4).toUpperCase();
-  };
-
-  const handleAddService = (serviceId: string) => {
-    const service = services.find((s: any) => s.id === serviceId);
-    if (!service) return;
-
-    addItem({
-      comanda_id: comanda.id,
-      service_id: serviceId,
-      description: service.name,
-      item_type: "service",
-      quantity: 1,
-      unit_price: Number(service.price),
-      total_price: Number(service.price),
-    });
-  };
-
-  const subtotal = items.reduce((acc, item) => acc + Number(item.total_price), 0);
-
-  return (
-    <div className="space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" onClick={onClose}>
-            ← Voltar
-          </Button>
-          <h1 className="text-xl font-semibold text-primary">
-            Comanda {getComandaNumber()} - {comanda.client?.name || "Cliente"}
-          </h1>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-2">
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm">Data da Comanda:</span>
-            <span className="font-medium">{format(new Date(comanda.created_at), "dd/MM/yyyy")}</span>
-          </div>
-          <span className="text-muted-foreground">|</span>
-          <span className="text-sm">Nº: <strong>{getComandaNumber()}</strong></span>
-        </div>
-      </div>
-
-      {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          <TabsTrigger value="itens">Itens</TabsTrigger>
-          <TabsTrigger value="pagamento">Pagamento</TabsTrigger>
-          <TabsTrigger value="prontuario">Prontuário</TabsTrigger>
-          <TabsTrigger value="informacoes">Informações</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="itens" className="space-y-4">
-          {/* Client Info */}
-          <Card className="bg-muted/30">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <Label className="font-semibold">Cliente:</Label>
-                  <span className="font-medium">{comanda.client?.name || "Não definido"}</span>
-                  <Button variant="ghost" size="icon" className="h-8 w-8">
-                    <Eye className="h-4 w-4" />
-                  </Button>
-                  <Button variant="default" size="sm" className="bg-primary">
-                    <Calendar className="h-4 w-4 mr-2" />
-                    Importar
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Items Table */}
-          <Card>
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Item</TableHead>
-                    <TableHead>Profissional</TableHead>
-                    <TableHead className="text-center">Qtd.</TableHead>
-                    <TableHead className="text-right">Valor (R$)</TableHead>
-                    <TableHead className="text-right">Desc. (%)</TableHead>
-                    <TableHead className="text-right">Final (R$)</TableHead>
-                    <TableHead className="w-20"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {isLoading ? (
-                    <TableRow>
-                      <TableCell colSpan={7} className="text-center py-4">
-                        <Loader2 className="h-4 w-4 animate-spin mx-auto" />
-                      </TableCell>
-                    </TableRow>
-                  ) : items.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                        Nenhum item adicionado
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    items.map((item) => (
-                      <TableRow key={item.id}>
-                        <TableCell>
-                          <Select defaultValue={item.description}>
-                            <SelectTrigger className="w-48">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value={item.description}>{item.description}</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </TableCell>
-                        <TableCell>
-                          <Select defaultValue={comanda.professional?.id}>
-                            <SelectTrigger className="w-40">
-                              <SelectValue placeholder="Selecionar" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {professionals.filter(p => p.is_active).map((prof) => (
-                                <SelectItem key={prof.id} value={prof.id}>{prof.name}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </TableCell>
-                        <TableCell className="text-center">{item.quantity}</TableCell>
-                        <TableCell className="text-right">{formatCurrency(item.unit_price)}</TableCell>
-                        <TableCell className="text-right">0</TableCell>
-                        <TableCell className="text-right font-medium">{formatCurrency(item.total_price)}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1">
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-primary">
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              className="h-8 w-8 text-destructive"
-                              onClick={() => removeItem(item.id)}
-                              disabled={isRemoving}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-
-          {/* Add Item Buttons */}
-          <div className="flex items-center justify-center gap-2">
-            <Button variant="outline" size="sm" className="gap-2">
-              <Receipt className="h-4 w-4" />
-              Produto
-            </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-2">
-                  <CheckCircle className="h-4 w-4" />
-                  Serviço
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                {services.filter((s: any) => s.is_active).map((service: any) => (
-                  <DropdownMenuItem key={service.id} onClick={() => handleAddService(service.id)}>
-                    {service.name} - {formatCurrency(service.price)}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <Button variant="outline" size="sm" className="gap-2">
-              Pré-venda
-            </Button>
-            <Button variant="outline" size="sm" className="gap-2">
-              Pacote
-            </Button>
-            <Button variant="outline" size="sm" className="gap-2">
-              Caixinha
-            </Button>
-            <Button variant="outline" size="sm" className="gap-2">
-              Vale Presente
-            </Button>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="pagamento">
-          <Card>
-            <CardContent className="p-6 text-center text-muted-foreground">
-              Funcionalidade de pagamento em desenvolvimento
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="prontuario">
-          <Card>
-            <CardContent className="p-6 text-center text-muted-foreground">
-              Prontuário do cliente em desenvolvimento
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="informacoes">
-          <Card>
-            <CardContent className="p-6 text-center text-muted-foreground">
-              Informações adicionais em desenvolvimento
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-
-      {/* Footer Actions */}
-      <div className="flex items-center justify-between border-t pt-4">
-        <Button variant="outline" className="gap-2">
-          <Clock className="h-4 w-4" />
-          Atualizar Comanda
-        </Button>
-        <div className="flex items-center gap-2">
-          <div className="text-right mr-4">
-            <div className="text-sm text-muted-foreground">Subtotal</div>
-            <div className="text-lg font-semibold">{formatCurrency(subtotal)}</div>
-          </div>
-          <Button variant="outline" size="icon">
-            <Printer className="h-4 w-4" />
-          </Button>
-          <Button variant="outline" size="icon" className="text-destructive">
-            <Trash2 className="h-4 w-4" />
-          </Button>
-          <Button variant="outline">Confirmar</Button>
-          <Button 
-            className="bg-destructive hover:bg-destructive/90"
-            onClick={() => closeComanda(comanda.id)}
-            disabled={isClosing}
-          >
-            {isClosing ? "Finalizando..." : "Finalizar Comanda"}
-          </Button>
-        </div>
-      </div>
-    </div>
   );
 }
