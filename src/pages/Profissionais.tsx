@@ -230,7 +230,7 @@ export function Profissionais() {
                   <div>
                     <h2 className="text-xl font-semibold">{selectedForCommissions.name}</h2>
                     <p className="text-muted-foreground">
-                      Especialidade: {selectedForCommissions.specialty || "Não definida"} • 
+                      Cargo: {(selectedForCommissions as any).role || "Não definido"} • 
                       Comissão Padrão: {selectedForCommissions.commission_percent || 0}%
                     </p>
                   </div>
