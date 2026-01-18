@@ -11,12 +11,15 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Badge } from "@/components/ui/badge";
+import { useNavigate } from "react-router-dom";
 
 interface AppHeaderProps {
   title?: string;
 }
 
 export function AppHeader({ title = "Dashboard" }: AppHeaderProps) {
+  const navigate = useNavigate();
+
   return (
     <header className="sticky top-0 z-40 flex h-16 items-center gap-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 md:px-6">
       <SidebarTrigger className="md:hidden">
@@ -51,10 +54,18 @@ export function AppHeader({ title = "Dashboard" }: AppHeaderProps) {
           <DropdownMenuContent align="end" className="w-48">
             <DropdownMenuLabel>Ações Rápidas</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>Novo Agendamento</DropdownMenuItem>
-            <DropdownMenuItem>Novo Cliente</DropdownMenuItem>
-            <DropdownMenuItem>Nova Comanda</DropdownMenuItem>
-            <DropdownMenuItem>Novo Serviço</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigate("/agenda")}>
+              Novo Agendamento
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigate("/clientes?novo=true")}>
+              Novo Cliente
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigate("/comandas?nova=true")}>
+              Nova Comanda
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigate("/servicos?novo=true")}>
+              Novo Serviço
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
 

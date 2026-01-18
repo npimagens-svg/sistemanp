@@ -88,6 +88,57 @@ export type Database = {
           },
         ]
       }
+      client_history: {
+        Row: {
+          action_type: string
+          client_id: string
+          created_at: string
+          description: string
+          id: string
+          new_value: Json | null
+          old_value: Json | null
+          performed_by: string
+          salon_id: string
+        }
+        Insert: {
+          action_type: string
+          client_id: string
+          created_at?: string
+          description: string
+          id?: string
+          new_value?: Json | null
+          old_value?: Json | null
+          performed_by: string
+          salon_id: string
+        }
+        Update: {
+          action_type?: string
+          client_id?: string
+          created_at?: string
+          description?: string
+          id?: string
+          new_value?: Json | null
+          old_value?: Json | null
+          performed_by?: string
+          salon_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_history_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_history_salon_id_fkey"
+            columns: ["salon_id"]
+            isOneToOne: false
+            referencedRelation: "salons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clients: {
         Row: {
           add_cpf_invoice: boolean | null
@@ -194,6 +245,51 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      comanda_deletions: {
+        Row: {
+          client_id: string | null
+          client_name: string | null
+          comanda_id: string
+          comanda_total: number
+          deleted_at: string
+          deleted_by: string
+          id: string
+          original_closed_at: string | null
+          original_created_at: string | null
+          professional_id: string | null
+          professional_name: string | null
+          reason: string
+        }
+        Insert: {
+          client_id?: string | null
+          client_name?: string | null
+          comanda_id: string
+          comanda_total?: number
+          deleted_at?: string
+          deleted_by: string
+          id?: string
+          original_closed_at?: string | null
+          original_created_at?: string | null
+          professional_id?: string | null
+          professional_name?: string | null
+          reason: string
+        }
+        Update: {
+          client_id?: string | null
+          client_name?: string | null
+          comanda_id?: string
+          comanda_total?: number
+          deleted_at?: string
+          deleted_by?: string
+          id?: string
+          original_closed_at?: string | null
+          original_created_at?: string | null
+          professional_id?: string | null
+          professional_name?: string | null
+          reason?: string
+        }
+        Relationships: []
       }
       comanda_items: {
         Row: {

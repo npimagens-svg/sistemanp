@@ -12,15 +12,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Loader2, Pencil, Trash2, Printer, Eye, FileSpreadsheet, FileText } from "lucide-react";
 import { ComandaModal } from "@/components/modals/ComandaModal";
+import { DeleteComandaModal } from "@/components/modals/DeleteComandaModal";
 import { useComandas, Comanda, ComandaInput } from "@/hooks/useComandas";
 import { useClients } from "@/hooks/useClients";
 import { useProfessionals } from "@/hooks/useProfessionals";
 import { useServices } from "@/hooks/useServices";
+import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { format, isSameDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
-
+import { useQueryClient } from "@tanstack/react-query";
 interface AppointmentData {
   id: string;
   client_id: string | null;
@@ -50,7 +52,13 @@ export default function Comandas() {
   const [selectedComanda, setSelectedComanda] = useState<Comanda | null>(null);
   const [comandaModalOpen, setComandaModalOpen] = useState(false);
   const [isProcessingAppointment, setIsProcessingAppointment] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [comandaToDelete, setComandaToDelete] = useState<Comanda | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [editingClosedComanda, setEditingClosedComanda] = useState(false);
 
+  const { user, salonId } = useAuth();
+  const queryClient = useQueryClient();
   const { comandas, isLoading, createComanda, findOrCreateTodayComanda, isCreating } = useComandas();
   const { clients } = useClients();
   const { professionals } = useProfessionals();
@@ -209,7 +217,8 @@ export default function Comandas() {
     return `Nº${comanda.id.slice(0, 4).toUpperCase()} (${dateStr})`;
   };
 
-  const handleOpenComanda = (comanda: Comanda) => {
+  const handleOpenComanda = (comanda: Comanda, isEditing = false) => {
+    setEditingClosedComanda(isEditing && !!comanda.closed_at);
     setSelectedComanda(comanda);
     setComandaModalOpen(true);
   };
@@ -217,6 +226,74 @@ export default function Comandas() {
   const handleCloseComandaModal = () => {
     setSelectedComanda(null);
     setComandaModalOpen(false);
+    setEditingClosedComanda(false);
+  };
+
+  const handleDeleteClick = (comanda: Comanda) => {
+    // Only closed comandas can be deleted with reason
+    if (!comanda.closed_at) {
+      toast({
+        title: "Não é possível excluir",
+        description: "Somente comandas fechadas podem ser excluídas.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setComandaToDelete(comanda);
+    setDeleteModalOpen(true);
+  };
+
+  const handleConfirmDelete = async (reason: string) => {
+    if (!comandaToDelete || !user?.id || !salonId) return;
+
+    setIsDeleting(true);
+    try {
+      // Save deletion record for audit
+      await supabase.from("comanda_deletions").insert({
+        comanda_id: comandaToDelete.id,
+        client_id: comandaToDelete.client_id,
+        client_name: comandaToDelete.client?.name,
+        professional_id: comandaToDelete.professional_id,
+        professional_name: comandaToDelete.professional?.name,
+        comanda_total: comandaToDelete.total,
+        reason: reason,
+        deleted_by: user.id,
+        original_created_at: comandaToDelete.created_at,
+        original_closed_at: comandaToDelete.closed_at,
+      });
+
+      // Delete comanda items first
+      await supabase
+        .from("comanda_items")
+        .delete()
+        .eq("comanda_id", comandaToDelete.id);
+
+      // Delete payments
+      await supabase
+        .from("payments")
+        .delete()
+        .eq("comanda_id", comandaToDelete.id);
+
+      // Delete the comanda
+      await supabase
+        .from("comandas")
+        .delete()
+        .eq("id", comandaToDelete.id);
+
+      queryClient.invalidateQueries({ queryKey: ["comandas", salonId] });
+      toast({ title: "Comanda excluída com sucesso" });
+      setDeleteModalOpen(false);
+      setComandaToDelete(null);
+    } catch (error: any) {
+      console.error("Error deleting comanda:", error);
+      toast({
+        title: "Erro ao excluir comanda",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   if (isLoading || isProcessingAppointment) {
@@ -346,12 +423,26 @@ export default function Comandas() {
                           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleOpenComanda(comanda)}>
                             <Eye className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          {activeTab === "fechadas" && (
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-8 w-8"
+                              onClick={() => handleOpenComanda(comanda, true)}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {activeTab === "fechadas" && (
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-8 w-8 text-destructive hover:text-destructive"
+                              onClick={() => handleDeleteClick(comanda)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
                           <Button variant="ghost" size="icon" className="h-8 w-8 text-primary hover:text-primary">
                             <Printer className="h-4 w-4" />
                           </Button>
@@ -438,6 +529,19 @@ export default function Comandas() {
         onClose={handleCloseComandaModal}
         professionals={professionals}
         services={services}
+        isEditingClosed={editingClosedComanda}
+      />
+
+      {/* Delete Comanda Modal */}
+      <DeleteComandaModal
+        comanda={comandaToDelete}
+        open={deleteModalOpen}
+        onClose={() => {
+          setDeleteModalOpen(false);
+          setComandaToDelete(null);
+        }}
+        onConfirm={handleConfirmDelete}
+        isDeleting={isDeleting}
       />
     </AppLayoutNew>
   );

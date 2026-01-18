@@ -66,14 +66,17 @@ export function AppHeaderNew() {
     <header className="sticky top-0 z-50 flex h-16 items-center justify-between border-b bg-background px-6">
       {/* Logo and Salon Name */}
       <div className="flex items-center gap-4">
-        <div className="flex items-center gap-2">
+        <button 
+          onClick={() => navigate("/dashboard")}
+          className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+        >
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-xl">
-            S
+            E
           </div>
           <span className="text-xl font-bold text-primary hidden md:block">
-            Salão CRM
+            EXP Salão
           </span>
-        </div>
+        </button>
         
         <div className="h-6 w-px bg-border hidden md:block" />
         

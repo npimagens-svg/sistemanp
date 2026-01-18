@@ -27,6 +27,7 @@ interface ComandaModalProps {
   onClose: () => void;
   professionals: any[];
   services: any[];
+  isEditingClosed?: boolean;
 }
 
 interface EditableItem extends ComandaItem {
@@ -51,7 +52,7 @@ const PAYMENT_METHODS = [
   { value: "other", label: "Outro", icon: Receipt },
 ];
 
-export function ComandaModal({ comanda, open, onClose, professionals, services }: ComandaModalProps) {
+export function ComandaModal({ comanda, open, onClose, professionals, services, isEditingClosed = false }: ComandaModalProps) {
   const { toast } = useToast();
   const { salonId } = useAuth();
   const queryClient = useQueryClient();
@@ -148,6 +149,12 @@ export function ComandaModal({ comanda, open, onClose, professionals, services }
     const discount = item.editDiscount || 0;
     const newTotalPrice = (newQuantity * newUnitPrice) * (1 - discount / 100);
 
+    const oldValues = {
+      quantity: item.quantity,
+      unit_price: item.unit_price,
+      total_price: item.total_price,
+    };
+
     const { error } = await supabase
       .from("comanda_items")
       .update({
@@ -160,6 +167,22 @@ export function ComandaModal({ comanda, open, onClose, professionals, services }
     if (error) {
       toast({ title: "Erro ao atualizar item", variant: "destructive" });
       return;
+    }
+
+    // Record change in client history if editing closed comanda
+    if (isEditingClosed && comanda?.client_id && salonId) {
+      const user = (await supabase.auth.getUser()).data.user;
+      if (user) {
+        await supabase.from("client_history").insert({
+          client_id: comanda.client_id,
+          salon_id: salonId,
+          action_type: "comanda_edit",
+          description: `Item "${item.description}" editado na comanda ${comanda.id.slice(0, 4).toUpperCase()}`,
+          old_value: oldValues,
+          new_value: { quantity: newQuantity, unit_price: newUnitPrice, total_price: newTotalPrice },
+          performed_by: user.id,
+        });
+      }
     }
 
     // Update comanda totals
