@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Dialog,
@@ -23,6 +23,7 @@ import { Client } from "@/hooks/useClients";
 import { Professional } from "@/hooks/useProfessionals";
 import { Service } from "@/hooks/useServices";
 import { DollarSign } from "lucide-react";
+import { startOfDay, isSameDay } from "date-fns";
 
 interface AppointmentModalProps {
   open: boolean;
@@ -136,6 +137,14 @@ export function AppointmentModal({
 
   const selectedClient = appointment ? clients.find(c => c.id === appointment.client_id) : null;
 
+  // Check if appointment is for today - only allow opening comanda for today's appointments
+  const isAppointmentToday = useMemo(() => {
+    if (!appointment?.scheduled_at) return false;
+    const appointmentDate = new Date(appointment.scheduled_at);
+    const today = new Date();
+    return isSameDay(appointmentDate, today);
+  }, [appointment?.scheduled_at]);
+
   const handleOpenComanda = () => {
     if (appointment?.id) {
       navigate(`/comandas?appointment=${appointment.id}`);
@@ -150,7 +159,7 @@ export function AppointmentModal({
           <DialogTitle>{appointment ? "Editar Agendamento" : "Novo Agendamento"}</DialogTitle>
         </DialogHeader>
         
-        {/* Client Info Header with Abrir Comanda button - only shows when editing */}
+        {/* Client Info Header with Abrir Comanda button - only shows when editing and appointment is today */}
         {appointment && selectedClient && (
           <div className="bg-muted/50 rounded-lg p-4 flex items-center justify-between">
             <div>
@@ -159,15 +168,17 @@ export function AppointmentModal({
                 <p className="text-sm text-primary">Celular: {selectedClient.phone}</p>
               )}
             </div>
-            <Button
-              type="button"
-              variant="default"
-              className="bg-green-600 hover:bg-green-700"
-              onClick={handleOpenComanda}
-            >
-              <DollarSign className="h-4 w-4 mr-2" />
-              Abrir Comanda
-            </Button>
+            {isAppointmentToday && (
+              <Button
+                type="button"
+                variant="default"
+                className="bg-green-600 hover:bg-green-700"
+                onClick={handleOpenComanda}
+              >
+                <DollarSign className="h-4 w-4 mr-2" />
+                Abrir Comanda
+              </Button>
+            )}
           </div>
         )}
         

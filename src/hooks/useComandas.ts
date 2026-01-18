@@ -101,6 +101,63 @@ export function useComandas() {
     },
   });
 
+  // Find or create a comanda for a client on today's date
+  const findOrCreateTodayComanda = async (clientId: string, professionalId?: string | null, appointmentId?: string | null) => {
+    if (!salonId) throw new Error("Salão não encontrado");
+    
+    // Get today's date range
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    // Look for an existing open comanda for this client today
+    const { data: existingComanda, error: findError } = await supabase
+      .from("comandas")
+      .select(`
+        *,
+        client:clients(id, name),
+        professional:professionals(id, name)
+      `)
+      .eq("salon_id", salonId)
+      .eq("client_id", clientId)
+      .is("closed_at", null)
+      .gte("created_at", today.toISOString())
+      .lt("created_at", tomorrow.toISOString())
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (findError) throw findError;
+
+    if (existingComanda) {
+      return existingComanda as Comanda;
+    }
+
+    // No existing comanda, create a new one
+    const { data: newComanda, error: createError } = await supabase
+      .from("comandas")
+      .insert({
+        salon_id: salonId,
+        client_id: clientId,
+        professional_id: professionalId || null,
+        appointment_id: appointmentId || null,
+      })
+      .select(`
+        *,
+        client:clients(id, name),
+        professional:professionals(id, name)
+      `)
+      .single();
+
+    if (createError) throw createError;
+    
+    queryClient.invalidateQueries({ queryKey: ["comandas", salonId] });
+    toast({ title: "Comanda criada com sucesso!" });
+    
+    return newComanda as Comanda;
+  };
+
   const updateMutation = useMutation({
     mutationFn: async ({ id, ...input }: ComandaInput & { id: string }) => {
       const { data, error } = await supabase
@@ -148,6 +205,7 @@ export function useComandas() {
     createComanda: createMutation.mutate,
     updateComanda: updateMutation.mutate,
     closeComanda: closeComandaMutation.mutate,
+    findOrCreateTodayComanda,
     isCreating: createMutation.isPending,
     isUpdating: updateMutation.isPending,
     isClosing: closeComandaMutation.isPending,
