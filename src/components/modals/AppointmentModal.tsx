@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Dialog,
   DialogContent,
@@ -21,6 +22,7 @@ import { Appointment, AppointmentInput } from "@/hooks/useAppointments";
 import { Client } from "@/hooks/useClients";
 import { Professional } from "@/hooks/useProfessionals";
 import { Service } from "@/hooks/useServices";
+import { DollarSign } from "lucide-react";
 
 interface AppointmentModalProps {
   open: boolean;
@@ -33,6 +35,7 @@ interface AppointmentModalProps {
   isLoading?: boolean;
   defaultDate?: Date;
   defaultProfessionalId?: string;
+  onOpenComanda?: (appointmentId: string) => void;
 }
 
 export function AppointmentModal({
@@ -46,7 +49,9 @@ export function AppointmentModal({
   isLoading,
   defaultDate,
   defaultProfessionalId,
+  onOpenComanda,
 }: AppointmentModalProps) {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState<AppointmentInput & { date: string; time: string }>({
     client_id: "",
     professional_id: "",
@@ -129,12 +134,43 @@ export function AppointmentModal({
     onOpenChange(false);
   };
 
+  const selectedClient = appointment ? clients.find(c => c.id === appointment.client_id) : null;
+
+  const handleOpenComanda = () => {
+    if (appointment?.id) {
+      navigate(`/comandas?appointment=${appointment.id}`);
+      onOpenChange(false);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{appointment ? "Editar Agendamento" : "Novo Agendamento"}</DialogTitle>
         </DialogHeader>
+        
+        {/* Client Info Header with Abrir Comanda button - only shows when editing */}
+        {appointment && selectedClient && (
+          <div className="bg-muted/50 rounded-lg p-4 flex items-center justify-between">
+            <div>
+              <p className="text-sm text-primary font-semibold">Cliente: {selectedClient.name.toUpperCase()}</p>
+              {selectedClient.phone && (
+                <p className="text-sm text-primary">Celular: {selectedClient.phone}</p>
+              )}
+            </div>
+            <Button
+              type="button"
+              variant="default"
+              className="bg-green-600 hover:bg-green-700"
+              onClick={handleOpenComanda}
+            >
+              <DollarSign className="h-4 w-4 mr-2" />
+              Abrir Comanda
+            </Button>
+          </div>
+        )}
+        
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label>Cliente</Label>

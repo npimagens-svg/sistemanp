@@ -19,7 +19,7 @@ export interface Appointment {
   price: number | null;
   created_at: string;
   updated_at: string;
-  clients?: { name: string } | null;
+  clients?: { name: string; phone: string | null } | null;
   professionals?: { name: string } | null;
   services?: { name: string } | null;
 }
@@ -49,7 +49,7 @@ export function useAppointments(date?: Date) {
         .from("appointments")
         .select(`
           *,
-          clients(name),
+          clients(name, phone),
           professionals(name),
           services(name)
         `)

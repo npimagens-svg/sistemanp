@@ -8,11 +8,12 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Calendar } from "@/components/ui/calendar";
 import { ptBR } from "date-fns/locale";
-import { useAppointments, AppointmentInput } from "@/hooks/useAppointments";
+import { useAppointments, AppointmentInput, Appointment } from "@/hooks/useAppointments";
 import { useProfessionals } from "@/hooks/useProfessionals";
 import { useClients } from "@/hooks/useClients";
 import { useServices } from "@/hooks/useServices";
 import { AppointmentModal } from "@/components/modals/AppointmentModal";
+import { AppointmentHoverCard } from "@/components/agenda/AppointmentHoverCard";
 import { format } from "date-fns";
 
 const timeSlots = [
@@ -313,26 +314,28 @@ export default function Agenda() {
                                 onClick={() => handleSlotClick(professional.id, time)}
                               >
                                 {appointment && (
-                                  <div
-                                    className={`absolute left-0.5 right-0.5 top-0 rounded-sm p-1 z-10 cursor-pointer transition-shadow hover:shadow-md ${statusColors[appointment.status]}`}
-                                    style={{
-                                      height: `${Math.ceil(appointment.duration_minutes / 30) * 40 - 2}px`,
-                                    }}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setSelectedAppointment(appointment);
-                                      setModalOpen(true);
-                                    }}
-                                  >
-                                    <div className="text-[10px] font-medium truncate">
-                                      {time} {appointment.clients?.name || "Cliente"}
-                                    </div>
-                                    {appointment.services?.name && (
-                                      <div className="text-[10px] opacity-90 truncate uppercase">
-                                        {appointment.services.name}
+                                  <AppointmentHoverCard appointment={appointment}>
+                                    <div
+                                      className={`absolute left-0.5 right-0.5 top-0 rounded-sm p-1 z-10 cursor-pointer transition-shadow hover:shadow-md ${statusColors[appointment.status]}`}
+                                      style={{
+                                        height: `${Math.ceil(appointment.duration_minutes / 30) * 40 - 2}px`,
+                                      }}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setSelectedAppointment(appointment);
+                                        setModalOpen(true);
+                                      }}
+                                    >
+                                      <div className="text-[10px] font-medium truncate">
+                                        {time} {appointment.clients?.name || "Cliente"}
                                       </div>
-                                    )}
-                                  </div>
+                                      {appointment.services?.name && (
+                                        <div className="text-[10px] opacity-90 truncate uppercase">
+                                          {appointment.services.name}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </AppointmentHoverCard>
                                 )}
                               </div>
                             );
