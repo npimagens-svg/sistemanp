@@ -77,45 +77,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const createSalonForCurrentUser = async (fullName: string, salonName: string) => {
     if (!user) return { error: new Error("Usuário não autenticado") };
 
-    // Create salon
-    const { data: salonData, error: salonError } = await supabase
-      .from("salons")
-      .insert({ name: salonName })
-      .select()
-      .single();
+    // Create everything via backend function (bypasses RLS issues during onboarding)
+    const { data, error } = await supabase.functions.invoke("create-salon", {
+      body: { fullName, salonName },
+    });
 
-    if (salonError) return { error: salonError as Error };
+    if (error) return { error: error as unknown as Error };
 
-    // Create profile
-    const { error: profileError } = await supabase
-      .from("profiles")
-      .insert({
-        user_id: user.id,
-        salon_id: salonData.id,
-        full_name: fullName,
-      });
+    const newSalonId = (data as any)?.salonId as string | undefined;
+    if (!newSalonId) return { error: new Error("Resposta inválida ao criar salão") };
 
-    if (profileError) return { error: profileError as Error };
-
-    // Create admin role
-    const { error: roleError } = await supabase
-      .from("user_roles")
-      .insert({
-        user_id: user.id,
-        salon_id: salonData.id,
-        role: "admin",
-      });
-
-    if (roleError) return { error: roleError as Error };
-
-    setSalonId(salonData.id);
+    setSalonId(newSalonId);
     return { error: null };
   };
 
-  const signUp = async (email: string, password: string, fullName: string, salonName: string) => {
+  const signUp = async (email: string, password: string, _fullName: string, _salonName: string) => {
     const redirectUrl = `${window.location.origin}/`;
 
-    // Create the user
+    // Create the user (salon creation happens after login, in /setup-salon)
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
       password,
@@ -126,37 +105,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (authError) return { error: authError as Error };
     if (!authData.user) return { error: new Error("Erro ao criar usuário") };
-
-    // Create salon
-    const { data: salonData, error: salonError } = await supabase
-      .from("salons")
-      .insert({ name: salonName })
-      .select()
-      .single();
-
-    if (salonError) return { error: salonError as Error };
-
-    // Create profile
-    const { error: profileError } = await supabase
-      .from("profiles")
-      .insert({
-        user_id: authData.user.id,
-        salon_id: salonData.id,
-        full_name: fullName,
-      });
-
-    if (profileError) return { error: profileError as Error };
-
-    // Create admin role for user
-    const { error: roleError } = await supabase
-      .from("user_roles")
-      .insert({
-        user_id: authData.user.id,
-        salon_id: salonData.id,
-        role: "admin",
-      });
-
-    if (roleError) return { error: roleError as Error };
 
     return { error: null };
   };

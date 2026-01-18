@@ -109,9 +109,9 @@ export default function AuthNew() {
     } else {
       toast({
         title: "Conta criada com sucesso!",
-        description: "Você já pode acessar o sistema.",
+        description: "Agora vamos configurar seu salão.",
       });
-      navigate("/");
+      navigate("/setup-salon");
     }
   };
 

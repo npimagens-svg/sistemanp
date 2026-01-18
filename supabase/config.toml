@@ -1,1 +1,7 @@
 project_id = "fketquljzcnskqazwwog"
+
+[functions.create-professional-access]
+verify_jwt = false
+
+[functions.create-salon]
+verify_jwt = false

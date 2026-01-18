@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
 
@@ -18,16 +18,16 @@ const schema = z.object({
 export default function SetupSalon() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { createSalonForCurrentUser, salonId } = useAuth();
+  const { createSalonForCurrentUser, salonId, loading, user } = useAuth();
 
-  const [loading, setLoading] = useState(false);
+  const [loadingSubmit, setLoadingSubmit] = useState(false);
   const [data, setData] = useState({ fullName: "", salonName: "" });
   const [errors, setErrors] = useState<Record<string, string>>({});
-
-  if (salonId) {
-    // Já configurado
-    navigate("/", { replace: true });
-  }
+  useEffect(() => {
+    if (!loading && salonId) {
+      navigate("/", { replace: true });
+    }
+  }, [loading, salonId, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,9 +43,18 @@ export default function SetupSalon() {
       return;
     }
 
-    setLoading(true);
+    if (loading || !user) {
+      toast({
+        title: "Sessão ainda carregando",
+        description: "Aguarde alguns segundos e tente novamente.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoadingSubmit(true);
     const { error } = await createSalonForCurrentUser(data.fullName, data.salonName);
-    setLoading(false);
+    setLoadingSubmit(false);
 
     if (error) {
       toast({ title: "Erro ao cadastrar salão", description: error.message, variant: "destructive" });
@@ -90,8 +99,8 @@ export default function SetupSalon() {
               </div>
 
               <div className="flex gap-2 pt-2">
-                <Button type="submit" disabled={loading} className="flex-1">
-                  {loading ? "Salvando..." : "Criar salão e continuar"}
+                <Button type="submit" disabled={loadingSubmit || loading} className="flex-1">
+                  {loadingSubmit ? "Salvando..." : "Criar salão e continuar"}
                 </Button>
               </div>
             </form>
