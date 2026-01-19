@@ -138,6 +138,8 @@ export default function Financeiro() {
                     <CaixaCard 
                       key={caixa.id} 
                       caixa={caixa}
+                      showCloseButton={true}
+                      onClose={() => handleOpenCloseModal(caixa)}
                     />
                   ))}
               </div>
