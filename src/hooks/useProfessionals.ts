@@ -38,6 +38,7 @@ export interface ProfessionalInput {
   has_schedule?: boolean;
   create_access?: boolean;
   avatar_url?: string | null;
+  password?: string; // Password for creating system access
 }
 
 export function useProfessionals() {
@@ -63,22 +64,23 @@ export function useProfessionals() {
   const createMutation = useMutation({
     mutationFn: async (input: ProfessionalInput) => {
       if (!salonId) throw new Error("Salão não encontrado");
+
+      const { password, ...professionalData } = input;
       
       // First create the professional record
       const { data, error } = await supabase
         .from("professionals")
-        .insert({ ...input, salon_id: salonId, create_access: false }) // Always false initially
+        .insert({ ...professionalData, salon_id: salonId, create_access: false }) // Always false initially
         .select()
         .single();
       if (error) throw error;
 
-      // If create_access is requested, call edge function to create user account
-      if (input.create_access && input.email) {
-        const tempPassword = `Temp${Math.random().toString(36).slice(2, 10)}!`;
+      // If create_access is requested and password is provided, call edge function to create user account
+      if (input.create_access && input.email && password) {
         const { error: accessError } = await supabase.functions.invoke("create-professional-access", {
           body: {
             email: input.email,
-            password: tempPassword,
+            password: password,
             fullName: input.name,
             salonId: salonId,
             professionalId: data.id,
@@ -88,21 +90,20 @@ export function useProfessionals() {
         if (accessError) {
           // Professional was created but access failed - notify user
           console.error("Error creating access:", accessError);
-          throw new Error(`Profissional criado, mas erro ao criar acesso: ${accessError.message}. Senha temporária: ${tempPassword}`);
+          throw new Error(`Profissional criado, mas erro ao criar acesso: ${accessError.message}`);
         }
         
-        // Return with temp password info for toast
-        return { ...data, tempPassword };
+        return { ...data, accessCreated: true };
       }
 
       return data;
     },
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["professionals", salonId] });
-      if (data?.tempPassword) {
+      if (data?.accessCreated) {
         toast({ 
           title: "Profissional criado com acesso!", 
-          description: `Senha temporária: ${data.tempPassword}. Anote e informe ao profissional.`,
+          description: "O profissional pode fazer login com o email e senha definidos.",
         });
       } else {
         toast({ title: "Profissional criado com sucesso!" });

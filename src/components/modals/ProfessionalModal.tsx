@@ -57,6 +57,12 @@ export function ProfessionalModal({ open, onOpenChange, professional, onSubmit, 
     create_access: false,
     avatar_url: null,
   });
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+
+  const isEditing = !!professional;
+  const hasExistingAccess = professional?.create_access === true;
 
   useEffect(() => {
     if (professional) {
@@ -75,6 +81,9 @@ export function ProfessionalModal({ open, onOpenChange, professional, onSubmit, 
         create_access: (professional as any).create_access || false,
         avatar_url: professional.avatar_url || null,
       });
+      setPassword("");
+      setConfirmPassword("");
+      setPasswordError("");
     } else {
       setFormData({
         name: "",
@@ -91,16 +100,43 @@ export function ProfessionalModal({ open, onOpenChange, professional, onSubmit, 
         create_access: false,
         avatar_url: null,
       });
+      setPassword("");
+      setConfirmPassword("");
+      setPasswordError("");
     }
   }, [professional, open]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (professional) {
-      onSubmit({ ...formData, id: professional.id });
-    } else {
-      onSubmit(formData);
+    setPasswordError("");
+
+    // Validate password if creating access
+    if (formData.create_access && !hasExistingAccess) {
+      if (!password) {
+        setPasswordError("Informe uma senha para o acesso");
+        return;
+      }
+      if (password.length < 6) {
+        setPasswordError("A senha deve ter pelo menos 6 caracteres");
+        return;
+      }
+      if (password !== confirmPassword) {
+        setPasswordError("As senhas não conferem");
+        return;
+      }
+      if (!formData.email) {
+        setPasswordError("Informe um email para criar o acesso");
+        return;
+      }
     }
+
+    const submitData = {
+      ...formData,
+      ...(professional ? { id: professional.id } : {}),
+      ...(formData.create_access && !hasExistingAccess ? { password } : {}),
+    };
+
+    onSubmit(submitData as any);
     onOpenChange(false);
   };
 
@@ -235,16 +271,64 @@ export function ProfessionalModal({ open, onOpenChange, professional, onSubmit, 
               </div>
             </div>
 
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="create_access"
-                checked={formData.create_access}
-                onCheckedChange={(checked) => setFormData({ ...formData, create_access: checked as boolean })}
-              />
-              <Label htmlFor="create_access" className="cursor-pointer">
-                Criar acesso
-              </Label>
-            </div>
+            {!hasExistingAccess ? (
+              <div className="space-y-4">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="create_access"
+                    checked={formData.create_access}
+                    onCheckedChange={(checked) => setFormData({ ...formData, create_access: checked as boolean })}
+                  />
+                  <Label htmlFor="create_access" className="cursor-pointer">
+                    Criar acesso ao sistema
+                  </Label>
+                </div>
+
+                {formData.create_access && (
+                  <div className="ml-6 p-4 border rounded-lg bg-muted/30 space-y-4">
+                    <p className="text-sm text-muted-foreground">
+                      O profissional poderá acessar o sistema com o email e senha definidos abaixo.
+                    </p>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="password">
+                          Senha <span className="text-destructive">*</span>
+                        </Label>
+                        <Input
+                          id="password"
+                          type="password"
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          placeholder="Mínimo 6 caracteres"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="confirmPassword">
+                          Confirmar Senha <span className="text-destructive">*</span>
+                        </Label>
+                        <Input
+                          id="confirmPassword"
+                          type="password"
+                          value={confirmPassword}
+                          onChange={(e) => setConfirmPassword(e.target.value)}
+                          placeholder="Confirme a senha"
+                        />
+                      </div>
+                    </div>
+                    {passwordError && (
+                      <p className="text-sm text-destructive">{passwordError}</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="flex items-center space-x-2 p-3 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg">
+                <div className="h-2 w-2 rounded-full bg-green-500"></div>
+                <span className="text-sm text-green-700 dark:text-green-300">
+                  Este profissional já possui acesso ao sistema
+                </span>
+              </div>
+            )}
           </div>
 
           <DialogFooter>
