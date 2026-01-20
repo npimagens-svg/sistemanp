@@ -2,11 +2,17 @@ import { createContext, useContext, useEffect, useState, ReactNode } from "react
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
+export type AppRole = "admin" | "manager" | "receptionist" | "financial" | "professional";
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
   salonId: string | null;
+  userRole: AppRole | null;
+  isAdmin: boolean;
+  isMaster: boolean;
+  canDelete: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (
     email: string,
@@ -20,11 +26,15 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Master user email - only this user can delete records
+const MASTER_USER_EMAIL = "vanieri_2006@hotmail.com";
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [salonId, setSalonId] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<AppRole | null>(null);
 
   useEffect(() => {
     // Set up auth state listener FIRST
@@ -66,6 +76,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     if (data?.salon_id) {
       setSalonId(data.salon_id);
+      // Fetch user role
+      fetchUserRole(userId, data.salon_id);
+    }
+  };
+
+  const fetchUserRole = async (userId: string, salonId: string) => {
+    const { data } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId)
+      .eq("salon_id", salonId)
+      .maybeSingle();
+    
+    if (data?.role) {
+      setUserRole(data.role as AppRole);
     }
   };
 
@@ -112,10 +137,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = async () => {
     await supabase.auth.signOut();
     setSalonId(null);
+    setUserRole(null);
   };
 
+  const isMaster = user?.email === MASTER_USER_EMAIL;
+  const isAdmin = userRole === "admin";
+  const canDelete = isMaster;
+
   return (
-    <AuthContext.Provider value={{ user, session, loading, salonId, signIn, signUp, signOut, createSalonForCurrentUser }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      session, 
+      loading, 
+      salonId, 
+      userRole,
+      isAdmin,
+      isMaster,
+      canDelete,
+      signIn, 
+      signUp, 
+      signOut, 
+      createSalonForCurrentUser 
+    }}>
       {children}
     </AuthContext.Provider>
   );

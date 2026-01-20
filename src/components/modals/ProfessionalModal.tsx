@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/select";
 import { Professional, ProfessionalInput } from "@/hooks/useProfessionals";
 import { AvatarUpload } from "@/components/shared/AvatarUpload";
+import type { AppRole } from "@/contexts/AuthContext";
 
 interface ProfessionalModalProps {
   open: boolean;
@@ -41,6 +42,14 @@ const ROLES = [
   { value: "outro", label: "Outro" },
 ];
 
+// Níveis de acesso do sistema
+const ACCESS_LEVELS: { value: AppRole; label: string; description: string }[] = [
+  { value: "professional", label: "Profissional", description: "Acesso básico: visualiza agenda pessoal e comandas" },
+  { value: "receptionist", label: "Recepcionista", description: "Agenda, clientes, comandas e caixa" },
+  { value: "financial", label: "Financeiro", description: "Relatórios financeiros, caixa e comandas" },
+  { value: "manager", label: "Gerente", description: "Acesso completo exceto configurações do salão" },
+];
+
 export function ProfessionalModal({ open, onOpenChange, professional, onSubmit, isLoading }: ProfessionalModalProps) {
   const [formData, setFormData] = useState<ProfessionalInput>({
     name: "",
@@ -56,6 +65,7 @@ export function ProfessionalModal({ open, onOpenChange, professional, onSubmit, 
     has_schedule: true,
     create_access: false,
     avatar_url: null,
+    access_level: "professional" as AppRole,
   });
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -99,6 +109,7 @@ export function ProfessionalModal({ open, onOpenChange, professional, onSubmit, 
         has_schedule: true,
         create_access: false,
         avatar_url: null,
+        access_level: "professional" as AppRole,
       });
       setPassword("");
       setConfirmPassword("");
@@ -289,6 +300,32 @@ export function ProfessionalModal({ open, onOpenChange, professional, onSubmit, 
                     <p className="text-sm text-muted-foreground">
                       O profissional poderá acessar o sistema com o email e senha definidos abaixo.
                     </p>
+                    
+                    {/* Nível de Acesso */}
+                    <div className="space-y-2">
+                      <Label htmlFor="access_level">
+                        Nível de Acesso <span className="text-destructive">*</span>
+                      </Label>
+                      <Select
+                        value={formData.access_level}
+                        onValueChange={(value) => setFormData({ ...formData, access_level: value as AppRole })}
+                      >
+                        <SelectTrigger id="access_level">
+                          <SelectValue placeholder="Selecione o nível de acesso" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {ACCESS_LEVELS.map((level) => (
+                            <SelectItem key={level.value} value={level.value}>
+                              <div className="flex flex-col">
+                                <span className="font-medium">{level.label}</span>
+                                <span className="text-xs text-muted-foreground">{level.description}</span>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="password">
