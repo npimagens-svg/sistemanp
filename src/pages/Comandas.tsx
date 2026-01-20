@@ -661,6 +661,7 @@ export default function Comandas() {
         services={services}
         isEditingClosed={editingClosedComanda}
         userCaixaId={userOpenCaixaId}
+        openCaixas={openCaixas}
         onDelete={(comanda) => {
           setComandaModalOpen(false);
           handleDeleteClick(comanda);
