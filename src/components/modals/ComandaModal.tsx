@@ -10,7 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { 
   Loader2, Receipt, CheckCircle, Calendar, Eye, Pencil, Trash2, 
-  Printer, Clock, Plus, Minus, CreditCard, Banknote, Smartphone, X, Wallet
+  Printer, Clock, Plus, Minus, CreditCard, Banknote, Smartphone, X, Wallet, RefreshCw
 } from "lucide-react";
 import { format, isSameDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -68,6 +68,7 @@ export function ComandaModal({ comanda, open, onClose, professionals, services, 
   const [editableItems, setEditableItems] = useState<EditableItem[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [isClosing, setIsClosing] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
   const [selectedCaixaId, setSelectedCaixaId] = useState<string | null>(null);
   const [caixaSelectModalOpen, setCaixaSelectModalOpen] = useState(false);
 
@@ -307,6 +308,120 @@ export function ComandaModal({ comanda, open, onClose, professionals, services, 
       .eq("id", comanda.id);
     queryClient.invalidateQueries({ queryKey: ["comandas", salonId] });
     queryClient.invalidateQueries({ queryKey: ["comanda_items", comanda.id] });
+  };
+
+  // Sync comanda with appointments from agenda
+  const handleSyncComanda = async () => {
+    if (!comanda || !salonId) return;
+    
+    setIsUpdating(true);
+    try {
+      // Get the comanda's original date range (start to end of that day)
+      const comandaDate = new Date(comanda.created_at);
+      const startOfDay = new Date(comandaDate);
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(comandaDate);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      // Fetch all appointments for this client on the comanda's date
+      const { data: appointments, error: appointmentsError } = await supabase
+        .from("appointments")
+        .select(`
+          *,
+          services(name, price, duration_minutes)
+        `)
+        .eq("salon_id", salonId)
+        .eq("client_id", comanda.client_id)
+        .gte("scheduled_at", startOfDay.toISOString())
+        .lte("scheduled_at", endOfDay.toISOString())
+        .neq("status", "cancelled");
+
+      if (appointmentsError) throw appointmentsError;
+
+      // Get current comanda items
+      const { data: currentItems } = await supabase
+        .from("comanda_items")
+        .select("*")
+        .eq("comanda_id", comanda.id);
+
+      // Track changes made
+      let itemsAdded = 0;
+      let itemsUpdated = 0;
+
+      // Check each appointment
+      for (const appointment of appointments || []) {
+        if (!appointment.service_id || !appointment.services) continue;
+
+        // Find if this service already exists in comanda items
+        const existingItem = currentItems?.find(
+          item => item.service_id === appointment.service_id && 
+                  item.professional_id === appointment.professional_id
+        );
+
+        if (existingItem) {
+          // Update existing item with appointment data
+          const newPrice = appointment.price ?? appointment.services.price ?? 0;
+          if (existingItem.unit_price !== newPrice) {
+            await supabase
+              .from("comanda_items")
+              .update({
+                unit_price: newPrice,
+                total_price: newPrice * existingItem.quantity,
+              })
+              .eq("id", existingItem.id);
+            itemsUpdated++;
+          }
+        } else {
+          // Add new item from appointment
+          await supabase
+            .from("comanda_items")
+            .insert({
+              comanda_id: comanda.id,
+              service_id: appointment.service_id,
+              professional_id: appointment.professional_id,
+              description: appointment.services.name,
+              item_type: "service",
+              quantity: 1,
+              unit_price: appointment.price ?? appointment.services.price ?? 0,
+              total_price: appointment.price ?? appointment.services.price ?? 0,
+            });
+          itemsAdded++;
+        }
+      }
+
+      // Update comanda date to today
+      const now = new Date();
+      await supabase
+        .from("comandas")
+        .update({ 
+          created_at: now.toISOString(),
+          updated_at: now.toISOString(),
+        })
+        .eq("id", comanda.id);
+
+      // Refresh data
+      queryClient.invalidateQueries({ queryKey: ["comandas", salonId] });
+      queryClient.invalidateQueries({ queryKey: ["comanda_items", comanda.id] });
+
+      const messages = [];
+      if (itemsAdded > 0) messages.push(`${itemsAdded} serviço(s) adicionado(s)`);
+      if (itemsUpdated > 0) messages.push(`${itemsUpdated} serviço(s) atualizado(s)`);
+      messages.push("Data atualizada para hoje");
+
+      toast({ 
+        title: "Comanda atualizada!", 
+        description: messages.join(". ") 
+      });
+    } catch (error: any) {
+      console.error("Error syncing comanda:", error);
+      toast({ 
+        title: "Erro ao atualizar comanda", 
+        description: error.message, 
+        variant: "destructive" 
+      });
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   // Payment functions
@@ -819,9 +934,14 @@ export function ComandaModal({ comanda, open, onClose, professionals, services, 
 
         {/* Footer Actions */}
         <div className="flex items-center justify-between border-t pt-4 flex-shrink-0">
-          <Button variant="outline" className="gap-2" onClick={updateComandaTotals}>
-            <Clock className="h-4 w-4" />
-            Atualizar Comanda
+          <Button 
+            variant="outline" 
+            className="gap-2" 
+            onClick={handleSyncComanda}
+            disabled={isUpdating}
+          >
+            <RefreshCw className={`h-4 w-4 ${isUpdating ? "animate-spin" : ""}`} />
+            {isUpdating ? "Atualizando..." : "Atualizar Comanda"}
           </Button>
           <div className="flex items-center gap-2">
             <div className="text-right mr-4">
