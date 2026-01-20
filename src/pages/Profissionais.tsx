@@ -25,9 +25,13 @@ import { useProfessionals, Professional, ProfessionalInput } from "@/hooks/usePr
 import { ProfessionalModal } from "@/components/modals/ProfessionalModal";
 import { DeleteConfirmModal } from "@/components/modals/DeleteConfirmModal";
 import { ProfessionalCommissionsTab } from "@/components/professionals/ProfessionalCommissionsTab";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 
 export function Profissionais() {
   const { professionals, isLoading, createProfessional, updateProfessional, deleteProfessional, isCreating, isUpdating, isDeleting } = useProfessionals();
+  const { canDelete } = useAuth();
+  const { toast } = useToast();
   
   const [search, setSearch] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
@@ -53,6 +57,14 @@ export function Profissionais() {
   };
 
   const handleDelete = (professional: Professional) => {
+    if (!canDelete) {
+      toast({
+        title: "Acesso negado",
+        description: "Apenas o usuário master pode excluir profissionais.",
+        variant: "destructive",
+      });
+      return;
+    }
     setSelectedProfessional(professional);
     setDeleteModalOpen(true);
   };
@@ -198,13 +210,15 @@ export function Profissionais() {
                                 <Percent className="h-4 w-4 mr-2" />
                                 Comissões por Serviço
                               </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => handleDelete(professional)}
-                                className="text-destructive"
-                              >
-                                <Trash2 className="h-4 w-4 mr-2" />
-                                Excluir
-                              </DropdownMenuItem>
+                              {canDelete && (
+                                <DropdownMenuItem
+                                  onClick={() => handleDelete(professional)}
+                                  className="text-destructive"
+                                >
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Excluir
+                                </DropdownMenuItem>
+                              )}
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>

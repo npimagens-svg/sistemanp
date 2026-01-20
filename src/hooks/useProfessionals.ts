@@ -24,6 +24,8 @@ export interface Professional {
   updated_at: string;
 }
 
+export type AppRole = "admin" | "manager" | "receptionist" | "financial" | "professional";
+
 export interface ProfessionalInput {
   name: string;
   nickname?: string;
@@ -39,6 +41,7 @@ export interface ProfessionalInput {
   create_access?: boolean;
   avatar_url?: string | null;
   password?: string; // Password for creating system access
+  access_level?: AppRole; // System access level
 }
 
 export function useProfessionals() {
@@ -80,6 +83,7 @@ export function useProfessionals() {
             fullName: input.name,
             salonId: salonId,
             professionalId: data.id,
+            accessLevel: input.access_level || "professional",
           },
         });
 
@@ -133,6 +137,7 @@ export function useProfessionals() {
             fullName: input.name,
             salonId: data.salon_id,
             professionalId: data.id,
+            accessLevel: input.access_level || "professional",
           },
         });
 

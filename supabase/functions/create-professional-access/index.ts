@@ -50,6 +50,7 @@ Deno.serve(async (req) => {
     const fullName = String(body?.fullName ?? "").trim();
     const salonId = String(body?.salonId ?? "").trim();
     const professionalId = String(body?.professionalId ?? "").trim();
+    const accessLevel = String(body?.accessLevel ?? "professional").trim();
 
     if (!email || !password || !fullName || !salonId || !professionalId) {
       return new Response(JSON.stringify({ error: "Missing required fields" }), {
@@ -116,10 +117,13 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Assign role
+    // Assign role based on accessLevel
+    const validRoles = ["admin", "manager", "receptionist", "financial", "professional"];
+    const roleToAssign = validRoles.includes(accessLevel) ? accessLevel : "professional";
+    
     const { error: roleInsertError } = await adminClient
       .from("user_roles")
-      .insert({ user_id: newUserId, salon_id: salonId, role: "professional" });
+      .insert({ user_id: newUserId, salon_id: salonId, role: roleToAssign });
 
     if (roleInsertError) {
       console.error("create-professional-access: user_roles insert failed", roleInsertError);
