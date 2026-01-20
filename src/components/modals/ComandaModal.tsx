@@ -77,6 +77,11 @@ export function ComandaModal({ comanda, open, onClose, professionals, services, 
   const today = new Date();
   const isFromToday = isSameDay(comandaDate, today);
 
+  // Check if comanda's caixa is closed (locked state)
+  const comandaCaixa = comanda?.caixa_id ? openCaixas.find(c => c.id === comanda.caixa_id) : null;
+  const isCaixaClosed = comanda?.caixa_id ? !comandaCaixa : false;
+  const isComandaLocked = comanda?.closed_at && isCaixaClosed;
+
   // Get available caixas for the comanda date
   const availableCaixas = openCaixas.filter(c => {
     const caixaDate = new Date(c.opened_at);
@@ -594,6 +599,24 @@ export function ComandaModal({ comanda, open, onClose, professionals, services, 
             </TabsList>
 
             <TabsContent value="itens" className="space-y-4 mt-4">
+              {/* Locked Comanda Warning */}
+              {isComandaLocked && (
+                <Card className="border-destructive bg-destructive/10">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-3">
+                      <X className="h-5 w-5 text-destructive" />
+                      <div>
+                        <p className="font-medium text-destructive">Comanda Bloqueada</p>
+                        <p className="text-sm text-muted-foreground">
+                          Esta comanda está fechada e o caixa associado foi encerrado. 
+                          Para editar, reabra o caixa na página Financeiro → Histórico.
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
               {/* Client Info */}
               <Card className="bg-muted/30">
                 <CardContent className="p-3">
@@ -725,6 +748,7 @@ export function ComandaModal({ comanda, open, onClose, professionals, services, 
                                       size="icon" 
                                       className="h-8 w-8 text-primary"
                                       onClick={() => toggleEditItem(item.id)}
+                                      disabled={isComandaLocked}
                                     >
                                       <Pencil className="h-4 w-4" />
                                     </Button>
@@ -733,7 +757,7 @@ export function ComandaModal({ comanda, open, onClose, professionals, services, 
                                       size="icon" 
                                       className="h-8 w-8 text-destructive"
                                       onClick={() => removeItem(item.id)}
-                                      disabled={isRemoving}
+                                      disabled={isRemoving || isComandaLocked}
                                     >
                                       <Trash2 className="h-4 w-4" />
                                     </Button>
@@ -749,31 +773,33 @@ export function ComandaModal({ comanda, open, onClose, professionals, services, 
                 </CardContent>
               </Card>
 
-              {/* Add Item Section */}
-              <Card className="bg-muted/30">
-                <CardContent className="p-4 space-y-3">
-                  <Label className="text-sm font-medium">Adicionar Serviço</Label>
-                  <ServiceSearchSelect
-                    services={services}
-                    value={null}
-                    onSelect={(serviceId, service) => {
-                      if (serviceId && service) {
-                        handleAddService(serviceId);
-                      }
-                    }}
-                    placeholder="Buscar serviço..."
-                    showPrice
-                  />
-                  <div className="flex items-center gap-2 pt-2">
-                    <Button variant="outline" size="sm" className="gap-2">
-                      <Receipt className="h-4 w-4" />
-                      Produto
-                    </Button>
-                    <Button variant="outline" size="sm">Pacote</Button>
-                    <Button variant="outline" size="sm">Caixinha</Button>
-                  </div>
-                </CardContent>
-              </Card>
+              {/* Add Item Section - disabled when locked */}
+              {!isComandaLocked && (
+                <Card className="bg-muted/30">
+                  <CardContent className="p-4 space-y-3">
+                    <Label className="text-sm font-medium">Adicionar Serviço</Label>
+                    <ServiceSearchSelect
+                      services={services}
+                      value={null}
+                      onSelect={(serviceId, service) => {
+                        if (serviceId && service) {
+                          handleAddService(serviceId);
+                        }
+                      }}
+                      placeholder="Buscar serviço..."
+                      showPrice
+                    />
+                    <div className="flex items-center gap-2 pt-2">
+                      <Button variant="outline" size="sm" className="gap-2">
+                        <Receipt className="h-4 w-4" />
+                        Produto
+                      </Button>
+                      <Button variant="outline" size="sm">Pacote</Button>
+                      <Button variant="outline" size="sm">Caixinha</Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </TabsContent>
 
             <TabsContent value="pagamento" className="space-y-4 mt-4">

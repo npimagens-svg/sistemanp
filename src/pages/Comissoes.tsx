@@ -57,16 +57,19 @@ export default function Comissoes() {
     return map;
   }, [services]);
 
-  // Filter closed comandas within date range
+  // Filter closed comandas within date range - using created_at for proper date attribution
   const filteredComandas = useMemo(() => {
     const start = new Date(dateStart);
+    start.setHours(0, 0, 0, 0);
     const end = new Date(dateEnd);
     end.setHours(23, 59, 59, 999);
 
     return comandas.filter(comanda => {
+      // Only include closed comandas
       if (!comanda.closed_at) return false;
-      const closedDate = new Date(comanda.closed_at);
-      return isWithinInterval(closedDate, { start, end });
+      // Use created_at for date filtering so retroactive closures appear in correct period
+      const comandaDate = new Date(comanda.created_at);
+      return isWithinInterval(comandaDate, { start, end });
     });
   }, [comandas, dateStart, dateEnd]);
 
@@ -98,10 +101,13 @@ export default function Comissoes() {
         const serviceValue = item.total_price || 0;
         const commissionValue = (serviceValue * commissionPercent) / 100;
 
+        // Use created_at for the date display to show when service was performed
+        const displayDate = format(new Date(comanda.created_at), "dd/MM/yyyy");
+
         items.push({
           comandaId: comanda.id,
-          comandaNumber: `Nº${String(idx + 1).padStart(4, "0")} (${format(new Date(comanda.closed_at!), "dd/MM/yyyy")})`,
-          date: format(new Date(comanda.closed_at!), "dd/MM/yyyy"),
+          comandaNumber: `Nº${String(idx + 1).padStart(4, "0")} (${displayDate})`,
+          date: displayDate,
           serviceName: `${item.quantity || 1} x ${serviceName}`,
           clientName: comanda.client_id ? clientMap.get(comanda.client_id) || "Cliente" : "Cliente avulso",
           serviceValue,

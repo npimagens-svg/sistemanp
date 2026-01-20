@@ -33,10 +33,12 @@ export default function Financeiro() {
     isLoading, 
     openCaixa, 
     closeCaixa,
+    reopenCaixa,
     updateCaixa,
     getCurrentUserOpenCaixa,
     isOpening,
     isClosing,
+    isReopening,
     isUpdating,
   } = useCaixas();
 
@@ -78,6 +80,10 @@ export default function Financeiro() {
   const handleOpenEditModal = (caixa: Caixa) => {
     setSelectedCaixa(caixa);
     setEditCaixaModalOpen(true);
+  };
+
+  const handleReopenCaixa = (caixa: Caixa) => {
+    reopenCaixa(caixa.id);
   };
 
   // Group closed caixas by date for history
@@ -294,7 +300,9 @@ export default function Financeiro() {
                       key={caixa.id} 
                       caixa={caixa}
                       showEditButton={true}
+                      showReopenButton={true}
                       onEdit={() => handleOpenEditModal(caixa)}
+                      onReopen={() => handleReopenCaixa(caixa)}
                       onView={() => {/* TODO: implement detail view */}}
                     />
                   ))}

@@ -134,6 +134,30 @@ export function useCaixas() {
     },
   });
 
+  const reopenCaixaMutation = useMutation({
+    mutationFn: async (caixaId: string) => {
+      const { data, error } = await supabase
+        .from("caixas")
+        .update({
+          closed_at: null,
+          closing_balance: null,
+        })
+        .eq("id", caixaId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["caixas", salonId] });
+      toast({ title: "Caixa reaberto com sucesso" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Erro ao reabrir caixa", description: error.message, variant: "destructive" });
+    },
+  });
+
   const updateCaixaTotalsMutation = useMutation({
     mutationFn: async ({ caixaId, paymentMethod, amount }: { caixaId: string; paymentMethod: string; amount: number }) => {
       const { data: currentCaixa, error: fetchError } = await supabase
@@ -258,12 +282,14 @@ export function useCaixas() {
     error,
     openCaixa: openCaixaMutation.mutate,
     closeCaixa: closeCaixaMutation.mutate,
+    reopenCaixa: reopenCaixaMutation.mutate,
     updateCaixa: updateCaixaMutation.mutate,
     updateCaixaTotals: updateCaixaTotalsMutation.mutate,
     getCurrentUserOpenCaixa,
     getCaixasByDate,
     isOpening: openCaixaMutation.isPending,
     isClosing: closeCaixaMutation.isPending,
+    isReopening: reopenCaixaMutation.isPending,
     isUpdating: updateCaixaMutation.isPending,
   };
 }
