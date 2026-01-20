@@ -80,16 +80,6 @@ export default function Financeiro() {
     setEditCaixaModalOpen(true);
   };
 
-  const handleUpdateCaixa = (openingBalance: number, notes?: string) => {
-    if (!selectedCaixa) return;
-    updateCaixa({ caixaId: selectedCaixa.id, openingBalance, notes }, {
-      onSuccess: () => {
-        setEditCaixaModalOpen(false);
-        setSelectedCaixa(null);
-      }
-    });
-  };
-
   // Group closed caixas by date for history
   const caixasByDate = closedCaixas.filter(c => 
     isSameDay(new Date(c.opened_at), selectedDate)
@@ -340,9 +330,7 @@ export default function Financeiro() {
           setEditCaixaModalOpen(false);
           setSelectedCaixa(null);
         }}
-        onConfirm={handleUpdateCaixa}
         caixa={selectedCaixa}
-        isLoading={isUpdating}
       />
     </AppLayoutNew>
   );
