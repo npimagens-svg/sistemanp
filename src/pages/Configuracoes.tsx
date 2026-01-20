@@ -13,6 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -26,7 +27,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Shield, Users, Settings, MoreHorizontal, Trash2, Loader2, Building2 } from "lucide-react";
+import { Shield, Users, Settings, MoreHorizontal, Trash2, Loader2, Building2, Wallet } from "lucide-react";
 import { useAuth, AppRole } from "@/contexts/AuthContext";
 import { useUserAccess, UserWithAccess } from "@/hooks/useUserAccess";
 import { DeleteConfirmModal } from "@/components/modals/DeleteConfirmModal";
@@ -42,7 +43,7 @@ const ROLE_LABELS: Record<AppRole, { label: string; description: string; color: 
 
 export default function Configuracoes() {
   const { isMaster, user } = useAuth();
-  const { users, isLoading, updateRole, deleteAccess, isUpdating, isDeleting } = useUserAccess();
+  const { users, isLoading, updateRole, updateCanOpenCaixa, deleteAccess, isUpdating, isDeleting } = useUserAccess();
   const { toast } = useToast();
   
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -58,6 +59,18 @@ export default function Configuracoes() {
       return;
     }
     updateRole({ userId, newRole });
+  };
+
+  const handleToggleCanOpenCaixa = (userId: string, currentValue: boolean) => {
+    if (!isMaster) {
+      toast({
+        title: "Acesso negado",
+        description: "Apenas o usuário master pode alterar permissões.",
+        variant: "destructive",
+      });
+      return;
+    }
+    updateCanOpenCaixa({ userId, canOpenCaixa: !currentValue });
   };
 
   const handleDeleteAccess = (userAccess: UserWithAccess) => {
@@ -160,6 +173,7 @@ export default function Configuracoes() {
                         <TableHead>Usuário</TableHead>
                         <TableHead>Profissional Vinculado</TableHead>
                         <TableHead>Nível de Acesso</TableHead>
+                        <TableHead className="text-center">Abrir Caixa</TableHead>
                         <TableHead className="w-[80px]">Ações</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -226,6 +240,19 @@ export default function Configuracoes() {
                                     <Badge variant="destructive" className="text-xs">Master</Badge>
                                   )}
                                 </div>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-center">
+                              {isMaster && !isAdmin ? (
+                                <Switch
+                                  checked={userAccess.can_open_caixa}
+                                  onCheckedChange={() => handleToggleCanOpenCaixa(userAccess.user_id, userAccess.can_open_caixa)}
+                                  disabled={isUpdating}
+                                />
+                              ) : (
+                                <Badge variant={userAccess.can_open_caixa ? "default" : "secondary"}>
+                                  {userAccess.can_open_caixa ? "Sim" : "Não"}
+                                </Badge>
                               )}
                             </TableCell>
                             <TableCell>

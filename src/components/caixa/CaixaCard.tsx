@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { X, Eye } from "lucide-react";
+import { X, Eye, Pencil } from "lucide-react";
 import { Caixa } from "@/hooks/useCaixas";
 
 interface CaixaCardProps {
@@ -12,10 +12,12 @@ interface CaixaCardProps {
   userName?: string;
   onClose?: () => void;
   onView?: () => void;
+  onEdit?: () => void;
   showCloseButton?: boolean;
+  showEditButton?: boolean;
 }
 
-export function CaixaCard({ caixa, userName, onClose, onView, showCloseButton = false }: CaixaCardProps) {
+export function CaixaCard({ caixa, userName, onClose, onView, onEdit, showCloseButton = false, showEditButton = false }: CaixaCardProps) {
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
   };
@@ -104,8 +106,14 @@ export function CaixaCard({ caixa, userName, onClose, onView, showCloseButton = 
         </div>
 
         {/* Actions */}
-        {(showCloseButton || onView) && (
+        {(showCloseButton || onView || showEditButton) && (
           <div className="px-4 pb-4 flex gap-2">
+            {showEditButton && onEdit && (
+              <Button variant="outline" size="sm" className="flex-1 gap-1" onClick={onEdit}>
+                <Pencil className="h-4 w-4" />
+                Editar
+              </Button>
+            )}
             {onView && (
               <Button variant="outline" size="sm" className="flex-1 gap-1" onClick={onView}>
                 <Eye className="h-4 w-4" />

@@ -11,6 +11,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { CaixaCard } from "@/components/caixa/CaixaCard";
 import { OpenCaixaModal } from "@/components/caixa/OpenCaixaModal";
 import { CloseCaixaModal } from "@/components/caixa/CloseCaixaModal";
+import { EditCaixaModal } from "@/components/caixa/EditCaixaModal";
 import { format, isSameDay, getDaysInMonth, startOfMonth, setDate } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -19,6 +20,7 @@ export default function Financeiro() {
   const location = useLocation();
   const [openCaixaModalOpen, setOpenCaixaModalOpen] = useState(false);
   const [closeCaixaModalOpen, setCloseCaixaModalOpen] = useState(false);
+  const [editCaixaModalOpen, setEditCaixaModalOpen] = useState(false);
   const [selectedCaixa, setSelectedCaixa] = useState<Caixa | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [userOpenCaixa, setUserOpenCaixa] = useState<Caixa | null>(null);
@@ -30,10 +32,12 @@ export default function Financeiro() {
     closedCaixas, 
     isLoading, 
     openCaixa, 
-    closeCaixa, 
+    closeCaixa,
+    updateCaixa,
     getCurrentUserOpenCaixa,
     isOpening,
     isClosing,
+    isUpdating,
   } = useCaixas();
 
   // Determine active tab from URL
@@ -69,6 +73,21 @@ export default function Financeiro() {
   const handleOpenCloseModal = (caixa: Caixa) => {
     setSelectedCaixa(caixa);
     setCloseCaixaModalOpen(true);
+  };
+
+  const handleOpenEditModal = (caixa: Caixa) => {
+    setSelectedCaixa(caixa);
+    setEditCaixaModalOpen(true);
+  };
+
+  const handleUpdateCaixa = (openingBalance: number, notes?: string) => {
+    if (!selectedCaixa) return;
+    updateCaixa({ caixaId: selectedCaixa.id, openingBalance, notes }, {
+      onSuccess: () => {
+        setEditCaixaModalOpen(false);
+        setSelectedCaixa(null);
+      }
+    });
   };
 
   // Group closed caixas by date for history
@@ -139,7 +158,9 @@ export default function Financeiro() {
                       key={caixa.id} 
                       caixa={caixa}
                       showCloseButton={true}
+                      showEditButton={true}
                       onClose={() => handleOpenCloseModal(caixa)}
+                      onEdit={() => handleOpenEditModal(caixa)}
                     />
                   ))}
               </div>
@@ -282,6 +303,8 @@ export default function Financeiro() {
                     <CaixaCard 
                       key={caixa.id} 
                       caixa={caixa}
+                      showEditButton={true}
+                      onEdit={() => handleOpenEditModal(caixa)}
                       onView={() => {/* TODO: implement detail view */}}
                     />
                   ))}
@@ -309,6 +332,17 @@ export default function Financeiro() {
         onConfirm={handleCloseCaixa}
         caixa={selectedCaixa}
         isLoading={isClosing}
+      />
+
+      <EditCaixaModal
+        open={editCaixaModalOpen}
+        onClose={() => {
+          setEditCaixaModalOpen(false);
+          setSelectedCaixa(null);
+        }}
+        onConfirm={handleUpdateCaixa}
+        caixa={selectedCaixa}
+        isLoading={isUpdating}
       />
     </AppLayoutNew>
   );
