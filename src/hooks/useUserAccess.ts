@@ -11,6 +11,7 @@ export interface UserWithAccess {
   role: AppRole;
   professional_id: string | null;
   professional_name: string | null;
+  can_open_caixa: boolean;
   created_at: string;
 }
 
@@ -27,7 +28,7 @@ export function useUserAccess() {
       // Get all user roles for the salon
       const { data: roles, error: rolesError } = await supabase
         .from("user_roles")
-        .select("id, user_id, role, salon_id")
+        .select("id, user_id, role, salon_id, can_open_caixa")
         .eq("salon_id", salonId);
 
       if (rolesError) throw rolesError;
@@ -67,6 +68,7 @@ export function useUserAccess() {
           role: role.role as AppRole,
           professional_id: professional?.id || null,
           professional_name: professional?.name || null,
+          can_open_caixa: role.can_open_caixa ?? false,
           created_at: new Date().toISOString(),
         });
       }
@@ -95,6 +97,32 @@ export function useUserAccess() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["user-access", salonId] });
       toast({ title: "Permissão atualizada com sucesso!" });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Erro ao atualizar permissão",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateCanOpenCaixaMutation = useMutation({
+    mutationFn: async ({ userId, canOpenCaixa }: { userId: string; canOpenCaixa: boolean }) => {
+      if (!salonId) throw new Error("Salão não encontrado");
+      if (!isMaster) throw new Error("Apenas o usuário master pode alterar permissões");
+
+      const { error } = await supabase
+        .from("user_roles")
+        .update({ can_open_caixa: canOpenCaixa })
+        .eq("user_id", userId)
+        .eq("salon_id", salonId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["user-access", salonId] });
+      toast({ title: "Permissão de caixa atualizada!" });
     },
     onError: (error: Error) => {
       toast({
@@ -134,8 +162,9 @@ export function useUserAccess() {
     isLoading: query.isLoading,
     error: query.error,
     updateRole: updateRoleMutation.mutate,
+    updateCanOpenCaixa: updateCanOpenCaixaMutation.mutate,
     deleteAccess: deleteAccessMutation.mutate,
-    isUpdating: updateRoleMutation.isPending,
+    isUpdating: updateRoleMutation.isPending || updateCanOpenCaixaMutation.isPending,
     isDeleting: deleteAccessMutation.isPending,
   };
 }

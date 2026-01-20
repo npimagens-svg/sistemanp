@@ -178,6 +178,31 @@ export function useCaixas() {
     },
   });
 
+  const updateCaixaMutation = useMutation({
+    mutationFn: async ({ caixaId, openingBalance, notes }: { caixaId: string; openingBalance?: number; notes?: string }) => {
+      const updates: Partial<Caixa> = {};
+      if (openingBalance !== undefined) updates.opening_balance = openingBalance;
+      if (notes !== undefined) updates.notes = notes;
+
+      const { data, error } = await supabase
+        .from("caixas")
+        .update(updates)
+        .eq("id", caixaId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["caixas", salonId] });
+      toast({ title: "Caixa atualizado com sucesso" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Erro ao atualizar caixa", description: error.message, variant: "destructive" });
+    },
+  });
+
   // Get the current user's open caixa
   const getCurrentUserOpenCaixa = async (): Promise<Caixa | null> => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -233,10 +258,12 @@ export function useCaixas() {
     error,
     openCaixa: openCaixaMutation.mutate,
     closeCaixa: closeCaixaMutation.mutate,
+    updateCaixa: updateCaixaMutation.mutate,
     updateCaixaTotals: updateCaixaTotalsMutation.mutate,
     getCurrentUserOpenCaixa,
     getCaixasByDate,
     isOpening: openCaixaMutation.isPending,
     isClosing: closeCaixaMutation.isPending,
+    isUpdating: updateCaixaMutation.isPending,
   };
 }
