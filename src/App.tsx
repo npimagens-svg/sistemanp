@@ -9,13 +9,13 @@ import Agenda from "./pages/Agenda";
 import Clientes from "./pages/Clientes";
 import Servicos from "./pages/Servicos";
 import AuthNew from "./pages/AuthNew";
-import SetupSalon from "./pages/SetupSalon";
 import { Profissionais } from "./pages/Profissionais";
 import Comandas from "./pages/Comandas";
 import Financeiro from "./pages/Financeiro";
 import Comissoes from "./pages/Comissoes";
 import Estoque from "./pages/Estoque";
-import { Marketing, Relatorios, Configuracoes } from "./pages/PlaceholderPages";
+import Configuracoes from "./pages/Configuracoes";
+import { Marketing, Relatorios } from "./pages/PlaceholderPages";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -29,12 +29,13 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
       </div>
     );
   if (!user) return <Navigate to="/auth" replace />;
-  if (!salonId) return <Navigate to="/setup-salon" replace />;
+  // Removed salonId check - users go directly to dashboard
+  // The salon is already set up, no need for setup-salon flow
   return <>{children}</>;
 }
 
 function AppRoutes() {
-  const { user, loading, salonId } = useAuth();
+  const { user, loading } = useAuth();
   if (loading)
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -45,10 +46,6 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/auth" element={user ? <Navigate to="/" replace /> : <AuthNew />} />
-      <Route
-        path="/setup-salon"
-        element={!user ? <Navigate to="/auth" replace /> : salonId ? <Navigate to="/" replace /> : <SetupSalon />}
-      />
 
       <Route
         path="/"
