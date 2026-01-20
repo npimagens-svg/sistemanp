@@ -125,8 +125,8 @@ export function TopNavigation() {
 
   return (
     <div className="border-b border-border bg-card">
-      {/* Main navigation */}
-      <nav className="flex items-center justify-center gap-1 px-4 py-2">
+      {/* Main navigation - scrollable on mobile */}
+      <nav className="flex items-center gap-1 px-2 md:px-4 py-2 overflow-x-auto scrollbar-hide md:justify-center">
         {navItems.map((item) => {
           const isActive = activeNavItem?.url === item.url;
           const Icon = item.icon;
@@ -136,17 +136,17 @@ export function TopNavigation() {
               key={item.url}
               onClick={() => navigate(item.url)}
               className={cn(
-                "flex flex-col items-center gap-1 px-4 py-2 rounded-lg transition-all duration-200 min-w-[80px]",
+                "flex flex-col items-center gap-1 px-2 md:px-4 py-2 rounded-lg transition-all duration-200 min-w-[60px] md:min-w-[80px] shrink-0",
                 "hover:bg-primary/10 hover:text-primary",
                 isActive && "text-primary border-b-2 border-primary bg-primary/5"
               )}
             >
               <Icon className={cn(
-                "h-6 w-6 transition-colors",
+                "h-5 w-5 md:h-6 md:w-6 transition-colors",
                 isActive ? "text-primary" : "text-muted-foreground"
               )} />
               <span className={cn(
-                "text-xs font-medium transition-colors",
+                "text-[10px] md:text-xs font-medium transition-colors whitespace-nowrap",
                 isActive ? "text-primary" : "text-muted-foreground"
               )}>
                 {item.title}
@@ -156,9 +156,9 @@ export function TopNavigation() {
         })}
       </nav>
 
-      {/* Sub navigation - styled like AVEC */}
+      {/* Sub navigation - scrollable on mobile */}
       {activeNavItem?.subItems && (
-        <div className="flex items-center gap-0 px-4 bg-muted/20 border-t border-border">
+        <div className="flex items-center gap-0 px-2 md:px-4 bg-muted/20 border-t border-border overflow-x-auto scrollbar-hide">
           {activeNavItem.subItems.map((subItem) => {
             const isSubActive = location.pathname === subItem.url;
             
@@ -167,7 +167,7 @@ export function TopNavigation() {
                 key={subItem.url}
                 onClick={() => navigate(subItem.url)}
                 className={cn(
-                  "px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-[1px]",
+                  "px-3 md:px-4 py-2 md:py-2.5 text-xs md:text-sm font-medium transition-colors border-b-2 -mb-[1px] whitespace-nowrap shrink-0",
                   isSubActive 
                     ? "border-primary text-primary bg-primary/5" 
                     : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/30"

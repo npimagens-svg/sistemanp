@@ -223,4 +223,13 @@
   .status-no-show {
     @apply bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-300;
   }
+
+  /* Hide scrollbar but keep functionality */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
 }

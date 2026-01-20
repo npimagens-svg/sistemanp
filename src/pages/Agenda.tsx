@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ChevronLeft, ChevronRight, Plus, Clock, Search, Loader2, Ban } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Calendar } from "@/components/ui/calendar";
@@ -213,18 +214,18 @@ export default function Agenda() {
 
   return (
     <AppLayoutNew>
-      <div className="flex gap-4 h-full">
-        {/* Left Sidebar - Calendar & Filters */}
-        <div className="w-72 shrink-0 space-y-4">
-          {/* Mini Calendar */}
-          <Card>
-            <CardContent className="p-4">
+      <div className="flex flex-col lg:flex-row gap-4 h-full">
+        {/* Left Sidebar - Calendar & Filters - Collapsible on mobile */}
+        <div className="lg:w-72 lg:shrink-0 space-y-4">
+          {/* Mini Calendar - Hidden on mobile, shown as collapsed on tablet */}
+          <Card className="hidden md:block">
+            <CardContent className="p-3 md:p-4">
               <div className="flex items-center justify-between mb-3">
-                <Button variant="ghost" size="icon" onClick={goToPreviousMonth}>
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={goToPreviousMonth}>
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
                 <span className="text-sm font-medium capitalize">{formatMonthYear(currentDate)}</span>
-                <Button variant="ghost" size="icon" onClick={goToNextMonth}>
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={goToNextMonth}>
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>
@@ -238,11 +239,11 @@ export default function Agenda() {
             </CardContent>
           </Card>
 
-          {/* Professionals Filter */}
+          {/* Professionals Filter - Horizontal scrollable on mobile */}
           <Card>
             <CardContent className="p-3 space-y-3">
               <div className="font-medium text-sm">Profissionais</div>
-              <div className="relative">
+              <div className="relative hidden md:block">
                 <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input 
                   placeholder="Pesquisar profissional" 
@@ -251,7 +252,39 @@ export default function Agenda() {
                   onChange={(e) => setSearchProfessional(e.target.value)}
                 />
               </div>
-              <div className="space-y-2">
+              
+              {/* Mobile: Horizontal scroll */}
+              <div className="flex md:hidden gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                <button
+                  onClick={toggleAll}
+                  className={cn(
+                    "flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium shrink-0 border",
+                    selectedProfessionalIds.length === professionals.length 
+                      ? "bg-primary text-primary-foreground border-primary" 
+                      : "bg-muted border-border"
+                  )}
+                >
+                  Todos
+                </button>
+                {professionals.filter(p => p.is_active).map((prof, index) => (
+                  <button
+                    key={prof.id}
+                    onClick={() => toggleProfessional(prof.id)}
+                    className={cn(
+                      "flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium shrink-0 border",
+                      selectedProfessionalIds.includes(prof.id)
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-muted border-border"
+                    )}
+                  >
+                    <div className={`w-2 h-2 rounded-full ${getProfessionalColor(index)}`} />
+                    {prof.nickname || prof.name.split(" ")[0]}
+                  </button>
+                ))}
+              </div>
+
+              {/* Desktop: Vertical list */}
+              <div className="hidden md:block space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Checkbox 
@@ -285,44 +318,60 @@ export default function Agenda() {
         </div>
 
         {/* Main Content - Calendar Grid */}
-        <div className="flex-1 space-y-4">
-          {/* Header Controls */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={goToToday}>
+        <div className="flex-1 space-y-3 md:space-y-4 min-w-0">
+          {/* Header Controls - Responsive */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+            {/* Mobile date display */}
+            <div className="flex items-center gap-2 md:hidden w-full">
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={goToPreviousMonth}>
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <span className="text-sm font-medium flex-1 text-center capitalize">{formatMonthYear(currentDate)}</span>
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={goToNextMonth}>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+
+            {/* Action buttons */}
+            <div className="flex items-center gap-1 md:gap-2 w-full sm:w-auto">
+              <Button variant="outline" size="sm" className="h-8 text-xs md:text-sm" onClick={goToToday}>
                 Hoje
               </Button>
               <Button 
                 variant="outline" 
                 size="sm"
+                className="h-8 text-xs md:text-sm hidden sm:flex"
                 onClick={() => {
                   setSelectedSlot(null);
                   setBlockModalOpen(true);
                 }}
               >
                 <Ban className="h-4 w-4 mr-1" />
-                Bloquear Horário
+                <span className="hidden md:inline">Bloquear Horário</span>
+                <span className="md:hidden">Bloquear</span>
               </Button>
-              <Button size="sm" onClick={() => { setSelectedAppointment(null); setSelectedSlot(null); setModalOpen(true); }}>
+              <Button size="sm" className="h-8 text-xs md:text-sm ml-auto sm:ml-0" onClick={() => { setSelectedAppointment(null); setSelectedSlot(null); setModalOpen(true); }}>
                 <Plus className="h-4 w-4 mr-1" />
-                Novo Agendamento
+                <span className="hidden sm:inline">Novo Agendamento</span>
+                <span className="sm:hidden">Novo</span>
               </Button>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">Ajustar colunas:</span>
+
+            {/* Desktop only controls */}
+            <div className="hidden lg:flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Colunas:</span>
               <div className="flex gap-1">
-                {[3, 5, 8, 10, 12].map(num => (
+                {[3, 5, 8].map(num => (
                   <Button 
                     key={num} 
                     variant={filteredProfessionals.length === num ? "default" : "outline"} 
                     size="sm"
-                    className="w-8 h-8 p-0"
+                    className="w-7 h-7 p-0 text-xs"
                   >
                     {num}
                   </Button>
                 ))}
               </div>
-              <Input placeholder="Pesquisar agendamento" className="w-48 h-8" />
             </div>
           </div>
 
@@ -342,40 +391,42 @@ export default function Agenda() {
                   </Button>
                 </div>
               ) : (
-                <div className="overflow-x-auto">
-                  <div className="min-w-[900px]">
+                <div className="overflow-x-auto scrollbar-hide">
+                  <div className="min-w-[320px] md:min-w-[600px] lg:min-w-[900px]">
                     {/* Professionals Header */}
                     <div 
                       className="grid border-b" 
-                      style={{ gridTemplateColumns: `60px repeat(${filteredProfessionals.length}, 1fr)` }}
+                      style={{ gridTemplateColumns: `48px repeat(${filteredProfessionals.length}, 1fr)` }}
                     >
-                      <div className="p-2 border-r bg-muted/30">
-                        <Clock className="h-4 w-4 text-muted-foreground mx-auto" />
+                      <div className="p-1 md:p-2 border-r bg-muted/30 flex items-center justify-center">
+                        <Clock className="h-3 w-3 md:h-4 md:w-4 text-muted-foreground" />
                       </div>
                       {filteredProfessionals.map((professional, index) => (
-                        <div key={professional.id} className="p-2 border-r last:border-r-0 bg-muted/30 text-center">
-                          <Avatar className="h-10 w-10 mx-auto mb-1">
+                        <div key={professional.id} className="p-1 md:p-2 border-r last:border-r-0 bg-muted/30 text-center">
+                          <Avatar className="h-7 w-7 md:h-10 md:w-10 mx-auto mb-0.5 md:mb-1">
                             {professional.avatar_url && (
                               <AvatarImage src={professional.avatar_url} alt={professional.name} />
                             )}
-                            <AvatarFallback className={`${getProfessionalColor(index)} text-white text-xs`}>
+                            <AvatarFallback className={`${getProfessionalColor(index)} text-white text-[10px] md:text-xs`}>
                               {getInitials(professional.name)}
                             </AvatarFallback>
                           </Avatar>
-                          <span className="font-medium text-xs block uppercase">{professional.name}</span>
+                          <span className="font-medium text-[9px] md:text-xs block uppercase truncate">
+                            {professional.nickname || professional.name.split(" ")[0]}
+                          </span>
                         </div>
                       ))}
                     </div>
 
                     {/* Time Slots */}
-                    <div className="relative max-h-[600px] overflow-y-auto">
+                    <div className="relative max-h-[calc(100vh-320px)] md:max-h-[600px] overflow-y-auto">
                       {timeSlots.map((time, timeIndex) => (
                         <div
                           key={time}
                           className="grid border-b last:border-b-0"
-                          style={{ gridTemplateColumns: `60px repeat(${filteredProfessionals.length}, 1fr)` }}
+                          style={{ gridTemplateColumns: `48px repeat(${filteredProfessionals.length}, 1fr)` }}
                         >
-                          <div className="p-1 border-r text-xs text-muted-foreground text-center bg-muted/10 flex items-center justify-center">
+                          <div className="p-0.5 md:p-1 border-r text-[10px] md:text-xs text-muted-foreground text-center bg-muted/10 flex items-center justify-center">
                             {time}
                           </div>
                           {filteredProfessionals.map((professional) => {
@@ -384,8 +435,8 @@ export default function Agenda() {
 
                             return (
                               <div
-                                key={`${professional.id}-${time}`}
-                                className="relative border-r last:border-r-0 h-10 hover:bg-primary/10 transition-colors cursor-pointer"
+                              key={`${professional.id}-${time}`}
+                                className="relative border-r last:border-r-0 h-9 md:h-10 hover:bg-primary/10 transition-colors cursor-pointer"
                                 onClick={() => handleSlotClick(professional.id, time)}
                               >
                                 {appointmentCount > 0 && (

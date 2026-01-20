@@ -7,10 +7,10 @@ interface AppLayoutNewProps {
 
 export function AppLayoutNew({ children }: AppLayoutNewProps) {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       <AppHeaderNew />
       <TopNavigation />
-      <main className="p-4 md:p-6">
+      <main className="p-2 md:p-4 lg:p-6 flex-1 overflow-x-hidden">
         {children}
       </main>
     </div>
