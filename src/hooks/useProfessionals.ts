@@ -112,13 +112,50 @@ export function useProfessionals() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, ...input }: ProfessionalInput & { id: string }) => {
-      const { data, error } = await supabase.from("professionals").update(input).eq("id", id).select().single();
+      // Extract password before updating - it's not a column in professionals table
+      const { password, ...professionalData } = input;
+
+      // Update professional record (without password)
+      const { data, error } = await supabase
+        .from("professionals")
+        .update(professionalData)
+        .eq("id", id)
+        .select()
+        .single();
       if (error) throw error;
+
+      // If create_access is requested for an existing professional, create user account
+      if (input.create_access && input.email && password && !data.user_id) {
+        const { error: accessError } = await supabase.functions.invoke("create-professional-access", {
+          body: {
+            email: input.email,
+            password: password,
+            fullName: input.name,
+            salonId: data.salon_id,
+            professionalId: data.id,
+          },
+        });
+
+        if (accessError) {
+          console.error("Error creating access:", accessError);
+          throw new Error(`Profissional atualizado, mas erro ao criar acesso: ${accessError.message}`);
+        }
+
+        return { ...data, accessCreated: true };
+      }
+
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["professionals", salonId] });
-      toast({ title: "Profissional atualizado com sucesso!" });
+      if (data?.accessCreated) {
+        toast({
+          title: "Profissional atualizado com acesso!",
+          description: "O profissional pode fazer login com o email e senha definidos.",
+        });
+      } else {
+        toast({ title: "Profissional atualizado com sucesso!" });
+      }
     },
     onError: (error: Error) => {
       toast({ title: "Erro ao atualizar profissional", description: error.message, variant: "destructive" });
