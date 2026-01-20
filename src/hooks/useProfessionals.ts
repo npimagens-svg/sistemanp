@@ -121,7 +121,6 @@ export function useProfessionals() {
       toast({ title: "Profissional atualizado com sucesso!" });
     },
     onError: (error: Error) => {
-      console.log(supabase.from("professionals").select("id", id));
       toast({ title: "Erro ao atualizar profissional", description: error.message, variant: "destructive" });
     },
   });
