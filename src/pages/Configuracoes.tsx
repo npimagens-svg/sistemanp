@@ -27,10 +27,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Shield, Users, Settings, MoreHorizontal, Trash2, Loader2, Building2, Wallet } from "lucide-react";
+import { Shield, Users, Settings, MoreHorizontal, Trash2, Loader2, Building2, CreditCard, Plus, Pencil } from "lucide-react";
 import { useAuth, AppRole } from "@/contexts/AuthContext";
 import { useUserAccess, UserWithAccess } from "@/hooks/useUserAccess";
+import { useCardBrands, CardBrand, CardBrandInput } from "@/hooks/useCardBrands";
 import { DeleteConfirmModal } from "@/components/modals/DeleteConfirmModal";
+import { CardBrandModal } from "@/components/modals/CardBrandModal";
 import { useToast } from "@/hooks/use-toast";
 
 const ROLE_LABELS: Record<AppRole, { label: string; description: string; color: string }> = {
@@ -44,10 +46,26 @@ const ROLE_LABELS: Record<AppRole, { label: string; description: string; color: 
 export default function Configuracoes() {
   const { isMaster, user } = useAuth();
   const { users, isLoading, updateRole, updateCanOpenCaixa, deleteAccess, isUpdating, isDeleting } = useUserAccess();
+  const { 
+    cardBrands, 
+    isLoading: isLoadingBrands, 
+    createCardBrand, 
+    updateCardBrand, 
+    deleteCardBrand,
+    isCreating: isCreatingBrand,
+    isUpdating: isUpdatingBrand,
+    isDeleting: isDeletingBrand 
+  } = useCardBrands();
   const { toast } = useToast();
   
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserWithAccess | null>(null);
+  
+  // Card brand states
+  const [cardBrandModalOpen, setCardBrandModalOpen] = useState(false);
+  const [selectedCardBrand, setSelectedCardBrand] = useState<CardBrand | null>(null);
+  const [deleteCardBrandModalOpen, setDeleteCardBrandModalOpen] = useState(false);
+  const [cardBrandToDelete, setCardBrandToDelete] = useState<CardBrand | null>(null);
 
   const handleRoleChange = (userId: string, newRole: AppRole) => {
     if (!isMaster) {
@@ -94,6 +112,40 @@ export default function Configuracoes() {
     }
   };
 
+  // Card brand handlers
+  const handleCreateCardBrand = () => {
+    setSelectedCardBrand(null);
+    setCardBrandModalOpen(true);
+  };
+
+  const handleEditCardBrand = (brand: CardBrand) => {
+    setSelectedCardBrand(brand);
+    setCardBrandModalOpen(true);
+  };
+
+  const handleSaveCardBrand = (data: CardBrandInput) => {
+    if (selectedCardBrand) {
+      updateCardBrand({ id: selectedCardBrand.id, ...data });
+    } else {
+      createCardBrand(data);
+    }
+    setCardBrandModalOpen(false);
+    setSelectedCardBrand(null);
+  };
+
+  const handleDeleteCardBrandClick = (brand: CardBrand) => {
+    setCardBrandToDelete(brand);
+    setDeleteCardBrandModalOpen(true);
+  };
+
+  const confirmDeleteCardBrand = () => {
+    if (cardBrandToDelete) {
+      deleteCardBrand(cardBrandToDelete.id);
+      setDeleteCardBrandModalOpen(false);
+      setCardBrandToDelete(null);
+    }
+  };
+
   const getInitials = (name: string) => {
     return name
       .split(" ")
@@ -116,6 +168,10 @@ export default function Configuracoes() {
             <TabsTrigger value="usuarios" className="flex items-center gap-2">
               <Users className="h-4 w-4" />
               Usuários e Acessos
+            </TabsTrigger>
+            <TabsTrigger value="financeiro" className="flex items-center gap-2">
+              <CreditCard className="h-4 w-4" />
+              Financeiro
             </TabsTrigger>
             <TabsTrigger value="salao" className="flex items-center gap-2">
               <Building2 className="h-4 w-4" />
@@ -305,6 +361,104 @@ export default function Configuracoes() {
             </Card>
           </TabsContent>
 
+          <TabsContent value="financeiro" className="space-y-4">
+            {/* Card Brands */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-lg">Bandeiras de Cartão</CardTitle>
+                    <CardDescription>
+                      Cadastre as bandeiras de cartão e suas taxas para descontar do valor pago antes de calcular comissões.
+                    </CardDescription>
+                  </div>
+                  <Button onClick={handleCreateCardBrand} className="gap-2">
+                    <Plus className="h-4 w-4" />
+                    Nova Bandeira
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="p-0">
+                {isLoadingBrands ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  </div>
+                ) : cardBrands.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <CreditCard className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                    <p>Nenhuma bandeira cadastrada.</p>
+                    <p className="text-sm">Adicione bandeiras de cartão para controlar as taxas.</p>
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Bandeira</TableHead>
+                        <TableHead className="text-center">Taxa Crédito</TableHead>
+                        <TableHead className="text-center">Taxa Débito</TableHead>
+                        <TableHead className="text-center">Status</TableHead>
+                        <TableHead className="w-[100px]">Ações</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {cardBrands.map((brand) => (
+                        <TableRow key={brand.id}>
+                          <TableCell className="font-medium">{brand.name}</TableCell>
+                          <TableCell className="text-center">
+                            <Badge variant="outline">{brand.credit_fee_percent.toFixed(2)}%</Badge>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Badge variant="outline">{brand.debit_fee_percent.toFixed(2)}%</Badge>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Badge variant={brand.is_active ? "default" : "secondary"}>
+                              {brand.is_active ? "Ativa" : "Inativa"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleEditCardBrand(brand)}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="text-destructive hover:text-destructive"
+                                onClick={() => handleDeleteCardBrandClick(brand)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Info about card fees */}
+            <Card className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30">
+              <CardContent className="p-4">
+                <div className="flex items-start gap-3">
+                  <CreditCard className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5" />
+                  <div>
+                    <h4 className="font-medium text-amber-900 dark:text-amber-100">Como funcionam as taxas</h4>
+                    <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
+                      Ao finalizar uma comanda com pagamento em cartão, o sistema descontará a taxa da bandeira 
+                      do valor pago. A comissão do profissional será calculada sobre o valor líquido (após o desconto da taxa).
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           <TabsContent value="salao">
             <Card>
               <CardHeader>
@@ -338,6 +492,26 @@ export default function Configuracoes() {
         title="Remover Acesso"
         description={`Tem certeza que deseja remover o acesso de "${selectedUser?.full_name}"? Esta ação irá desativar o login do usuário no sistema.`}
         isLoading={isDeleting}
+      />
+
+      <DeleteConfirmModal
+        open={deleteCardBrandModalOpen}
+        onOpenChange={setDeleteCardBrandModalOpen}
+        onConfirm={confirmDeleteCardBrand}
+        title="Excluir Bandeira"
+        description={`Tem certeza que deseja excluir a bandeira "${cardBrandToDelete?.name}"? Esta ação não poderá ser desfeita.`}
+        isLoading={isDeletingBrand}
+      />
+
+      <CardBrandModal
+        open={cardBrandModalOpen}
+        onClose={() => {
+          setCardBrandModalOpen(false);
+          setSelectedCardBrand(null);
+        }}
+        onSave={handleSaveCardBrand}
+        cardBrand={selectedCardBrand}
+        isLoading={isCreatingBrand || isUpdatingBrand}
       />
     </AppLayoutNew>
   );

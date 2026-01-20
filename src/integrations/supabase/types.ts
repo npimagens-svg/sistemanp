@@ -150,6 +150,39 @@ export type Database = {
           },
         ]
       }
+      card_brands: {
+        Row: {
+          created_at: string
+          credit_fee_percent: number
+          debit_fee_percent: number
+          id: string
+          is_active: boolean
+          name: string
+          salon_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          credit_fee_percent?: number
+          debit_fee_percent?: number
+          id?: string
+          is_active?: boolean
+          name: string
+          salon_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          credit_fee_percent?: number
+          debit_fee_percent?: number
+          id?: string
+          is_active?: boolean
+          name?: string
+          salon_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       client_history: {
         Row: {
           action_type: string
@@ -555,32 +588,48 @@ export type Database = {
       payments: {
         Row: {
           amount: number
+          card_brand_id: string | null
           comanda_id: string
           created_at: string
+          fee_amount: number | null
           id: string
+          net_amount: number | null
           notes: string | null
           payment_method: Database["public"]["Enums"]["payment_method"]
           salon_id: string
         }
         Insert: {
           amount: number
+          card_brand_id?: string | null
           comanda_id: string
           created_at?: string
+          fee_amount?: number | null
           id?: string
+          net_amount?: number | null
           notes?: string | null
           payment_method: Database["public"]["Enums"]["payment_method"]
           salon_id: string
         }
         Update: {
           amount?: number
+          card_brand_id?: string | null
           comanda_id?: string
           created_at?: string
+          fee_amount?: number | null
           id?: string
+          net_amount?: number | null
           notes?: string | null
           payment_method?: Database["public"]["Enums"]["payment_method"]
           salon_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "payments_card_brand_id_fkey"
+            columns: ["card_brand_id"]
+            isOneToOne: false
+            referencedRelation: "card_brands"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "payments_comanda_id_fkey"
             columns: ["comanda_id"]
