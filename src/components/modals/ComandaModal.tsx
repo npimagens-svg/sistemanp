@@ -10,9 +10,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { 
   Loader2, Receipt, CheckCircle, Calendar, Eye, Pencil, Trash2, 
-  Printer, Clock, Plus, Minus, CreditCard, Banknote, Smartphone, X
+  Printer, Clock, Plus, Minus, CreditCard, Banknote, Smartphone, X, Wallet
 } from "lucide-react";
-import { format } from "date-fns";
+import { format, isSameDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useComandaItems, ComandaItem, Comanda } from "@/hooks/useComandas";
 import { supabase } from "@/integrations/supabase/client";
@@ -20,6 +20,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQueryClient } from "@tanstack/react-query";
 import { ServiceSearchSelect } from "@/components/shared/ServiceSearchSelect";
+import { CaixaSelectModal } from "@/components/caixa/CaixaSelectModal";
+import { Caixa } from "@/hooks/useCaixas";
 
 interface ComandaModalProps {
   comanda: Comanda | null;
@@ -30,6 +32,7 @@ interface ComandaModalProps {
   isEditingClosed?: boolean;
   userCaixaId?: string | null;
   onDelete?: (comanda: Comanda) => void;
+  openCaixas?: Caixa[];
 }
 
 interface EditableItem extends ComandaItem {
@@ -55,7 +58,7 @@ const PAYMENT_METHODS = [
   { value: "other", label: "Outro", icon: Receipt },
 ];
 
-export function ComandaModal({ comanda, open, onClose, professionals, services, isEditingClosed = false, userCaixaId, onDelete }: ComandaModalProps) {
+export function ComandaModal({ comanda, open, onClose, professionals, services, isEditingClosed = false, userCaixaId, onDelete, openCaixas = [] }: ComandaModalProps) {
   const { toast } = useToast();
   const { salonId } = useAuth();
   const queryClient = useQueryClient();
@@ -65,6 +68,33 @@ export function ComandaModal({ comanda, open, onClose, professionals, services, 
   const [editableItems, setEditableItems] = useState<EditableItem[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [isClosing, setIsClosing] = useState(false);
+  const [selectedCaixaId, setSelectedCaixaId] = useState<string | null>(null);
+  const [caixaSelectModalOpen, setCaixaSelectModalOpen] = useState(false);
+
+  // Determine if comanda is from today
+  const comandaDate = comanda ? new Date(comanda.created_at) : new Date();
+  const today = new Date();
+  const isFromToday = isSameDay(comandaDate, today);
+
+  // Get available caixas for the comanda date
+  const availableCaixas = openCaixas.filter(c => {
+    const caixaDate = new Date(c.opened_at);
+    return !c.closed_at && isSameDay(caixaDate, comandaDate);
+  });
+
+  // Set initial caixa - prefer user's caixa if from today, otherwise require selection
+  useEffect(() => {
+    if (isFromToday && userCaixaId) {
+      setSelectedCaixaId(userCaixaId);
+    } else if (availableCaixas.length === 1) {
+      setSelectedCaixaId(availableCaixas[0].id);
+    } else {
+      setSelectedCaixaId(null);
+    }
+  }, [isFromToday, userCaixaId, availableCaixas.length]);
+
+  // Get selected caixa info
+  const selectedCaixa = openCaixas.find(c => c.id === selectedCaixaId);
 
   // Sync items to editable state
   useEffect(() => {
@@ -306,29 +336,28 @@ export function ComandaModal({ comanda, open, onClose, professionals, services, 
   const handleFinalizeComanda = async () => {
     if (!comanda || !salonId) return;
 
-    // Validate user has open caixa
-    if (!userCaixaId) {
-      toast({ 
-        title: "Caixa não aberto", 
-        description: "Você precisa abrir um caixa para finalizar comandas.",
-        variant: "destructive" 
-      });
-      return;
-    }
-
-    // Validate comanda is from today (can't close old comandas with current caixa)
-    const comandaDate = new Date(comanda.created_at);
-    const today = new Date();
-    comandaDate.setHours(0, 0, 0, 0);
-    today.setHours(0, 0, 0, 0);
+    // Determine which caixa to use
+    const caixaToUse = selectedCaixaId;
     
-    if (comandaDate.getTime() < today.getTime()) {
-      toast({ 
-        title: "Comanda de outro dia", 
-        description: "Comandas de dias anteriores precisam ser tratadas como pendentes. Entre em contato com o gerente.",
-        variant: "destructive" 
-      });
-      return;
+    // Validate caixa is selected
+    if (!caixaToUse) {
+      // Show caixa selection modal if there are available caixas
+      if (availableCaixas.length > 0) {
+        toast({ 
+          title: "Selecione um caixa", 
+          description: "Escolha um caixa aberto para finalizar esta comanda.",
+          variant: "destructive" 
+        });
+        setCaixaSelectModalOpen(true);
+        return;
+      } else {
+        toast({ 
+          title: "Nenhum caixa disponível", 
+          description: `Não há caixas abertos para a data ${format(comandaDate, "dd/MM/yyyy")}. Contate um gerente.`,
+          variant: "destructive" 
+        });
+        return;
+      }
     }
 
     // Validate payments
@@ -384,7 +413,7 @@ export function ComandaModal({ comanda, open, onClose, professionals, services, 
       const { data: currentCaixa } = await supabase
         .from("caixas")
         .select("*")
-        .eq("id", userCaixaId)
+        .eq("id", caixaToUse)
         .single();
 
       if (currentCaixa) {
@@ -397,7 +426,7 @@ export function ComandaModal({ comanda, open, onClose, professionals, services, 
             total_debit_card: (currentCaixa.total_debit_card || 0) + paymentTotals.debit_card,
             total_other: (currentCaixa.total_other || 0) + paymentTotals.other,
           })
-          .eq("id", userCaixaId);
+          .eq("id", caixaToUse);
       }
 
       // Close comanda and link to caixa
@@ -408,7 +437,7 @@ export function ComandaModal({ comanda, open, onClose, professionals, services, 
           is_paid: true,
           subtotal: subtotal,
           total: subtotal,
-          caixa_id: userCaixaId,
+          caixa_id: caixaToUse,
         })
         .eq("id", comanda.id);
 
@@ -633,6 +662,33 @@ export function ComandaModal({ comanda, open, onClose, professionals, services, 
             </TabsContent>
 
             <TabsContent value="pagamento" className="space-y-4 mt-4">
+              {/* Caixa Selection - for pending comandas */}
+              {!isFromToday && (
+                <Card className="border-orange-300 bg-orange-50 dark:bg-orange-950/20">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Wallet className="h-5 w-5 text-orange-600" />
+                        <div>
+                          <p className="font-medium text-orange-800 dark:text-orange-200">Caixa para Fechamento</p>
+                          <p className="text-sm text-orange-600 dark:text-orange-400">
+                            {selectedCaixa ? `${selectedCaixa.profile?.full_name || 'Usuário'}` : 'Nenhum selecionado'}
+                          </p>
+                        </div>
+                      </div>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => setCaixaSelectModalOpen(true)}
+                        className="border-orange-400 text-orange-700"
+                      >
+                        {selectedCaixa ? 'Alterar' : 'Selecionar'}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
               {/* Summary Cards */}
               <div className="grid grid-cols-4 gap-4">
                 <Card>
@@ -798,6 +854,16 @@ export function ComandaModal({ comanda, open, onClose, professionals, services, 
           </div>
         </div>
       </DialogContent>
+
+      {/* Caixa Selection Modal */}
+      <CaixaSelectModal
+        open={caixaSelectModalOpen}
+        onClose={() => setCaixaSelectModalOpen(false)}
+        onSelect={setSelectedCaixaId}
+        caixas={openCaixas}
+        comandaDate={comandaDate}
+        selectedCaixaId={selectedCaixaId}
+      />
     </Dialog>
   );
 }

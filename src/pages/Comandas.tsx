@@ -70,7 +70,7 @@ export default function Comandas() {
   const { clients, createClient } = useClients();
   const { professionals } = useProfessionals();
   const { services } = useServices();
-  const { getCurrentUserOpenCaixa, openCaixas } = useCaixas();
+  const { getCurrentUserOpenCaixa, openCaixas, caixas } = useCaixas();
 
   // Check for user's open caixa
   useEffect(() => {
