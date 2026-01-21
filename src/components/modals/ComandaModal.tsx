@@ -901,14 +901,14 @@ export function ComandaModal({ comanda, open, onClose, professionals, services, 
                               </TableCell>
                             </TableRow>
                             {/* Product consumption section for services */}
-                            {item.service_id && item.isProductsExpanded && (
-                              <TableRow>
+                            {item.service_id && (
+                              <TableRow className={item.isProductsExpanded ? "" : "hidden"}>
                                 <TableCell colSpan={7} className="p-0 border-b">
                                   <ComandaServiceProducts
                                     serviceId={item.service_id}
                                     serviceName={item.description}
                                     quantity={item.quantity}
-                                    isExpanded={true}
+                                    isExpanded={!!item.isProductsExpanded}
                                     onToggleExpand={() => toggleProductsExpanded(item.id)}
                                     onProductUsageChange={handleProductUsageChange}
                                     disabled={!!isComandaLocked}

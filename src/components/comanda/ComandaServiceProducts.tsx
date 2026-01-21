@@ -1,21 +1,20 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Package, Plus, Check, Trash2, ChevronDown, ChevronUp } from "lucide-react";
-import { useAllServiceProducts, ServiceProduct } from "@/hooks/useServiceProducts";
-import { useProducts, Product } from "@/hooks/useProducts";
-import { Badge } from "@/components/ui/badge";
+import { useAllServiceProducts } from "@/hooks/useServiceProducts";
+import { useProducts } from "@/hooks/useProducts";
 import { cn } from "@/lib/utils";
 
 interface ProductUsage {
   id: string;
   product_id: string;
   product_name: string;
-  quantity_units: number; // Full units/containers used
-  quantity_fractional: number; // Fractional amount (ml, g, etc.)
+  quantity_units: number;
+  quantity_fractional: number;
   unit_of_measure: string;
-  unit_quantity: number; // How much per container
+  unit_quantity: number;
   cost_per_unit: number;
   total_cost: number;
   isNew?: boolean;
@@ -45,48 +44,63 @@ export function ComandaServiceProducts({
   const [productUsages, setProductUsages] = useState<ProductUsage[]>([]);
   const [isAddingProduct, setIsAddingProduct] = useState(false);
   const [newProductId, setNewProductId] = useState<string>("");
-  const [newProductQty, setNewProductQty] = useState<number>(0);
+  const [newProductQty, setNewProductQty] = useState<number>(1);
+  const [initialized, setInitialized] = useState(false);
 
-  // Initialize products from service configuration
+  // Initialize products from service configuration (only once)
   useEffect(() => {
+    if (initialized) return;
+    
     const serviceProducts = getProductsForService(serviceId);
-    const initialProducts: ProductUsage[] = serviceProducts.map((sp) => {
-      const isFractional = ["ml", "g", "dosagem"].includes(sp.product?.unit_of_measure || "");
-      const fractionalAmount = sp.quantity_per_use * quantity;
-      const costPerUnit = (sp.product?.cost_price || 0) / (sp.product?.unit_quantity || 1);
-      
-      return {
-        id: sp.id,
-        product_id: sp.product_id,
-        product_name: sp.product?.name || "Produto",
-        quantity_units: 0,
-        quantity_fractional: isFractional ? fractionalAmount : 0,
-        unit_of_measure: sp.product?.unit_of_measure || "unidade",
-        unit_quantity: sp.product?.unit_quantity || 1,
-        cost_per_unit: costPerUnit,
-        total_cost: costPerUnit * fractionalAmount,
-      };
-    });
-    setProductUsages(initialProducts);
-  }, [serviceId, quantity, getProductsForService]);
+    if (serviceProducts.length > 0 || allProducts.length > 0) {
+      const initialProducts: ProductUsage[] = serviceProducts.map((sp) => {
+        const isFractional = ["ml", "g", "dosagem"].includes(sp.product?.unit_of_measure || "");
+        const fractionalAmount = sp.quantity_per_use * quantity;
+        const costPerUnit = (sp.product?.cost_price || 0) / (sp.product?.unit_quantity || 1);
+        
+        return {
+          id: sp.id,
+          product_id: sp.product_id,
+          product_name: sp.product?.name || "Produto",
+          quantity_units: 0,
+          quantity_fractional: isFractional ? fractionalAmount : sp.quantity_per_use * quantity,
+          unit_of_measure: sp.product?.unit_of_measure || "unidade",
+          unit_quantity: sp.product?.unit_quantity || 1,
+          cost_per_unit: costPerUnit,
+          total_cost: costPerUnit * fractionalAmount,
+        };
+      });
+      setProductUsages(initialProducts);
+      setInitialized(true);
+    }
+  }, [serviceId, quantity, getProductsForService, allProducts.length, initialized]);
+
+  // Stable callback to notify parent of changes
+  const notifyParent = useCallback((products: ProductUsage[]) => {
+    onProductUsageChange(serviceId, products);
+  }, [serviceId, onProductUsageChange]);
 
   // Notify parent of changes
   useEffect(() => {
-    onProductUsageChange(serviceId, productUsages);
-  }, [productUsages, serviceId, onProductUsageChange]);
+    if (initialized) {
+      notifyParent(productUsages);
+    }
+  }, [productUsages, initialized, notifyParent]);
 
   const updateProductUsage = (productId: string, field: 'quantity_units' | 'quantity_fractional', value: number) => {
     setProductUsages(prev => prev.map(p => {
       if (p.product_id !== productId) return p;
       const updated = { ...p, [field]: value };
       // Recalculate total based on fractional usage
-      const isFractional = ["ml", "g", "dosagem"].includes(p.unit_of_measure);
-      if (isFractional) {
-        updated.total_cost = p.cost_per_unit * updated.quantity_fractional;
+      const isFrac = ["ml", "g", "dosagem"].includes(p.unit_of_measure);
+      if (isFrac) {
+        // Total cost = full units cost + fractional cost
+        const fullUnitsCost = updated.quantity_units * (p.cost_per_unit * p.unit_quantity);
+        const fractionalCost = p.cost_per_unit * updated.quantity_fractional;
+        updated.total_cost = fullUnitsCost + fractionalCost;
       } else {
-        // For unit-based products, use units directly
-        const effectiveQty = updated.quantity_units > 0 ? updated.quantity_units : (updated.quantity_fractional > 0 ? updated.quantity_fractional : 0);
-        updated.total_cost = (p.cost_per_unit * p.unit_quantity) * effectiveQty;
+        // For unit-based products
+        updated.total_cost = (p.cost_per_unit * p.unit_quantity) * updated.quantity_units;
       }
       return updated;
     }));
@@ -102,19 +116,19 @@ export function ComandaServiceProducts({
     const product = allProducts.find(p => p.id === newProductId);
     if (!product) return;
 
-    const isFractional = ["ml", "g", "dosagem"].includes(product.unit_of_measure || "");
+    const isFrac = ["ml", "g", "dosagem"].includes(product.unit_of_measure || "");
     const costPerUnit = (product.cost_price || 0) / (product.unit_quantity || 1);
     
     const newUsage: ProductUsage = {
       id: `new_${Date.now()}`,
       product_id: product.id,
       product_name: product.name,
-      quantity_units: isFractional ? 0 : newProductQty,
-      quantity_fractional: isFractional ? newProductQty : 0,
+      quantity_units: isFrac ? 0 : newProductQty,
+      quantity_fractional: isFrac ? newProductQty : 0,
       unit_of_measure: product.unit_of_measure || "unidade",
       unit_quantity: product.unit_quantity || 1,
       cost_per_unit: costPerUnit,
-      total_cost: isFractional 
+      total_cost: isFrac 
         ? costPerUnit * newProductQty 
         : (costPerUnit * (product.unit_quantity || 1)) * newProductQty,
       isNew: true,
@@ -122,7 +136,7 @@ export function ComandaServiceProducts({
 
     setProductUsages(prev => [...prev, newUsage]);
     setNewProductId("");
-    setNewProductQty(0);
+    setNewProductQty(1);
     setIsAddingProduct(false);
   };
 
@@ -143,11 +157,10 @@ export function ComandaServiceProducts({
     return labels[unit] || unit;
   };
 
-  const isFractional = (unit: string) => ["ml", "g", "dosagem"].includes(unit);
+  const isFractionalUnit = (unit: string) => ["ml", "g", "dosagem"].includes(unit);
 
-  // Filter available products (consumption products not already in list)
+  // Filter available products (not already in list) - show ALL products, not just consumption ones
   const availableProducts = allProducts.filter(p => 
-    p.is_for_consumption && 
     p.is_active && 
     !productUsages.some(pu => pu.product_id === p.id)
   );
@@ -155,17 +168,18 @@ export function ComandaServiceProducts({
   const totalProductCost = productUsages.reduce((acc, p) => acc + p.total_cost, 0);
 
   return (
-    <div className="border-l-4 border-muted pl-4 py-2 bg-muted/20">
+    <div className="border-l-4 border-primary/30 pl-4 py-3 bg-muted/30 mx-2 mb-2 rounded-r-md">
+      {/* Header - always visible */}
       <button
+        type="button"
         onClick={onToggleExpand}
         className="flex items-center gap-2 w-full text-left text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-        disabled={disabled}
       >
         <Package className="h-4 w-4" />
         <span>Saídas no estoque (opcional)</span>
-        <Badge variant="secondary" className="ml-auto mr-2">
+        <span className="ml-auto mr-2 text-xs bg-secondary text-secondary-foreground px-2 py-0.5 rounded-full">
           {productUsages.length} produto{productUsages.length !== 1 ? "s" : ""}
-        </Badge>
+        </span>
         <span className="text-xs text-muted-foreground mr-2">
           {formatCurrency(totalProductCost)}
         </span>
@@ -176,11 +190,12 @@ export function ComandaServiceProducts({
         )}
       </button>
 
+      {/* Product list - only when expanded */}
       {isExpanded && (
         <div className="mt-3 space-y-2">
           {productUsages.length === 0 ? (
-            <p className="text-sm text-muted-foreground italic">
-              Nenhum produto vinculado a este serviço
+            <p className="text-sm text-muted-foreground italic py-2">
+              Nenhum produto vinculado a este serviço. Clique em "Adicionar Produto" para incluir.
             </p>
           ) : (
             productUsages.map((product) => (
@@ -188,36 +203,36 @@ export function ComandaServiceProducts({
                 key={product.id} 
                 className={cn(
                   "flex items-center gap-2 p-2 rounded-md bg-background border",
-                  product.isNew && "border-primary/50"
+                  product.isNew && "border-primary/50 bg-primary/5"
                 )}
               >
-                <span className="flex-1 text-sm font-medium truncate max-w-[180px]" title={product.product_name}>
+                <span className="flex-1 text-sm font-medium truncate max-w-[160px]" title={product.product_name}>
                   {product.product_name}
                 </span>
                 
-                {isFractional(product.unit_of_measure) ? (
-                  // Fractional product (ml, g, dosagem)
+                {isFractionalUnit(product.unit_of_measure) ? (
+                  // Fractional product (ml, g, dosagem) - show units + fractional
                   <>
                     <Input
                       type="number"
                       min="0"
-                      className="w-16 h-8 text-center"
+                      className="w-14 h-8 text-center text-sm"
                       value={product.quantity_units}
                       onChange={(e) => updateProductUsage(product.product_id, 'quantity_units', parseInt(e.target.value) || 0)}
                       disabled={disabled}
                     />
-                    <span className="text-xs text-muted-foreground">un</span>
-                    <span className="text-muted-foreground">+</span>
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">un</span>
+                    <span className="text-muted-foreground font-bold">+</span>
                     <Input
                       type="number"
                       min="0"
                       step="0.1"
-                      className="w-20 h-8 text-center"
+                      className="w-16 h-8 text-center text-sm"
                       value={product.quantity_fractional}
                       onChange={(e) => updateProductUsage(product.product_id, 'quantity_fractional', parseFloat(e.target.value) || 0)}
                       disabled={disabled}
                     />
-                    <span className="text-xs text-muted-foreground">{getUnitLabel(product.unit_of_measure)}</span>
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">{getUnitLabel(product.unit_of_measure)}</span>
                   </>
                 ) : (
                   // Unit-based product
@@ -225,34 +240,38 @@ export function ComandaServiceProducts({
                     <Input
                       type="number"
                       min="0"
-                      className="w-16 h-8 text-center"
-                      value={product.quantity_units || product.quantity_fractional}
+                      className="w-16 h-8 text-center text-sm"
+                      value={product.quantity_units || product.quantity_fractional || 0}
                       onChange={(e) => updateProductUsage(product.product_id, 'quantity_units', parseInt(e.target.value) || 0)}
                       disabled={disabled}
                     />
-                    <span className="text-xs text-muted-foreground">unidades</span>
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">unidades</span>
                   </>
                 )}
 
-                <span className="text-sm font-medium min-w-[80px] text-right">
+                <span className="text-sm font-medium min-w-[70px] text-right">
                   {formatCurrency(product.total_cost)}
                 </span>
 
                 <Button
+                  type="button"
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 text-green-600"
+                  className="h-7 w-7 text-green-600 hover:text-green-700 hover:bg-green-100"
                   disabled={disabled}
+                  title="Confirmar"
                 >
                   <Check className="h-4 w-4" />
                 </Button>
                 
                 <Button
+                  type="button"
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 text-destructive"
+                  className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
                   onClick={() => removeProduct(product.product_id)}
                   disabled={disabled}
+                  title="Remover"
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
@@ -262,17 +281,23 @@ export function ComandaServiceProducts({
 
           {/* Add new product row */}
           {isAddingProduct ? (
-            <div className="flex items-center gap-2 p-2 rounded-md bg-primary/5 border border-primary/30">
+            <div className="flex items-center gap-2 p-2 rounded-md bg-primary/10 border border-primary/40">
               <Select value={newProductId} onValueChange={setNewProductId}>
-                <SelectTrigger className="flex-1 h-8">
+                <SelectTrigger className="flex-1 h-8 bg-background">
                   <SelectValue placeholder="Selecione um Produto" />
                 </SelectTrigger>
-                <SelectContent>
-                  {availableProducts.map((product) => (
-                    <SelectItem key={product.id} value={product.id}>
-                      {product.name}
-                    </SelectItem>
-                  ))}
+                <SelectContent className="bg-background z-50">
+                  {availableProducts.length === 0 ? (
+                    <div className="p-2 text-sm text-muted-foreground">
+                      Nenhum produto disponível
+                    </div>
+                  ) : (
+                    availableProducts.map((product) => (
+                      <SelectItem key={product.id} value={product.id}>
+                        {product.name}
+                      </SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
               
@@ -281,41 +306,46 @@ export function ComandaServiceProducts({
                 min="0"
                 step="0.1"
                 placeholder="Qtd"
-                className="w-20 h-8 text-center"
-                value={newProductQty || ""}
+                className="w-16 h-8 text-center bg-background"
+                value={newProductQty}
                 onChange={(e) => setNewProductQty(parseFloat(e.target.value) || 0)}
               />
               
               <Button
+                type="button"
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 text-green-600"
+                className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-100"
                 onClick={handleAddProduct}
                 disabled={!newProductId}
+                title="Adicionar"
               >
                 <Check className="h-4 w-4" />
               </Button>
               
               <Button
+                type="button"
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8"
+                className="h-8 w-8 text-muted-foreground hover:text-foreground"
                 onClick={() => {
                   setIsAddingProduct(false);
                   setNewProductId("");
-                  setNewProductQty(0);
+                  setNewProductQty(1);
                 }}
+                title="Cancelar"
               >
                 <Trash2 className="h-4 w-4" />
               </Button>
             </div>
           ) : (
             <Button
-              variant="ghost"
+              type="button"
+              variant="outline"
               size="sm"
-              className="gap-2 text-primary"
+              className="gap-2 mt-2"
               onClick={() => setIsAddingProduct(true)}
-              disabled={disabled || availableProducts.length === 0}
+              disabled={disabled}
             >
               <Plus className="h-4 w-4" />
               Adicionar Produto
