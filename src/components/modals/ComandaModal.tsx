@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { 
   Loader2, Receipt, CheckCircle, Calendar, Eye, Pencil, Trash2, 
-  Printer, Clock, Plus, Minus, CreditCard, Banknote, Smartphone, X, Wallet, RefreshCw
+  Printer, Clock, Plus, Minus, CreditCard, Banknote, Smartphone, X, Wallet, RefreshCw, Package
 } from "lucide-react";
 import { format, isSameDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -26,6 +26,7 @@ import { useAllServiceProducts } from "@/hooks/useServiceProducts";
 import { useStockMovements } from "@/hooks/useStockMovements";
 import { useBankAccounts } from "@/hooks/useBankAccounts";
 import { useCardBrands } from "@/hooks/useCardBrands";
+import { ComandaServiceProducts } from "@/components/comanda/ComandaServiceProducts";
 
 interface ComandaModalProps {
   comanda: Comanda | null;
@@ -45,6 +46,20 @@ interface EditableItem extends ComandaItem {
   editUnitPrice?: number;
   editDiscount?: number;
   editProfessionalId?: string | null;
+  isProductsExpanded?: boolean;
+}
+
+interface ProductUsage {
+  id: string;
+  product_id: string;
+  product_name: string;
+  quantity_units: number;
+  quantity_fractional: number;
+  unit_of_measure: string;
+  unit_quantity: number;
+  cost_per_unit: number;
+  total_cost: number;
+  isNew?: boolean;
 }
 
 interface Payment {
@@ -81,6 +96,7 @@ export function ComandaModal({ comanda, open, onClose, professionals, services, 
   const [isUpdating, setIsUpdating] = useState(false);
   const [selectedCaixaId, setSelectedCaixaId] = useState<string | null>(null);
   const [caixaSelectModalOpen, setCaixaSelectModalOpen] = useState(false);
+  const [serviceProductUsages, setServiceProductUsages] = useState<Record<string, ProductUsage[]>>({});
 
   // Determine if comanda is from today
   const comandaDate = comanda ? new Date(comanda.created_at) : new Date();
@@ -122,9 +138,25 @@ export function ComandaModal({ comanda, open, onClose, professionals, services, 
         editUnitPrice: item.unit_price,
         editDiscount: 0,
         editProfessionalId: (item as any).professional_id || comanda?.professional_id || null,
+        isProductsExpanded: false,
       })));
     }
   }, [items, comanda?.professional_id]);
+
+  // Handler for product usage changes in service items
+  const handleProductUsageChange = useCallback((serviceId: string, products: ProductUsage[]) => {
+    setServiceProductUsages(prev => ({
+      ...prev,
+      [serviceId]: products,
+    }));
+  }, []);
+
+  // Toggle product section expansion for an item
+  const toggleProductsExpanded = (itemId: string) => {
+    setEditableItems(prev => prev.map(item => 
+      item.id === itemId ? { ...item, isProductsExpanded: !item.isProductsExpanded } : item
+    ));
+  };
 
   // Load existing payments
   useEffect(() => {
@@ -746,112 +778,145 @@ export function ComandaModal({ comanda, open, onClose, professionals, services, 
                         </TableRow>
                       ) : (
                         editableItems.map((item) => (
-                          <TableRow key={item.id}>
-                            <TableCell className="font-medium">{item.description}</TableCell>
-                            <TableCell>
-                              <Select 
-                                value={item.editProfessionalId || item.professional_id || comanda.professional_id || ""}
-                                onValueChange={(value) => updateItemProfessional(item.id, value)}
-                              >
-                                <SelectTrigger className="w-36 h-8">
-                                  <SelectValue placeholder="Selecionar" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {professionals.filter(p => p.is_active).map((prof) => (
-                                    <SelectItem key={prof.id} value={prof.id}>{prof.name}</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </TableCell>
-                            <TableCell>
-                              {item.isEditing ? (
-                                <Input 
-                                  type="number" 
-                                  min="1"
-                                  className="w-16 h-8 text-center"
-                                  value={item.editQuantity}
-                                  onChange={(e) => updateItemField(item.id, 'editQuantity', parseInt(e.target.value) || 1)}
-                                />
-                              ) : (
-                                <div className="text-center">{item.quantity}</div>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              {item.isEditing ? (
-                                <Input 
-                                  type="number" 
-                                  step="0.01"
-                                  className="w-24 h-8 text-right"
-                                  value={item.editUnitPrice}
-                                  onChange={(e) => updateItemField(item.id, 'editUnitPrice', parseFloat(e.target.value) || 0)}
-                                />
-                              ) : (
-                                <div className="text-right">{formatCurrency(item.unit_price)}</div>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              {item.isEditing ? (
-                                <Input 
-                                  type="number" 
-                                  min="0"
-                                  max="100"
-                                  className="w-20 h-8 text-right"
-                                  value={item.editDiscount || 0}
-                                  onChange={(e) => updateItemField(item.id, 'editDiscount', parseFloat(e.target.value) || 0)}
-                                />
-                              ) : (
-                                <div className="text-right">{item.editDiscount || 0}%</div>
-                              )}
-                            </TableCell>
-                            <TableCell className="text-right font-medium">
-                              {formatCurrency(item.total_price)}
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-1">
+                          <React.Fragment key={item.id}>
+                            <TableRow className="border-b-0">
+                              <TableCell className="font-medium">
+                                <div className="flex items-center gap-2">
+                                  <span>{item.description}</span>
+                                  {item.service_id && (
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-6 w-6 text-muted-foreground hover:text-primary"
+                                      onClick={() => toggleProductsExpanded(item.id)}
+                                      title="Ver/editar produtos consumidos"
+                                    >
+                                      <Package className="h-4 w-4" />
+                                    </Button>
+                                  )}
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <Select 
+                                  value={item.editProfessionalId || item.professional_id || comanda.professional_id || ""}
+                                  onValueChange={(value) => updateItemProfessional(item.id, value)}
+                                >
+                                  <SelectTrigger className="w-36 h-8">
+                                    <SelectValue placeholder="Selecionar" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {professionals.filter(p => p.is_active).map((prof) => (
+                                      <SelectItem key={prof.id} value={prof.id}>{prof.name}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </TableCell>
+                              <TableCell>
                                 {item.isEditing ? (
-                                  <>
-                                    <Button 
-                                      variant="ghost" 
-                                      size="icon" 
-                                      className="h-8 w-8 text-green-600"
-                                      onClick={() => saveItemChanges(item)}
-                                    >
-                                      <CheckCircle className="h-4 w-4" />
-                                    </Button>
-                                    <Button 
-                                      variant="ghost" 
-                                      size="icon" 
-                                      className="h-8 w-8"
-                                      onClick={() => toggleEditItem(item.id)}
-                                    >
-                                      <X className="h-4 w-4" />
-                                    </Button>
-                                  </>
+                                  <Input 
+                                    type="number" 
+                                    min="1"
+                                    className="w-16 h-8 text-center"
+                                    value={item.editQuantity}
+                                    onChange={(e) => updateItemField(item.id, 'editQuantity', parseInt(e.target.value) || 1)}
+                                  />
                                 ) : (
-                                  <>
-                                    <Button 
-                                      variant="ghost" 
-                                      size="icon" 
-                                      className="h-8 w-8 text-primary"
-                                      onClick={() => toggleEditItem(item.id)}
-                                      disabled={isComandaLocked}
-                                    >
-                                      <Pencil className="h-4 w-4" />
-                                    </Button>
-                                    <Button 
-                                      variant="ghost" 
-                                      size="icon" 
-                                      className="h-8 w-8 text-destructive"
-                                      onClick={() => removeItem(item.id)}
-                                      disabled={isRemoving || isComandaLocked}
-                                    >
-                                      <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                  </>
+                                  <div className="text-center">{item.quantity}</div>
                                 )}
-                              </div>
-                            </TableCell>
-                          </TableRow>
+                              </TableCell>
+                              <TableCell>
+                                {item.isEditing ? (
+                                  <Input 
+                                    type="number" 
+                                    step="0.01"
+                                    className="w-24 h-8 text-right"
+                                    value={item.editUnitPrice}
+                                    onChange={(e) => updateItemField(item.id, 'editUnitPrice', parseFloat(e.target.value) || 0)}
+                                  />
+                                ) : (
+                                  <div className="text-right">{formatCurrency(item.unit_price)}</div>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                {item.isEditing ? (
+                                  <Input 
+                                    type="number" 
+                                    min="0"
+                                    max="100"
+                                    className="w-20 h-8 text-right"
+                                    value={item.editDiscount || 0}
+                                    onChange={(e) => updateItemField(item.id, 'editDiscount', parseFloat(e.target.value) || 0)}
+                                  />
+                                ) : (
+                                  <div className="text-right">{item.editDiscount || 0}%</div>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-right font-medium">
+                                {formatCurrency(item.total_price)}
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-1">
+                                  {item.isEditing ? (
+                                    <>
+                                      <Button 
+                                        variant="ghost" 
+                                        size="icon" 
+                                        className="h-8 w-8 text-green-600"
+                                        onClick={() => saveItemChanges(item)}
+                                      >
+                                        <CheckCircle className="h-4 w-4" />
+                                      </Button>
+                                      <Button 
+                                        variant="ghost" 
+                                        size="icon" 
+                                        className="h-8 w-8"
+                                        onClick={() => toggleEditItem(item.id)}
+                                      >
+                                        <X className="h-4 w-4" />
+                                      </Button>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Button 
+                                        variant="ghost" 
+                                        size="icon" 
+                                        className="h-8 w-8 text-primary"
+                                        onClick={() => toggleEditItem(item.id)}
+                                        disabled={isComandaLocked}
+                                      >
+                                        <Pencil className="h-4 w-4" />
+                                      </Button>
+                                      <Button 
+                                        variant="ghost" 
+                                        size="icon" 
+                                        className="h-8 w-8 text-destructive"
+                                        onClick={() => removeItem(item.id)}
+                                        disabled={isRemoving || isComandaLocked}
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                      </Button>
+                                    </>
+                                  )}
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                            {/* Product consumption section for services */}
+                            {item.service_id && item.isProductsExpanded && (
+                              <TableRow>
+                                <TableCell colSpan={7} className="p-0 border-b">
+                                  <ComandaServiceProducts
+                                    serviceId={item.service_id}
+                                    serviceName={item.description}
+                                    quantity={item.quantity}
+                                    isExpanded={true}
+                                    onToggleExpand={() => toggleProductsExpanded(item.id)}
+                                    onProductUsageChange={handleProductUsageChange}
+                                    disabled={!!isComandaLocked}
+                                  />
+                                </TableCell>
+                              </TableRow>
+                            )}
+                          </React.Fragment>
                         ))
                       )}
                     </TableBody>
