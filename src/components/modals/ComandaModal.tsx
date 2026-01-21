@@ -351,11 +351,14 @@ export function ComandaModal({ comanda, open, onClose, professionals, services, 
 
       if (appointmentsError) throw appointmentsError;
 
-      // Get current comanda items
+      // Get current comanda items (including source_appointment_id for robust matching)
       const { data: currentItems } = await supabase
         .from("comanda_items")
         .select("*")
         .eq("comanda_id", comanda.id);
+
+      // Create a mutable copy to track items added during this sync
+      const itemsInComanda = [...(currentItems || [])];
 
       // Track changes made
       let itemsAdded = 0;
@@ -365,16 +368,27 @@ export function ComandaModal({ comanda, open, onClose, professionals, services, 
       for (const appointment of appointments || []) {
         if (!appointment.service_id || !appointment.services) continue;
 
-        // Find if this service already exists in comanda items (check only by service_id to avoid duplicates)
-        const existingItem = currentItems?.find(
-          item => item.service_id === appointment.service_id
+        // First try to find by source_appointment_id (robust way)
+        let existingItem = itemsInComanda.find(
+          item => item.source_appointment_id === appointment.id
         );
 
+        // Fallback: find by service_id + professional_id (for legacy items without source_appointment_id)
+        if (!existingItem) {
+          existingItem = itemsInComanda.find(
+            item => item.service_id === appointment.service_id && 
+                    !item.source_appointment_id &&
+                    (item.professional_id === appointment.professional_id || !item.professional_id)
+          );
+        }
+
         if (existingItem) {
-          // Update existing item with appointment data (price and professional if different)
+          // Update existing item with appointment data (price, professional, and set source_appointment_id)
           const newPrice = appointment.price ?? appointment.services.price ?? 0;
+          const needsSourceUpdate = !existingItem.source_appointment_id;
           const shouldUpdate = existingItem.unit_price !== newPrice || 
-                               existingItem.professional_id !== appointment.professional_id;
+                               existingItem.professional_id !== appointment.professional_id ||
+                               needsSourceUpdate;
           
           if (shouldUpdate) {
             await supabase
@@ -383,24 +397,37 @@ export function ComandaModal({ comanda, open, onClose, professionals, services, 
                 unit_price: newPrice,
                 total_price: newPrice * existingItem.quantity,
                 professional_id: appointment.professional_id,
+                source_appointment_id: appointment.id,
               })
               .eq("id", existingItem.id);
+            
+            // Update local reference to prevent re-matching
+            existingItem.source_appointment_id = appointment.id;
             itemsUpdated++;
           }
         } else {
-          // Add new item from appointment (only if service doesn't exist in comanda yet)
-          await supabase
+          // Add new item from appointment (only if no matching item found)
+          const newItemPrice = appointment.price ?? appointment.services.price ?? 0;
+          const { data: insertedItem } = await supabase
             .from("comanda_items")
             .insert({
               comanda_id: comanda.id,
               service_id: appointment.service_id,
               professional_id: appointment.professional_id,
+              source_appointment_id: appointment.id,
               description: appointment.services.name,
               item_type: "service",
               quantity: 1,
-              unit_price: appointment.price ?? appointment.services.price ?? 0,
-              total_price: appointment.price ?? appointment.services.price ?? 0,
-            });
+              unit_price: newItemPrice,
+              total_price: newItemPrice,
+            })
+            .select()
+            .single();
+          
+          // Add to local list to prevent duplicate inserts within this loop
+          if (insertedItem) {
+            itemsInComanda.push(insertedItem);
+          }
           itemsAdded++;
         }
       }
