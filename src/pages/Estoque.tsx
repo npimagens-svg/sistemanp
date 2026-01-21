@@ -6,12 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Search, Loader2, Package, AlertTriangle, Edit, Trash2, Truck, Globe, Phone } from "lucide-react";
+import { Plus, Search, Loader2, Package, AlertTriangle, Edit, Trash2, Truck, Globe, Phone, ArrowDownToLine, ArrowUpFromLine } from "lucide-react";
 import { useProducts } from "@/hooks/useProducts";
 import { useSuppliers, Supplier, SupplierInput } from "@/hooks/useSuppliers";
 import { ProductModal } from "@/components/modals/ProductModal";
 import { SupplierModal } from "@/components/modals/SupplierModal";
 import { DeleteConfirmModal } from "@/components/modals/DeleteConfirmModal";
+import { StockEntryModal } from "@/components/modals/StockEntryModal";
+import { StockExitModal } from "@/components/modals/StockExitModal";
 
 export default function Estoque() {
   const location = useLocation();
@@ -25,6 +27,8 @@ export default function Estoque() {
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
   const [deleteSupplierModalOpen, setDeleteSupplierModalOpen] = useState(false);
   const [supplierToDelete, setSupplierToDelete] = useState<Supplier | null>(null);
+  const [stockEntryModalOpen, setStockEntryModalOpen] = useState(false);
+  const [stockExitModalOpen, setStockExitModalOpen] = useState(false);
 
   const { products, isLoading: isLoadingProducts, createProduct, updateProduct, deleteProduct, isCreating, isUpdating } = useProducts();
   const { 
@@ -193,8 +197,8 @@ export default function Estoque() {
           <div className="space-y-4">
             <Card>
               <CardContent className="p-4">
-                <div className="flex items-center justify-between gap-4">
-                  <div className="relative flex-1 max-w-sm">
+                <div className="flex items-center justify-between gap-4 flex-wrap">
+                  <div className="relative flex-1 min-w-[200px] max-w-sm">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
                       placeholder="Buscar produto..."
@@ -203,10 +207,28 @@ export default function Estoque() {
                       className="pl-9"
                     />
                   </div>
-                  <Button onClick={() => { setSelectedProduct(null); setProductModalOpen(true); }} className="gap-2">
-                    <Plus className="h-4 w-4" />
-                    Novo Produto
-                  </Button>
+                  <div className="flex gap-2 flex-wrap">
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setStockEntryModalOpen(true)} 
+                      className="gap-2 border-green-500 text-green-600 hover:bg-green-50 hover:text-green-700"
+                    >
+                      <ArrowDownToLine className="h-4 w-4" />
+                      Entrada
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setStockExitModalOpen(true)} 
+                      className="gap-2 border-orange-500 text-orange-600 hover:bg-orange-50 hover:text-orange-700"
+                    >
+                      <ArrowUpFromLine className="h-4 w-4" />
+                      Saída
+                    </Button>
+                    <Button onClick={() => { setSelectedProduct(null); setProductModalOpen(true); }} className="gap-2">
+                      <Plus className="h-4 w-4" />
+                      Cadastrar
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -416,6 +438,19 @@ export default function Estoque() {
         title="Excluir Fornecedor"
         description={`Tem certeza que deseja excluir o fornecedor "${supplierToDelete?.name}"? Esta ação não poderá ser desfeita.`}
         isLoading={isDeletingSupplier}
+      />
+
+      <StockEntryModal
+        open={stockEntryModalOpen}
+        onOpenChange={setStockEntryModalOpen}
+        products={products}
+        suppliers={suppliers}
+      />
+
+      <StockExitModal
+        open={stockExitModalOpen}
+        onOpenChange={setStockExitModalOpen}
+        products={products}
       />
     </AppLayoutNew>
   );
