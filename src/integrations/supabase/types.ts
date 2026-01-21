@@ -509,6 +509,7 @@ export type Database = {
           professional_id: string | null
           quantity: number
           service_id: string | null
+          source_appointment_id: string | null
           total_price: number
           unit_price: number
         }
@@ -523,6 +524,7 @@ export type Database = {
           professional_id?: string | null
           quantity?: number
           service_id?: string | null
+          source_appointment_id?: string | null
           total_price: number
           unit_price: number
         }
@@ -537,6 +539,7 @@ export type Database = {
           professional_id?: string | null
           quantity?: number
           service_id?: string | null
+          source_appointment_id?: string | null
           total_price?: number
           unit_price?: number
         }
@@ -560,6 +563,13 @@ export type Database = {
             columns: ["service_id"]
             isOneToOne: false
             referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comanda_items_source_appointment_id_fkey"
+            columns: ["source_appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
             referencedColumns: ["id"]
           },
         ]

@@ -175,21 +175,32 @@ export default function Comandas() {
           .eq("id", comanda.id);
       }
 
-      // Check if service already exists in comanda items
+      // Check if service already exists in comanda items by source_appointment_id first, then by service_id as fallback
       if (appointmentData.service_id && comanda.id) {
-        const { data: existingItems } = await supabase
+        // First check by source_appointment_id (new robust way)
+        const { data: existingByAppointment } = await supabase
+          .from("comanda_items")
+          .select("*")
+          .eq("comanda_id", comanda.id)
+          .eq("source_appointment_id", appointmentData.id);
+
+        // Fallback: check by service_id (for legacy comandas)
+        const { data: existingByService } = await supabase
           .from("comanda_items")
           .select("*")
           .eq("comanda_id", comanda.id)
           .eq("service_id", appointmentData.service_id);
 
-        // Only add service if it doesn't exist yet
-        if (!existingItems || existingItems.length === 0) {
+        // Only add service if it doesn't exist by either method
+        if ((!existingByAppointment || existingByAppointment.length === 0) && 
+            (!existingByService || existingByService.length === 0)) {
           const servicePrice = appointmentData.price ?? appointmentData.services?.price ?? 0;
           
           await supabase.from("comanda_items").insert({
             comanda_id: comanda.id,
             service_id: appointmentData.service_id,
+            professional_id: appointmentData.professional_id,
+            source_appointment_id: appointmentData.id,
             description: appointmentData.services?.name || "Serviço",
             item_type: "service",
             quantity: 1,
@@ -205,6 +216,16 @@ export default function Comandas() {
               total: (comanda.total || 0) + Number(servicePrice),
             })
             .eq("id", comanda.id);
+        } else if (existingByService && existingByService.length > 0 && 
+                   (!existingByAppointment || existingByAppointment.length === 0)) {
+          // Legacy item exists without source_appointment_id - update it to prevent future duplicates
+          await supabase
+            .from("comanda_items")
+            .update({ 
+              source_appointment_id: appointmentData.id,
+              professional_id: appointmentData.professional_id,
+            })
+            .eq("id", existingByService[0].id);
         }
       }
 
