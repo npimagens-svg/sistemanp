@@ -20,9 +20,10 @@ import { Badge } from "@/components/ui/badge";
 import { Client, ClientInput } from "@/hooks/useClients";
 import { useClientComandas } from "@/hooks/useComandas";
 import { useProfessionals } from "@/hooks/useProfessionals";
+import { useCepLookup } from "@/hooks/useCepLookup";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Loader2 } from "lucide-react";
+import { Loader2, Search } from "lucide-react";
 import { AvatarUpload } from "@/components/shared/AvatarUpload";
 
 const HOW_MET_OPTIONS = [
@@ -153,6 +154,48 @@ export function ClientModal({ open, onOpenChange, client, onSubmit, isLoading, i
 
   const updateField = (field: keyof ClientInput, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const { lookupCep, isLoading: isLoadingCep } = useCepLookup();
+
+  const handleCepLookup = async () => {
+    const addressData = await lookupCep(formData.cep || "");
+    if (addressData) {
+      setFormData((prev) => ({
+        ...prev,
+        address: addressData.address,
+        neighborhood: addressData.neighborhood,
+        city: addressData.city,
+        state: addressData.state,
+        address_complement: addressData.address_complement || prev.address_complement,
+      }));
+    }
+  };
+
+  const handleCepChange = (value: string) => {
+    // Format CEP as user types (00000-000)
+    const cleaned = value.replace(/\D/g, "");
+    let formatted = cleaned;
+    if (cleaned.length > 5) {
+      formatted = `${cleaned.slice(0, 5)}-${cleaned.slice(5, 8)}`;
+    }
+    updateField("cep", formatted);
+    
+    // Auto-lookup when CEP is complete
+    if (cleaned.length === 8) {
+      lookupCep(cleaned).then((addressData) => {
+        if (addressData) {
+          setFormData((prev) => ({
+            ...prev,
+            address: addressData.address,
+            neighborhood: addressData.neighborhood,
+            city: addressData.city,
+            state: addressData.state,
+            address_complement: addressData.address_complement || prev.address_complement,
+          }));
+        }
+      });
+    }
   };
 
   return (
@@ -294,11 +337,29 @@ export function ClientModal({ open, onOpenChange, client, onSubmit, isLoading, i
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="cep">CEP:</Label>
-                    <Input
-                      id="cep"
-                      value={formData.cep}
-                      onChange={(e) => updateField("cep", e.target.value)}
-                    />
+                    <div className="flex gap-2">
+                      <Input
+                        id="cep"
+                        value={formData.cep}
+                        onChange={(e) => handleCepChange(e.target.value)}
+                        maxLength={9}
+                        placeholder="00000-000"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={handleCepLookup}
+                        disabled={isLoadingCep || !formData.cep}
+                        title="Buscar endereço"
+                      >
+                        {isLoadingCep ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Search className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
                   </div>
                 </div>
 

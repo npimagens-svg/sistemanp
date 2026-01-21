@@ -12,8 +12,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
-import { Loader2 } from "lucide-react";
+import { Loader2, Search } from "lucide-react";
 import { Supplier, SupplierInput } from "@/hooks/useSuppliers";
+import { useCepLookup } from "@/hooks/useCepLookup";
 
 interface SupplierModalProps {
   open: boolean;
@@ -108,6 +109,48 @@ export function SupplierModal({
 
   const handleChange = (field: keyof SupplierInput, value: string | boolean) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const { lookupCep, isLoading: isLoadingCep } = useCepLookup();
+
+  const handleCepLookup = async () => {
+    const addressData = await lookupCep(formData.cep || "");
+    if (addressData) {
+      setFormData((prev) => ({
+        ...prev,
+        address: addressData.address,
+        neighborhood: addressData.neighborhood,
+        city: addressData.city,
+        state: addressData.state,
+        address_complement: addressData.address_complement || prev.address_complement,
+      }));
+    }
+  };
+
+  const handleCepChange = (value: string) => {
+    // Format CEP as user types (00000-000)
+    const cleaned = value.replace(/\D/g, "");
+    let formatted = cleaned;
+    if (cleaned.length > 5) {
+      formatted = `${cleaned.slice(0, 5)}-${cleaned.slice(5, 8)}`;
+    }
+    handleChange("cep", formatted);
+    
+    // Auto-lookup when CEP is complete
+    if (cleaned.length === 8) {
+      lookupCep(cleaned).then((addressData) => {
+        if (addressData) {
+          setFormData((prev) => ({
+            ...prev,
+            address: addressData.address,
+            neighborhood: addressData.neighborhood,
+            city: addressData.city,
+            state: addressData.state,
+            address_complement: addressData.address_complement || prev.address_complement,
+          }));
+        }
+      });
+    }
   };
 
   return (
@@ -221,12 +264,29 @@ export function SupplierModal({
               <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="cep">CEP</Label>
-                  <Input
-                    id="cep"
-                    value={formData.cep}
-                    onChange={(e) => handleChange("cep", e.target.value)}
-                    placeholder="00000-000"
-                  />
+                  <div className="flex gap-2">
+                    <Input
+                      id="cep"
+                      value={formData.cep}
+                      onChange={(e) => handleCepChange(e.target.value)}
+                      placeholder="00000-000"
+                      maxLength={9}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={handleCepLookup}
+                      disabled={isLoadingCep || !formData.cep}
+                      title="Buscar endereço"
+                    >
+                      {isLoadingCep ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Search className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="state">Estado</Label>
