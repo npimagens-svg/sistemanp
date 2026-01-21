@@ -20,27 +20,43 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Plus, Search, MoreHorizontal, Pencil, Trash2, Loader2, Percent, User } from "lucide-react";
+import { Plus, Search, MoreHorizontal, Pencil, Trash2, Loader2, Percent, User, UserX, RotateCcw } from "lucide-react";
 import { useProfessionals, Professional, ProfessionalInput } from "@/hooks/useProfessionals";
 import { ProfessionalModal } from "@/components/modals/ProfessionalModal";
-import { DeleteConfirmModal } from "@/components/modals/DeleteConfirmModal";
+import { TransferAppointmentsModal } from "@/components/modals/TransferAppointmentsModal";
 import { ProfessionalCommissionsTab } from "@/components/professionals/ProfessionalCommissionsTab";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 
 export function Profissionais() {
-  const { professionals, isLoading, createProfessional, updateProfessional, deleteProfessional, isCreating, isUpdating, isDeleting } = useProfessionals();
+  const { 
+    professionals, 
+    isLoading, 
+    createProfessional, 
+    updateProfessional, 
+    deactivateProfessional, 
+    reactivateProfessional,
+    isCreating, 
+    isUpdating, 
+    isDeactivating,
+    isReactivating 
+  } = useProfessionals();
   const { canDelete } = useAuth();
   const { toast } = useToast();
   
   const [search, setSearch] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
-  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [transferModalOpen, setTransferModalOpen] = useState(false);
   const [selectedProfessional, setSelectedProfessional] = useState<Professional | null>(null);
   const [activeTab, setActiveTab] = useState("list");
   const [selectedForCommissions, setSelectedForCommissions] = useState<Professional | null>(null);
+  const [showInactive, setShowInactive] = useState(false);
 
-  const filteredProfessionals = professionals.filter((professional) =>
+  // Separate active and inactive professionals
+  const activeProfessionals = professionals.filter((p) => p.is_active);
+  const inactiveProfessionals = professionals.filter((p) => !p.is_active);
+
+  const filteredProfessionals = (showInactive ? inactiveProfessionals : activeProfessionals).filter((professional) =>
     professional.name.toLowerCase().includes(search.toLowerCase()) ||
     professional.email?.toLowerCase().includes(search.toLowerCase()) ||
     professional.specialty?.toLowerCase().includes(search.toLowerCase())
@@ -56,17 +72,29 @@ export function Profissionais() {
     setModalOpen(true);
   };
 
-  const handleDelete = (professional: Professional) => {
+  const handleDeactivate = (professional: Professional) => {
     if (!canDelete) {
       toast({
         title: "Acesso negado",
-        description: "Apenas o usuário master pode excluir profissionais.",
+        description: "Apenas o usuário master pode desativar profissionais.",
         variant: "destructive",
       });
       return;
     }
     setSelectedProfessional(professional);
-    setDeleteModalOpen(true);
+    setTransferModalOpen(true);
+  };
+
+  const handleReactivate = (professional: Professional) => {
+    if (!canDelete) {
+      toast({
+        title: "Acesso negado",
+        description: "Apenas o usuário master pode reativar profissionais.",
+        variant: "destructive",
+      });
+      return;
+    }
+    reactivateProfessional(professional.id);
   };
 
   const handleSubmit = (data: ProfessionalInput & { id?: string }) => {
@@ -77,10 +105,13 @@ export function Profissionais() {
     }
   };
 
-  const confirmDelete = () => {
+  const confirmDeactivate = (targetProfessionalId: string | null) => {
     if (selectedProfessional) {
-      deleteProfessional(selectedProfessional.id);
-      setDeleteModalOpen(false);
+      deactivateProfessional({ 
+        id: selectedProfessional.id, 
+        targetProfessionalId: targetProfessionalId || undefined 
+      });
+      setTransferModalOpen(false);
       setSelectedProfessional(null);
     }
   };
@@ -139,14 +170,29 @@ export function Profissionais() {
         <TabsContent value="list" className="space-y-4">
           <Card>
             <CardContent className="p-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar por nome, email ou especialidade..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="pl-10"
-                />
+              <div className="flex items-center gap-4">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar por nome, email ou especialidade..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+                <Button
+                  variant={showInactive ? "default" : "outline"}
+                  onClick={() => setShowInactive(!showInactive)}
+                  className="gap-2"
+                >
+                  <UserX className="h-4 w-4" />
+                  {showInactive ? "Mostrando Inativos" : "Ver Inativos"}
+                  {inactiveProfessionals.length > 0 && (
+                    <Badge variant="secondary" className="ml-1">
+                      {inactiveProfessionals.length}
+                    </Badge>
+                  )}
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -159,7 +205,11 @@ export function Profissionais() {
                 </div>
               ) : filteredProfessionals.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
-                  {search ? "Nenhum profissional encontrado." : "Nenhum profissional cadastrado."}
+                  {search 
+                    ? "Nenhum profissional encontrado." 
+                    : showInactive 
+                      ? "Nenhum profissional inativo." 
+                      : "Nenhum profissional cadastrado."}
                 </div>
               ) : (
                 <Table>
@@ -175,7 +225,7 @@ export function Profissionais() {
                   </TableHeader>
                   <TableBody>
                     {filteredProfessionals.map((professional) => (
-                      <TableRow key={professional.id}>
+                      <TableRow key={professional.id} className={!professional.is_active ? "opacity-60" : ""}>
                         <TableCell>
                           <div className="flex items-center gap-3">
                             <Avatar>
@@ -217,22 +267,37 @@ export function Profissionais() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => handleEdit(professional)}>
-                                <Pencil className="h-4 w-4 mr-2" />
-                                Editar
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleManageCommissions(professional)}>
-                                <Percent className="h-4 w-4 mr-2" />
-                                Comissões por Serviço
-                              </DropdownMenuItem>
-                              {canDelete && (
-                                <DropdownMenuItem
-                                  onClick={() => handleDelete(professional)}
-                                  className="text-destructive"
-                                >
-                                  <Trash2 className="h-4 w-4 mr-2" />
-                                  Excluir
-                                </DropdownMenuItem>
+                              {professional.is_active ? (
+                                <>
+                                  <DropdownMenuItem onClick={() => handleEdit(professional)}>
+                                    <Pencil className="h-4 w-4 mr-2" />
+                                    Editar
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => handleManageCommissions(professional)}>
+                                    <Percent className="h-4 w-4 mr-2" />
+                                    Comissões por Serviço
+                                  </DropdownMenuItem>
+                                  {canDelete && (
+                                    <DropdownMenuItem
+                                      onClick={() => handleDeactivate(professional)}
+                                      className="text-destructive"
+                                    >
+                                      <Trash2 className="h-4 w-4 mr-2" />
+                                      Desativar
+                                    </DropdownMenuItem>
+                                  )}
+                                </>
+                              ) : (
+                                canDelete && (
+                                  <DropdownMenuItem
+                                    onClick={() => handleReactivate(professional)}
+                                    className="text-green-600"
+                                    disabled={isReactivating}
+                                  >
+                                    <RotateCcw className="h-4 w-4 mr-2" />
+                                    Reativar
+                                  </DropdownMenuItem>
+                                )
                               )}
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -293,13 +358,13 @@ export function Profissionais() {
         isLoading={isCreating || isUpdating}
       />
 
-      <DeleteConfirmModal
-        open={deleteModalOpen}
-        onOpenChange={setDeleteModalOpen}
-        onConfirm={confirmDelete}
-        title="Excluir Profissional"
-        description={`Tem certeza que deseja excluir o profissional "${selectedProfessional?.name}"? Esta ação não pode ser desfeita.`}
-        isLoading={isDeleting}
+      <TransferAppointmentsModal
+        open={transferModalOpen}
+        onOpenChange={setTransferModalOpen}
+        professional={selectedProfessional}
+        professionals={professionals}
+        onConfirm={confirmDeactivate}
+        isLoading={isDeactivating}
       />
     </AppLayoutNew>
   );

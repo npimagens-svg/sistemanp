@@ -168,16 +168,53 @@ export function useProfessionals() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("professionals").delete().eq("id", id);
+    mutationFn: async ({ id, targetProfessionalId }: { id: string; targetProfessionalId?: string | null }) => {
+      // If there's a target professional, transfer appointments first
+      if (targetProfessionalId) {
+        const now = new Date().toISOString();
+        const { error: transferError } = await supabase
+          .from("appointments")
+          .update({ professional_id: targetProfessionalId })
+          .eq("professional_id", id)
+          .gte("scheduled_at", now)
+          .neq("status", "cancelled");
+
+        if (transferError) throw transferError;
+      }
+
+      // Deactivate instead of delete
+      const { error } = await supabase
+        .from("professionals")
+        .update({ is_active: false })
+        .eq("id", id);
+
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["professionals", salonId] });
-      toast({ title: "Profissional removido com sucesso!" });
+      queryClient.invalidateQueries({ queryKey: ["appointments", salonId] });
+      toast({ title: "Profissional desativado com sucesso!" });
     },
     onError: (error: Error) => {
-      toast({ title: "Erro ao remover profissional", description: error.message, variant: "destructive" });
+      toast({ title: "Erro ao desativar profissional", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const reactivateMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("professionals")
+        .update({ is_active: true })
+        .eq("id", id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["professionals", salonId] });
+      toast({ title: "Profissional reativado com sucesso!" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Erro ao reativar profissional", description: error.message, variant: "destructive" });
     },
   });
 
@@ -187,9 +224,11 @@ export function useProfessionals() {
     error: query.error,
     createProfessional: createMutation.mutate,
     updateProfessional: updateMutation.mutate,
-    deleteProfessional: deleteMutation.mutate,
+    deactivateProfessional: deleteMutation.mutate,
+    reactivateProfessional: reactivateMutation.mutate,
     isCreating: createMutation.isPending,
     isUpdating: updateMutation.isPending,
-    isDeleting: deleteMutation.isPending,
+    isDeactivating: deleteMutation.isPending,
+    isReactivating: reactivateMutation.isPending,
   };
 }
