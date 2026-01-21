@@ -24,6 +24,7 @@ import { CaixaSelectModal } from "@/components/caixa/CaixaSelectModal";
 import { Caixa } from "@/hooks/useCaixas";
 import { useAllServiceProducts } from "@/hooks/useServiceProducts";
 import { useStockMovements } from "@/hooks/useStockMovements";
+import { useBankAccounts } from "@/hooks/useBankAccounts";
 
 interface ComandaModalProps {
   comanda: Comanda | null;
@@ -50,6 +51,7 @@ interface Payment {
   method: string;
   amount: number;
   info?: string;
+  bankAccountId?: string | null;
 }
 
 const PAYMENT_METHODS = [
@@ -68,6 +70,7 @@ export function ComandaModal({ comanda, open, onClose, professionals, services, 
   const { items, isLoading, addItem, removeItem, isAdding, isRemoving } = useComandaItems(comanda?.id || null);
   const { calculateServiceCost } = useAllServiceProducts();
   const { deductStockForServices } = useStockMovements();
+  const { bankAccounts } = useBankAccounts();
   
   const [editableItems, setEditableItems] = useState<EditableItem[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
@@ -139,6 +142,7 @@ export function ComandaModal({ comanda, open, onClose, professionals, services, 
         method: p.payment_method,
         amount: Number(p.amount),
         info: p.notes || "",
+        bankAccountId: p.bank_account_id || null,
       })));
     }
   };
@@ -559,6 +563,7 @@ export function ComandaModal({ comanda, open, onClose, professionals, services, 
             payment_method: payment.method as any,
             amount: payment.amount,
             notes: payment.info,
+            bank_account_id: payment.method === 'pix' ? payment.bankAccountId : null,
           });
         }
         // Track totals for all payments (new and existing)
@@ -935,15 +940,16 @@ export function ComandaModal({ comanda, open, onClose, professionals, services, 
               {/* Payment Methods */}
               <Card>
                 <CardContent className="p-4 space-y-4">
-                  <div className="grid grid-cols-4 gap-4 text-sm font-medium text-muted-foreground border-b pb-2">
+                  <div className="grid grid-cols-5 gap-4 text-sm font-medium text-muted-foreground border-b pb-2">
                     <span></span>
                     <span>Forma de Pagamento</span>
-                    <span>Informações</span>
+                    <span>Conta/Banco</span>
+                    <span>Observações</span>
                     <span>Valor (R$)</span>
                   </div>
                   
                   {payments.map((payment, index) => (
-                    <div key={payment.id} className="grid grid-cols-4 gap-4 items-center">
+                    <div key={payment.id} className="grid grid-cols-5 gap-4 items-center">
                       <Button 
                         variant="ghost" 
                         size="icon" 
@@ -954,7 +960,13 @@ export function ComandaModal({ comanda, open, onClose, professionals, services, 
                       </Button>
                       <Select 
                         value={payment.method} 
-                        onValueChange={(v) => updatePayment(payment.id, 'method', v)}
+                        onValueChange={(v) => {
+                          updatePayment(payment.id, 'method', v);
+                          // Clear bank account if not PIX
+                          if (v !== 'pix') {
+                            updatePayment(payment.id, 'bankAccountId', null);
+                          }
+                        }}
                       >
                         <SelectTrigger>
                           <SelectValue />
@@ -967,11 +979,38 @@ export function ComandaModal({ comanda, open, onClose, professionals, services, 
                           ))}
                         </SelectContent>
                       </Select>
-                      <Input 
-                        placeholder="Observações"
-                        value={payment.info}
-                        onChange={(e) => updatePayment(payment.id, 'info', e.target.value)}
-                      />
+                      {payment.method === 'pix' ? (
+                        <Select 
+                          value={payment.bankAccountId || ""} 
+                          onValueChange={(v) => updatePayment(payment.id, 'bankAccountId', v || null)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione o banco" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {bankAccounts.filter(b => b.is_active).map((bank) => (
+                              <SelectItem key={bank.id} value={bank.id}>
+                                {bank.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <Input 
+                          placeholder="Observações"
+                          value={payment.info}
+                          onChange={(e) => updatePayment(payment.id, 'info', e.target.value)}
+                        />
+                      )}
+                      {payment.method === 'pix' ? (
+                        <Input 
+                          placeholder="Observações"
+                          value={payment.info}
+                          onChange={(e) => updatePayment(payment.id, 'info', e.target.value)}
+                        />
+                      ) : (
+                        <div />
+                      )}
                       <div className="flex items-center gap-2">
                         <Input 
                           type="number"
