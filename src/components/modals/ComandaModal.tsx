@@ -25,6 +25,7 @@ import { Caixa } from "@/hooks/useCaixas";
 import { useAllServiceProducts } from "@/hooks/useServiceProducts";
 import { useStockMovements } from "@/hooks/useStockMovements";
 import { useBankAccounts } from "@/hooks/useBankAccounts";
+import { useCardBrands } from "@/hooks/useCardBrands";
 
 interface ComandaModalProps {
   comanda: Comanda | null;
@@ -52,6 +53,7 @@ interface Payment {
   amount: number;
   info?: string;
   bankAccountId?: string | null;
+  cardBrandId?: string | null;
 }
 
 const PAYMENT_METHODS = [
@@ -71,6 +73,7 @@ export function ComandaModal({ comanda, open, onClose, professionals, services, 
   const { calculateServiceCost } = useAllServiceProducts();
   const { deductStockForServices } = useStockMovements();
   const { bankAccounts } = useBankAccounts();
+  const { cardBrands } = useCardBrands();
   
   const [editableItems, setEditableItems] = useState<EditableItem[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
@@ -143,6 +146,7 @@ export function ComandaModal({ comanda, open, onClose, professionals, services, 
         amount: Number(p.amount),
         info: p.notes || "",
         bankAccountId: p.bank_account_id || null,
+        cardBrandId: p.card_brand_id || null,
       })));
     }
   };
@@ -557,6 +561,21 @@ export function ComandaModal({ comanda, open, onClose, professionals, services, 
       // Save new payments and track totals
       for (const payment of payments) {
         if (payment.id.startsWith("temp_")) {
+          // Calculate fee for card payments
+          let feeAmount = 0;
+          let netAmount = payment.amount;
+
+          if ((payment.method === 'credit_card' || payment.method === 'debit_card') && payment.cardBrandId) {
+            const brand = cardBrands.find(b => b.id === payment.cardBrandId);
+            if (brand) {
+              const feePercent = payment.method === 'credit_card' 
+                ? brand.credit_fee_percent 
+                : brand.debit_fee_percent;
+              feeAmount = payment.amount * (feePercent / 100);
+              netAmount = payment.amount - feeAmount;
+            }
+          }
+
           await supabase.from("payments").insert({
             comanda_id: comanda.id,
             salon_id: salonId,
@@ -564,6 +583,9 @@ export function ComandaModal({ comanda, open, onClose, professionals, services, 
             amount: payment.amount,
             notes: payment.info,
             bank_account_id: payment.method === 'pix' ? payment.bankAccountId : null,
+            card_brand_id: (payment.method === 'credit_card' || payment.method === 'debit_card') ? payment.cardBrandId : null,
+            fee_amount: feeAmount,
+            net_amount: netAmount,
           });
         }
         // Track totals for all payments (new and existing)
@@ -940,16 +962,17 @@ export function ComandaModal({ comanda, open, onClose, professionals, services, 
               {/* Payment Methods */}
               <Card>
                 <CardContent className="p-4 space-y-4">
-                  <div className="grid grid-cols-5 gap-4 text-sm font-medium text-muted-foreground border-b pb-2">
+                  <div className="grid grid-cols-6 gap-3 text-sm font-medium text-muted-foreground border-b pb-2">
                     <span></span>
                     <span>Forma de Pagamento</span>
-                    <span>Conta/Banco</span>
+                    <span>Banco/Bandeira</span>
                     <span>Observações</span>
                     <span>Valor (R$)</span>
+                    <span></span>
                   </div>
                   
                   {payments.map((payment, index) => (
-                    <div key={payment.id} className="grid grid-cols-5 gap-4 items-center">
+                    <div key={payment.id} className="grid grid-cols-6 gap-3 items-center">
                       <Button 
                         variant="ghost" 
                         size="icon" 
@@ -962,9 +985,12 @@ export function ComandaModal({ comanda, open, onClose, professionals, services, 
                         value={payment.method} 
                         onValueChange={(v) => {
                           updatePayment(payment.id, 'method', v);
-                          // Clear bank account if not PIX
+                          // Clear bank account/card brand when changing method
                           if (v !== 'pix') {
                             updatePayment(payment.id, 'bankAccountId', null);
+                          }
+                          if (v !== 'credit_card' && v !== 'debit_card') {
+                            updatePayment(payment.id, 'cardBrandId', null);
                           }
                         }}
                       >
@@ -979,6 +1005,8 @@ export function ComandaModal({ comanda, open, onClose, professionals, services, 
                           ))}
                         </SelectContent>
                       </Select>
+                      
+                      {/* Bank/Card Brand Selection */}
                       {payment.method === 'pix' ? (
                         <Select 
                           value={payment.bankAccountId || ""} 
@@ -995,38 +1023,47 @@ export function ComandaModal({ comanda, open, onClose, professionals, services, 
                             ))}
                           </SelectContent>
                         </Select>
-                      ) : (
-                        <Input 
-                          placeholder="Observações"
-                          value={payment.info}
-                          onChange={(e) => updatePayment(payment.id, 'info', e.target.value)}
-                        />
-                      )}
-                      {payment.method === 'pix' ? (
-                        <Input 
-                          placeholder="Observações"
-                          value={payment.info}
-                          onChange={(e) => updatePayment(payment.id, 'info', e.target.value)}
-                        />
+                      ) : (payment.method === 'credit_card' || payment.method === 'debit_card') ? (
+                        <Select 
+                          value={payment.cardBrandId || ""} 
+                          onValueChange={(v) => updatePayment(payment.id, 'cardBrandId', v || null)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione a bandeira" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {cardBrands.filter(b => b.is_active).map((brand) => (
+                              <SelectItem key={brand.id} value={brand.id}>
+                                {brand.name} ({payment.method === 'credit_card' ? brand.credit_fee_percent : brand.debit_fee_percent}%)
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       ) : (
                         <div />
                       )}
-                      <div className="flex items-center gap-2">
-                        <Input 
-                          type="number"
-                          step="0.01"
-                          value={payment.amount || ""}
-                          onChange={(e) => updatePayment(payment.id, 'amount', parseFloat(e.target.value) || 0)}
-                          className="text-right"
-                        />
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => updatePayment(payment.id, 'amount', subtotal - totalPayments + payment.amount)}
-                        >
-                          Dif
-                        </Button>
-                      </div>
+                      
+                      <Input 
+                        placeholder="Observações"
+                        value={payment.info}
+                        onChange={(e) => updatePayment(payment.id, 'info', e.target.value)}
+                      />
+                      
+                      <Input 
+                        type="number"
+                        step="0.01"
+                        value={payment.amount || ""}
+                        onChange={(e) => updatePayment(payment.id, 'amount', parseFloat(e.target.value) || 0)}
+                        className="text-right"
+                      />
+                      
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => updatePayment(payment.id, 'amount', subtotal - totalPayments + payment.amount)}
+                      >
+                        Dif
+                      </Button>
                     </div>
                   ))}
 
