@@ -324,7 +324,6 @@ export default function Configuracoes() {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Usuário</TableHead>
-                        <TableHead>Profissional Vinculado</TableHead>
                         <TableHead>Nível de Acesso</TableHead>
                         <TableHead className="text-center">Abrir Caixa</TableHead>
                         <TableHead className="w-[80px]">Ações</TableHead>
@@ -354,13 +353,6 @@ export default function Configuracoes() {
                                   </p>
                                 </div>
                               </div>
-                            </TableCell>
-                            <TableCell>
-                              {userAccess.professional_name ? (
-                                <Badge variant="secondary">{userAccess.professional_name}</Badge>
-                              ) : (
-                                <span className="text-muted-foreground">-</span>
-                              )}
                             </TableCell>
                             <TableCell>
                               {isMaster && !isAdmin ? (
