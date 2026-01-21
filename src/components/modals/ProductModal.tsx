@@ -23,7 +23,6 @@ import {
 import { Product, ProductInput } from "@/hooks/useProducts";
 import { Supplier } from "@/hooks/useSuppliers";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Package, Droplets, Scale } from "lucide-react";
 
 interface ProductModalProps {
   open: boolean;
@@ -35,9 +34,9 @@ interface ProductModalProps {
 }
 
 const UNIT_OPTIONS = [
-  { value: "unidade", label: "Por Unidade", description: "Saída por unidade inteira (ex: shampoo para revenda)", icon: Package },
-  { value: "ml", label: "Por Mililitro (ml)", description: "Saída fracionada em ml (ex: tinta, coloração)", icon: Droplets },
-  { value: "g", label: "Por Grama (g)", description: "Saída fracionada em gramas (ex: pó descolorante)", icon: Scale },
+  { value: "unidade", label: "Por Unidade" },
+  { value: "ml", label: "Por ml (mililitro)" },
+  { value: "g", label: "Por g (grama)" },
 ];
 
 export function ProductModal({ open, onOpenChange, product, onSubmit, isLoading, suppliers = [] }: ProductModalProps) {
@@ -130,17 +129,17 @@ export function ProductModal({ open, onOpenChange, product, onSubmit, isLoading,
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-xl max-h-[90vh] flex flex-col overflow-hidden">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle>{isEditing ? "Editar Produto" : "Novo Produto"}</DialogTitle>
         </DialogHeader>
         
-        <ScrollArea className="flex-1 pr-4">
-          <form id="product-form" onSubmit={handleSubmit} className="space-y-6 pb-4">
+        <ScrollArea className="flex-1 -mr-4 pr-4">
+          <form id="product-form" onSubmit={handleSubmit} className="space-y-5 pb-4">
             {/* Basic Info */}
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2 col-span-2 sm:col-span-1">
+                <div className="space-y-2">
                   <Label htmlFor="name">Nome *</Label>
                   <Input
                     id="name"
@@ -149,7 +148,7 @@ export function ProductModal({ open, onOpenChange, product, onSubmit, isLoading,
                     required
                   />
                 </div>
-                <div className="space-y-2 col-span-2 sm:col-span-1">
+                <div className="space-y-2">
                   <Label htmlFor="sku">Código (SKU/EAN)</Label>
                   <Input
                     id="sku"
@@ -229,107 +228,12 @@ export function ProductModal({ open, onOpenChange, product, onSubmit, isLoading,
 
             <Separator />
 
-            {/* Unit of Measure - IMPORTANT SECTION */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <Label className="text-base font-medium">Unidade de Medida</Label>
-                <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded font-medium">Importante</span>
-              </div>
-              
-              <div className="grid grid-cols-3 gap-3">
-                {UNIT_OPTIONS.map((option) => {
-                  const Icon = option.icon;
-                  const isSelected = formData.unit_of_measure === option.value;
-                  return (
-                    <button
-                      key={option.value}
-                      type="button"
-                      onClick={() => setFormData({ 
-                        ...formData, 
-                        unit_of_measure: option.value,
-                        unit_quantity: option.value === "unidade" ? 1 : (formData.unit_quantity === 1 ? 1000 : formData.unit_quantity)
-                      })}
-                      className={`p-3 rounded-lg border-2 text-left transition-all ${
-                        isSelected 
-                          ? "border-primary bg-primary/5" 
-                          : "border-muted hover:border-muted-foreground/30"
-                      }`}
-                    >
-                      <div className="flex items-center gap-2 mb-1">
-                        <Icon className={`h-4 w-4 ${isSelected ? "text-primary" : "text-muted-foreground"}`} />
-                        <span className={`font-medium text-sm ${isSelected ? "text-primary" : ""}`}>
-                          {option.label}
-                        </span>
-                      </div>
-                      <p className="text-xs text-muted-foreground leading-tight">
-                        {option.description}
-                      </p>
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Container Content - Show when fractional */}
-              {isFractional && (
-                <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="unit_quantity" className="flex items-center gap-2">
-                      <span className="text-primary">●</span>
-                      Qual o conteúdo de cada frasco/embalagem?
-                    </Label>
-                    <div className="flex items-center gap-3">
-                      <Input
-                        id="unit_quantity"
-                        type="number"
-                        min={1}
-                        step={1}
-                        value={formData.unit_quantity}
-                        onChange={(e) => setFormData({ ...formData, unit_quantity: parseFloat(e.target.value) || 1 })}
-                        className="max-w-[150px] bg-background"
-                        placeholder="Ex: 1000"
-                      />
-                      <span className="text-sm font-medium">{unitLabel}</span>
-                      <span className="text-sm text-muted-foreground">por unidade</span>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      {formData.unit_of_measure === "ml" 
-                        ? "Exemplos: 1 litro = 1000ml, 5 litros = 5000ml, 500ml = 500ml"
-                        : "Exemplos: 1 kg = 1000g, 500g = 500g, 250g = 250g"
-                      }
-                    </p>
-                  </div>
-
-                  {/* Cost per unit calculation */}
-                  {costPerUnit > 0 && (
-                    <div className="rounded-md bg-background p-3 text-sm space-y-2">
-                      <div className="flex justify-between items-center">
-                        <span className="text-muted-foreground">Custo por {unitLabel}:</span>
-                        <span className="font-bold text-primary">R$ {costPerUnit.toFixed(4)}</span>
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        R$ {(formData.cost_price || 0).toFixed(2)} ÷ {formData.unit_quantity || 1} {unitLabel} = R$ {costPerUnit.toFixed(4)}/{unitLabel}
-                      </p>
-                      <div className="pt-2 border-t">
-                        <p className="text-xs text-green-600">
-                          ✓ Se usar 30{unitLabel} em um serviço, o custo será R$ {(costPerUnit * 30).toFixed(2)}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            <Separator />
-
             {/* Pricing */}
             <div className="space-y-4">
               <Label className="text-base font-medium">Valores</Label>
               <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="cost_price">
-                    Custo {isFractional ? "do Frasco" : ""} (R$)
-                  </Label>
+                  <Label htmlFor="cost_price">Custo (R$)</Label>
                   <Input
                     id="cost_price"
                     type="number"
@@ -338,14 +242,9 @@ export function ProductModal({ open, onOpenChange, product, onSubmit, isLoading,
                     value={formData.cost_price}
                     onChange={(e) => setFormData({ ...formData, cost_price: parseFloat(e.target.value) || 0 })}
                   />
-                  {isFractional && (
-                    <p className="text-xs text-muted-foreground">
-                      Custo total do frasco de {formData.unit_quantity}{unitLabel}
-                    </p>
-                  )}
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="sale_price">Valor de Venda (R$)</Label>
+                  <Label htmlFor="sale_price">Venda (R$)</Label>
                   <Input
                     id="sale_price"
                     type="number"
@@ -371,6 +270,67 @@ export function ProductModal({ open, onOpenChange, product, onSubmit, isLoading,
 
             <Separator />
 
+            {/* Unit of Measure - Compact Select */}
+            <div className="space-y-4">
+              <Label className="text-base font-medium">Registro de Saída</Label>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="unit_of_measure">Tipo de saída</Label>
+                  <Select
+                    value={formData.unit_of_measure}
+                    onValueChange={(value) => setFormData({ 
+                      ...formData, 
+                      unit_of_measure: value,
+                      unit_quantity: value === "unidade" ? 1 : (formData.unit_quantity === 1 ? 1000 : formData.unit_quantity)
+                    })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-background">
+                      {UNIT_OPTIONS.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Content per unit - Only shows when ml or g is selected */}
+                {isFractional && (
+                  <div className="space-y-2">
+                    <Label htmlFor="unit_quantity">Conteúdo do frasco ({unitLabel})</Label>
+                    <Input
+                      id="unit_quantity"
+                      type="number"
+                      min={1}
+                      step={1}
+                      value={formData.unit_quantity}
+                      onChange={(e) => setFormData({ ...formData, unit_quantity: parseFloat(e.target.value) || 1 })}
+                      placeholder={formData.unit_of_measure === "ml" ? "Ex: 1000" : "Ex: 500"}
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Cost per unit calculation - Only shows when fractional and has values */}
+              {isFractional && costPerUnit > 0 && (
+                <div className="rounded-md bg-muted/50 p-3 text-sm space-y-1">
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground">Custo por {unitLabel}:</span>
+                    <span className="font-bold text-primary">R$ {costPerUnit.toFixed(4)}</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    R$ {formData.cost_price.toFixed(2)} ÷ {formData.unit_quantity} {unitLabel}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <Separator />
+
             {/* Supplier */}
             <div className="space-y-2">
               <Label htmlFor="supplier">Fornecedor</Label>
@@ -381,7 +341,7 @@ export function ProductModal({ open, onOpenChange, product, onSubmit, isLoading,
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-background">
                   <SelectItem value="none">Nenhum</SelectItem>
                   {suppliers
                     .filter(s => s.is_active)
@@ -396,7 +356,7 @@ export function ProductModal({ open, onOpenChange, product, onSubmit, isLoading,
 
             <Separator />
 
-            {/* Stock - HIGHLIGHTED FOR NEW PRODUCTS */}
+            {/* Stock */}
             <div className="space-y-4">
               <div className="flex items-center gap-2">
                 <Label className="text-base font-medium">Estoque</Label>
@@ -407,81 +367,59 @@ export function ProductModal({ open, onOpenChange, product, onSubmit, isLoading,
                 )}
               </div>
               
-              <div className={`space-y-4 ${!isEditing ? "rounded-lg border border-green-200 bg-green-50/50 p-4" : ""}`}>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="current_stock">
-                      {isEditing ? "Estoque Atual" : "Quantidade Inicial"} (unidades/frascos)
-                    </Label>
-                    <Input
-                      id="current_stock"
-                      type="number"
-                      min={0}
-                      value={formData.current_stock}
-                      onChange={(e) => setFormData({ ...formData, current_stock: parseInt(e.target.value) || 0 })}
-                      className={!isEditing ? "bg-white border-green-300" : ""}
-                    />
-                    {!isEditing && (
-                      <p className="text-xs text-green-700">
-                        Quantos frascos/unidades você tem em estoque agora?
-                      </p>
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="min_stock">Estoque Mínimo (alerta)</Label>
-                    <Input
-                      id="min_stock"
-                      type="number"
-                      min={0}
-                      value={formData.min_stock}
-                      onChange={(e) => setFormData({ ...formData, min_stock: parseInt(e.target.value) || 0 })}
-                      className={!isEditing ? "bg-white" : ""}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Alerta quando estoque ficar abaixo
-                    </p>
-                  </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="current_stock">
+                    {isEditing ? "Estoque Atual" : "Qtd Inicial"} (unidades)
+                  </Label>
+                  <Input
+                    id="current_stock"
+                    type="number"
+                    min={0}
+                    value={formData.current_stock}
+                    onChange={(e) => setFormData({ ...formData, current_stock: parseInt(e.target.value) || 0 })}
+                  />
                 </div>
-
-                {/* Fractional stock - only for editing */}
-                {isFractional && isEditing && (
-                  <div className="space-y-2">
-                    <Label htmlFor="current_stock_fractional">
-                      Estoque Fracionado ({unitLabel} restante da unidade aberta)
-                    </Label>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        id="current_stock_fractional"
-                        type="number"
-                        min={0}
-                        step={0.01}
-                        value={formData.current_stock_fractional}
-                        onChange={(e) => setFormData({ ...formData, current_stock_fractional: parseFloat(e.target.value) || 0 })}
-                        className="max-w-32"
-                      />
-                      <span className="text-sm text-muted-foreground">{unitLabel}</span>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Quantidade restante do frasco/unidade que já foi aberta
-                    </p>
-                  </div>
-                )}
-
-                {/* Stock Summary */}
-                {isFractional && formData.current_stock > 0 && (
-                  <div className="bg-muted/50 rounded-lg p-3 text-sm">
-                    <p className="font-medium">Total em Estoque:</p>
-                    <p className="text-muted-foreground">
-                      {formData.current_stock} unidade(s) fechada(s) 
-                      {isEditing && formData.current_stock_fractional > 0 && ` + ${formData.current_stock_fractional} ${unitLabel} de frasco aberto`}
-                      {" = "}
-                      <span className="font-medium text-foreground">
-                        {((formData.current_stock * formData.unit_quantity) + (isEditing ? (formData.current_stock_fractional || 0) : 0)).toLocaleString("pt-BR")} {unitLabel} total
-                      </span>
-                    </p>
-                  </div>
-                )}
+                <div className="space-y-2">
+                  <Label htmlFor="min_stock">Estoque Mínimo</Label>
+                  <Input
+                    id="min_stock"
+                    type="number"
+                    min={0}
+                    value={formData.min_stock}
+                    onChange={(e) => setFormData({ ...formData, min_stock: parseInt(e.target.value) || 0 })}
+                  />
+                </div>
               </div>
+
+              {/* Fractional stock - only for editing */}
+              {isFractional && isEditing && (
+                <div className="space-y-2">
+                  <Label htmlFor="current_stock_fractional">
+                    Fracionado aberto ({unitLabel} restante)
+                  </Label>
+                  <Input
+                    id="current_stock_fractional"
+                    type="number"
+                    min={0}
+                    step={0.01}
+                    value={formData.current_stock_fractional}
+                    onChange={(e) => setFormData({ ...formData, current_stock_fractional: parseFloat(e.target.value) || 0 })}
+                    className="max-w-[200px]"
+                  />
+                </div>
+              )}
+
+              {/* Stock Summary */}
+              {isFractional && formData.current_stock > 0 && (
+                <div className="bg-muted/50 rounded-md p-3 text-sm">
+                  <span className="text-muted-foreground">Total: </span>
+                  <span className="font-medium">
+                    {((formData.current_stock * formData.unit_quantity) + (isEditing ? (formData.current_stock_fractional || 0) : 0)).toLocaleString("pt-BR")} {unitLabel}
+                  </span>
+                  <span className="text-muted-foreground"> ({formData.current_stock} frascos)</span>
+                </div>
+              )}
             </div>
 
             <Separator />
@@ -498,7 +436,7 @@ export function ProductModal({ open, onOpenChange, product, onSubmit, isLoading,
           </form>
         </ScrollArea>
 
-        <DialogFooter className="pt-4">
+        <DialogFooter className="flex-shrink-0 pt-4 border-t">
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>
