@@ -268,32 +268,41 @@ export function ProductModal({ open, onOpenChange, product, onSubmit, isLoading,
 
             <Separator />
 
-            {/* Supplier and Stock Output */}
+            {/* Supplier */}
+            <div className="space-y-2">
+              <Label htmlFor="supplier">Fornecedor</Label>
+              <Select
+                value={formData.supplier_id || "none"}
+                onValueChange={(value) => setFormData({ ...formData, supplier_id: value === "none" ? null : value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Nenhum</SelectItem>
+                  {suppliers
+                    .filter(s => s.is_active)
+                    .map((supplier) => (
+                      <SelectItem key={supplier.id} value={supplier.id}>
+                        {supplier.name}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <Separator />
+
+            {/* Stock Output Type - Highlighted Section */}
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="flex items-center gap-2">
+                <Label className="text-base font-medium">Tipo de Saída do Estoque</Label>
+                <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded">Importante</span>
+              </div>
+              
+              <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="supplier">Fornecedor</Label>
-                  <Select
-                    value={formData.supplier_id || "none"}
-                    onValueChange={(value) => setFormData({ ...formData, supplier_id: value === "none" ? null : value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Nenhum</SelectItem>
-                      {suppliers
-                        .filter(s => s.is_active)
-                        .map((supplier) => (
-                          <SelectItem key={supplier.id} value={supplier.id}>
-                            {supplier.name}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="unit_of_measure">Registro de Saída</Label>
+                  <Label htmlFor="unit_of_measure">Como este produto sai do estoque?</Label>
                   <Select
                     value={formData.unit_of_measure}
                     onValueChange={(value) => setFormData({ 
@@ -302,55 +311,87 @@ export function ProductModal({ open, onOpenChange, product, onSubmit, isLoading,
                       unit_quantity: value === "unidade" ? 1 : formData.unit_quantity
                     })}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="bg-background">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       {UNIT_OPTIONS.map((unit) => (
                         <SelectItem key={unit.value} value={unit.value}>
-                          {unit.label}
+                          <div className="flex flex-col">
+                            <span>{unit.label}</span>
+                            <span className="text-xs text-muted-foreground">{unit.description}</span>
+                          </div>
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+                  <p className="text-xs text-muted-foreground">
+                    {formData.unit_of_measure === "unidade" 
+                      ? "O produto sai do estoque por unidade completa (ex: shampoo para revenda)"
+                      : `O produto sai fracionado por ${unitLabel} (ex: tinta, coloração, creme)`
+                    }
+                  </p>
                 </div>
+
+                {/* Unit Quantity and Cost Calculation - only show when fractional */}
+                {isFractional && (
+                  <>
+                    <Separator />
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="unit_quantity">
+                          Conteúdo por Unidade ({unitLabel})
+                        </Label>
+                        <div className="flex items-center gap-2">
+                          <Input
+                            id="unit_quantity"
+                            type="number"
+                            min={1}
+                            step={1}
+                            value={formData.unit_quantity}
+                            onChange={(e) => setFormData({ ...formData, unit_quantity: parseFloat(e.target.value) || 1 })}
+                            className="bg-background"
+                          />
+                          <span className="text-sm text-muted-foreground">{unitLabel}</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          {formData.unit_of_measure === "ml" 
+                            ? "Ex: 1L = 1000ml, 5L = 5000ml"
+                            : "Ex: 1kg = 1000g, 500g = 500g"
+                          }
+                        </p>
+                      </div>
+
+                      {/* Auto-calculated cost per unit */}
+                      <div className="space-y-2">
+                        <Label>Custo por {unitLabel} (automático)</Label>
+                        <div className="flex items-center h-10 px-3 rounded-md border bg-muted text-sm font-medium">
+                          {costPerUnit > 0 ? (
+                            <span className="text-primary">R$ {costPerUnit.toFixed(4)}</span>
+                          ) : (
+                            <span className="text-muted-foreground">Informe custo e conteúdo</span>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Calculado: R$ {(formData.cost_price || 0).toFixed(2)} ÷ {formData.unit_quantity || 1} {unitLabel}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Example calculation */}
+                    {costPerUnit > 0 && (
+                      <div className="rounded-md bg-background p-3 text-sm space-y-1">
+                        <p className="font-medium flex items-center gap-2">
+                          <span className="text-green-600">✓</span> Cálculo de Custo Configurado
+                        </p>
+                        <p className="text-muted-foreground">
+                          Se usar 30{unitLabel} em um serviço, o custo será: <span className="font-medium text-foreground">R$ {(costPerUnit * 30).toFixed(2)}</span>
+                        </p>
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
-
-              {/* Unit Quantity - only show when fractional */}
-              {isFractional && (
-                <div className="rounded-lg bg-muted/50 p-4 space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="unit_quantity">
-                      Quantos {unitLabel} tem cada unidade?
-                    </Label>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        id="unit_quantity"
-                        type="number"
-                        min={1}
-                        step={1}
-                        value={formData.unit_quantity}
-                        onChange={(e) => setFormData({ ...formData, unit_quantity: parseFloat(e.target.value) || 1 })}
-                        className="max-w-32"
-                      />
-                      <span className="text-sm text-muted-foreground">{unitLabel}</span>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Ex: Se o frasco tem 1 litro, informe 1000 ml
-                    </p>
-                  </div>
-
-                  {/* Cost per unit calculation */}
-                  {costPerUnit > 0 && (
-                    <div className="flex items-center justify-between text-sm bg-background rounded p-2">
-                      <span>Custo por {unitLabel}:</span>
-                      <span className="font-medium text-primary">
-                        R$ {costPerUnit.toFixed(4)}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              )}
             </div>
 
             <Separator />
