@@ -200,10 +200,11 @@ export function ComandaModal({ comanda, open, onClose, professionals, services, 
     // Calculate product cost for this service
     const productCost = calculateServiceCost(serviceId);
 
-    // Add item to comanda with product cost
+    // Add item to comanda with product cost and professional
     addItem({
       comanda_id: comanda.id,
       service_id: serviceId,
+      professional_id: comanda.professional_id || null,
       description: service.name,
       item_type: "service",
       quantity: 1,
