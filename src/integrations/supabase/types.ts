@@ -14,6 +14,82 @@ export type Database = {
   }
   public: {
     Tables: {
+      access_level_permissions: {
+        Row: {
+          access_level_id: string
+          created_at: string
+          enabled: boolean
+          id: string
+          permission_key: string
+        }
+        Insert: {
+          access_level_id: string
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          permission_key: string
+        }
+        Update: {
+          access_level_id?: string
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          permission_key?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "access_level_permissions_access_level_id_fkey"
+            columns: ["access_level_id"]
+            isOneToOne: false
+            referencedRelation: "access_levels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      access_levels: {
+        Row: {
+          color: string | null
+          created_at: string
+          description: string | null
+          id: string
+          is_system: boolean
+          name: string
+          salon_id: string | null
+          system_key: string | null
+          updated_at: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_system?: boolean
+          name: string
+          salon_id?: string | null
+          system_key?: string | null
+          updated_at?: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_system?: boolean
+          name?: string
+          salon_id?: string | null
+          system_key?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "access_levels_salon_id_fkey"
+            columns: ["salon_id"]
+            isOneToOne: false
+            referencedRelation: "salons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       appointments: {
         Row: {
           client_id: string | null
@@ -1064,6 +1140,7 @@ export type Database = {
       }
       user_roles: {
         Row: {
+          access_level_id: string | null
           can_open_caixa: boolean
           id: string
           role: Database["public"]["Enums"]["app_role"]
@@ -1071,6 +1148,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          access_level_id?: string | null
           can_open_caixa?: boolean
           id?: string
           role: Database["public"]["Enums"]["app_role"]
@@ -1078,6 +1156,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          access_level_id?: string | null
           can_open_caixa?: boolean
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
@@ -1085,6 +1164,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "user_roles_access_level_id_fkey"
+            columns: ["access_level_id"]
+            isOneToOne: false
+            referencedRelation: "access_levels"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "user_roles_salon_id_fkey"
             columns: ["salon_id"]
