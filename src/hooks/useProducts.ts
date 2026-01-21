@@ -15,6 +15,7 @@ export interface Product {
   current_stock: number;
   min_stock: number;
   is_active: boolean;
+  supplier_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -29,6 +30,7 @@ export interface ProductInput {
   current_stock?: number;
   min_stock?: number;
   is_active?: boolean;
+  supplier_id?: string | null;
 }
 
 export function useProducts() {

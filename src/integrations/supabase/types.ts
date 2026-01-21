@@ -781,6 +781,7 @@ export type Database = {
           sale_price: number | null
           salon_id: string
           sku: string | null
+          supplier_id: string | null
           updated_at: string
         }
         Insert: {
@@ -796,6 +797,7 @@ export type Database = {
           sale_price?: number | null
           salon_id: string
           sku?: string | null
+          supplier_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -811,6 +813,7 @@ export type Database = {
           sale_price?: number | null
           salon_id?: string
           sku?: string | null
+          supplier_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -819,6 +822,13 @@ export type Database = {
             columns: ["salon_id"]
             isOneToOne: false
             referencedRelation: "salons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "products_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
             referencedColumns: ["id"]
           },
         ]
@@ -1110,6 +1120,86 @@ export type Database = {
           },
           {
             foreignKeyName: "stock_movements_salon_id_fkey"
+            columns: ["salon_id"]
+            isOneToOne: false
+            referencedRelation: "salons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      suppliers: {
+        Row: {
+          address: string | null
+          address_complement: string | null
+          address_number: string | null
+          cep: string | null
+          city: string | null
+          created_at: string
+          document: string | null
+          email: string | null
+          id: string
+          is_active: boolean
+          mobile: string | null
+          name: string
+          neighborhood: string | null
+          notes: string | null
+          phone: string | null
+          responsible: string | null
+          salon_id: string
+          state: string | null
+          trade_name: string | null
+          updated_at: string
+          website: string | null
+        }
+        Insert: {
+          address?: string | null
+          address_complement?: string | null
+          address_number?: string | null
+          cep?: string | null
+          city?: string | null
+          created_at?: string
+          document?: string | null
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          mobile?: string | null
+          name: string
+          neighborhood?: string | null
+          notes?: string | null
+          phone?: string | null
+          responsible?: string | null
+          salon_id: string
+          state?: string | null
+          trade_name?: string | null
+          updated_at?: string
+          website?: string | null
+        }
+        Update: {
+          address?: string | null
+          address_complement?: string | null
+          address_number?: string | null
+          cep?: string | null
+          city?: string | null
+          created_at?: string
+          document?: string | null
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          mobile?: string | null
+          name?: string
+          neighborhood?: string | null
+          notes?: string | null
+          phone?: string | null
+          responsible?: string | null
+          salon_id?: string
+          state?: string | null
+          trade_name?: string | null
+          updated_at?: string
+          website?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "suppliers_salon_id_fkey"
             columns: ["salon_id"]
             isOneToOne: false
             referencedRelation: "salons"

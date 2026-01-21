@@ -1,22 +1,39 @@
 import { useState } from "react";
-import { useLocation } from "react-router-dom";
 import { AppLayoutNew } from "@/components/layout/AppLayoutNew";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Search, Loader2, Package, AlertTriangle, Edit, Trash2 } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Plus, Search, Loader2, Package, AlertTriangle, Edit, Trash2, Truck, Globe, Phone } from "lucide-react";
 import { useProducts } from "@/hooks/useProducts";
+import { useSuppliers, Supplier, SupplierInput } from "@/hooks/useSuppliers";
 import { ProductModal } from "@/components/modals/ProductModal";
+import { SupplierModal } from "@/components/modals/SupplierModal";
+import { DeleteConfirmModal } from "@/components/modals/DeleteConfirmModal";
 
 export default function Estoque() {
-  const location = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
-  const [modalOpen, setModalOpen] = useState(false);
+  const [supplierSearchTerm, setSupplierSearchTerm] = useState("");
+  const [productModalOpen, setProductModalOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
+  const [supplierModalOpen, setSupplierModalOpen] = useState(false);
+  const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
+  const [deleteSupplierModalOpen, setDeleteSupplierModalOpen] = useState(false);
+  const [supplierToDelete, setSupplierToDelete] = useState<Supplier | null>(null);
 
-  const { products, isLoading, createProduct, updateProduct, deleteProduct, isCreating, isUpdating } = useProducts();
+  const { products, isLoading: isLoadingProducts, createProduct, updateProduct, deleteProduct, isCreating, isUpdating } = useProducts();
+  const { 
+    suppliers, 
+    isLoading: isLoadingSuppliers, 
+    createSupplier, 
+    updateSupplier, 
+    deleteSupplier,
+    isCreating: isCreatingSupplier,
+    isUpdating: isUpdatingSupplier,
+    isDeleting: isDeletingSupplier,
+  } = useSuppliers();
 
   const filteredProducts = products.filter(product =>
     product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -24,36 +41,72 @@ export default function Estoque() {
     product.category?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const filteredSuppliers = suppliers.filter(supplier =>
+    supplier.name.toLowerCase().includes(supplierSearchTerm.toLowerCase()) ||
+    supplier.trade_name?.toLowerCase().includes(supplierSearchTerm.toLowerCase()) ||
+    supplier.document?.toLowerCase().includes(supplierSearchTerm.toLowerCase())
+  );
+
   const formatCurrency = (value: number | null) => {
     if (value === null) return "-";
     return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
   };
 
-  const handleEdit = (product: any) => {
+  const handleEditProduct = (product: any) => {
     setSelectedProduct(product);
-    setModalOpen(true);
+    setProductModalOpen(true);
   };
 
-  const handleDelete = (product: any) => {
+  const handleDeleteProduct = (product: any) => {
     if (confirm(`Deseja excluir o produto "${product.name}"?`)) {
       deleteProduct(product.id);
     }
   };
 
-  const handleSubmit = (data: any) => {
+  const handleSubmitProduct = (data: any) => {
     if (selectedProduct) {
       updateProduct({ ...data, id: selectedProduct.id });
     } else {
       createProduct(data);
     }
-    setModalOpen(false);
+    setProductModalOpen(false);
     setSelectedProduct(null);
+  };
+
+  const handleEditSupplier = (supplier: Supplier) => {
+    setSelectedSupplier(supplier);
+    setSupplierModalOpen(true);
+  };
+
+  const handleDeleteSupplierClick = (supplier: Supplier) => {
+    setSupplierToDelete(supplier);
+    setDeleteSupplierModalOpen(true);
+  };
+
+  const handleSaveSupplier = (data: SupplierInput) => {
+    if (selectedSupplier) {
+      updateSupplier({ ...data, id: selectedSupplier.id });
+    } else {
+      createSupplier(data);
+    }
+    setSupplierModalOpen(false);
+    setSelectedSupplier(null);
+  };
+
+  const confirmDeleteSupplier = () => {
+    if (supplierToDelete) {
+      deleteSupplier(supplierToDelete.id);
+      setDeleteSupplierModalOpen(false);
+      setSupplierToDelete(null);
+    }
   };
 
   // Stats
   const totalProducts = products.length;
   const lowStockProducts = products.filter(p => (p.current_stock ?? 0) <= (p.min_stock ?? 0)).length;
   const totalValue = products.reduce((sum, p) => sum + ((p.current_stock ?? 0) * (p.cost_price ?? 0)), 0);
+
+  const isLoading = isLoadingProducts || isLoadingSuppliers;
 
   if (isLoading) {
     return (
@@ -68,16 +121,13 @@ export default function Estoque() {
   return (
     <AppLayoutNew>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        <div>
           <h1 className="text-2xl font-bold">Estoque</h1>
-          <Button onClick={() => { setSelectedProduct(null); setModalOpen(true); }} className="gap-2">
-            <Plus className="h-4 w-4" />
-            Novo Produto
-          </Button>
+          <p className="text-muted-foreground">Gerencie produtos e fornecedores</p>
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center gap-4">
@@ -111,108 +161,266 @@ export default function Estoque() {
                   <Package className="h-6 w-6 text-emerald-500" />
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Valor Total em Estoque</p>
+                  <p className="text-sm text-muted-foreground">Valor em Estoque</p>
                   <p className="text-2xl font-bold text-emerald-600">{formatCurrency(totalValue)}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-4">
+                <div className="p-3 rounded-lg bg-blue-500/10">
+                  <Truck className="h-6 w-6 text-blue-500" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Fornecedores</p>
+                  <p className="text-2xl font-bold">{suppliers.length}</p>
                 </div>
               </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Search & Filter */}
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-4">
-              <div className="relative flex-1 max-w-sm">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar produto..."
-                  value={searchTerm}
-                  onChange={e => setSearchTerm(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <Tabs defaultValue="produtos" className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="produtos" className="gap-2">
+              <Package className="h-4 w-4" />
+              Produtos
+            </TabsTrigger>
+            <TabsTrigger value="fornecedores" className="gap-2">
+              <Truck className="h-4 w-4" />
+              Fornecedores
+            </TabsTrigger>
+          </TabsList>
 
-        {/* Products Table */}
-        <Card>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Produto</TableHead>
-                  <TableHead>SKU</TableHead>
-                  <TableHead>Categoria</TableHead>
-                  <TableHead className="text-right">Custo</TableHead>
-                  <TableHead className="text-right">Venda</TableHead>
-                  <TableHead className="text-center">Estoque</TableHead>
-                  <TableHead className="text-center">Mínimo</TableHead>
-                  <TableHead className="text-center">Status</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredProducts.map((product) => {
-                  const isLowStock = (product.current_stock ?? 0) <= (product.min_stock ?? 0);
-                  return (
-                    <TableRow key={product.id}>
-                      <TableCell className="font-medium">{product.name}</TableCell>
-                      <TableCell className="text-muted-foreground">{product.sku || "-"}</TableCell>
-                      <TableCell>{product.category || "-"}</TableCell>
-                      <TableCell className="text-right">{formatCurrency(product.cost_price)}</TableCell>
-                      <TableCell className="text-right">{formatCurrency(product.sale_price)}</TableCell>
-                      <TableCell className="text-center">
-                        <span className={isLowStock ? "text-destructive font-medium" : ""}>
-                          {product.current_stock ?? 0}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-center">{product.min_stock ?? 0}</TableCell>
-                      <TableCell className="text-center">
-                        {isLowStock ? (
-                          <Badge variant="destructive">Baixo</Badge>
-                        ) : product.is_active ? (
-                          <Badge variant="default">OK</Badge>
-                        ) : (
-                          <Badge variant="secondary">Inativo</Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
-                          <Button variant="ghost" size="icon" onClick={() => handleEdit(product)}>
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" onClick={() => handleDelete(product)}>
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </div>
-                      </TableCell>
+          {/* Products Tab */}
+          <TabsContent value="produtos" className="space-y-4">
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="relative flex-1 max-w-sm">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Buscar produto..."
+                      value={searchTerm}
+                      onChange={e => setSearchTerm(e.target.value)}
+                      className="pl-9"
+                    />
+                  </div>
+                  <Button onClick={() => { setSelectedProduct(null); setProductModalOpen(true); }} className="gap-2">
+                    <Plus className="h-4 w-4" />
+                    Novo Produto
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Produto</TableHead>
+                      <TableHead>SKU</TableHead>
+                      <TableHead>Categoria</TableHead>
+                      <TableHead>Fornecedor</TableHead>
+                      <TableHead className="text-right">Custo</TableHead>
+                      <TableHead className="text-right">Venda</TableHead>
+                      <TableHead className="text-center">Estoque</TableHead>
+                      <TableHead className="text-center">Status</TableHead>
+                      <TableHead className="text-right">Ações</TableHead>
                     </TableRow>
-                  );
-                })}
-                {filteredProducts.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
-                      {searchTerm ? "Nenhum produto encontrado" : "Nenhum produto cadastrado"}
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredProducts.map((product) => {
+                      const isLowStock = (product.current_stock ?? 0) <= (product.min_stock ?? 0);
+                      const supplier = suppliers.find(s => s.id === (product as any).supplier_id);
+                      return (
+                        <TableRow key={product.id}>
+                          <TableCell className="font-medium">{product.name}</TableCell>
+                          <TableCell className="text-muted-foreground">{product.sku || "-"}</TableCell>
+                          <TableCell>{product.category || "-"}</TableCell>
+                          <TableCell>
+                            {supplier ? (
+                              <Badge variant="outline">{supplier.name}</Badge>
+                            ) : (
+                              <span className="text-muted-foreground">-</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">{formatCurrency(product.cost_price)}</TableCell>
+                          <TableCell className="text-right">{formatCurrency(product.sale_price)}</TableCell>
+                          <TableCell className="text-center">
+                            <span className={isLowStock ? "text-destructive font-medium" : ""}>
+                              {product.current_stock ?? 0}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {isLowStock ? (
+                              <Badge variant="destructive">Baixo</Badge>
+                            ) : product.is_active ? (
+                              <Badge variant="default">OK</Badge>
+                            ) : (
+                              <Badge variant="secondary">Inativo</Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-1">
+                              <Button variant="ghost" size="icon" onClick={() => handleEditProduct(product)}>
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="icon" onClick={() => handleDeleteProduct(product)}>
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                    {filteredProducts.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                          {searchTerm ? "Nenhum produto encontrado" : "Nenhum produto cadastrado"}
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Suppliers Tab */}
+          <TabsContent value="fornecedores" className="space-y-4">
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="relative flex-1 max-w-sm">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Buscar fornecedor..."
+                      value={supplierSearchTerm}
+                      onChange={e => setSupplierSearchTerm(e.target.value)}
+                      className="pl-9"
+                    />
+                  </div>
+                  <Button onClick={() => { setSelectedSupplier(null); setSupplierModalOpen(true); }} className="gap-2">
+                    <Plus className="h-4 w-4" />
+                    Novo Fornecedor
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Nome Fantasia</TableHead>
+                      <TableHead>CNPJ/CPF</TableHead>
+                      <TableHead>Responsável</TableHead>
+                      <TableHead>Contato</TableHead>
+                      <TableHead>Cidade/UF</TableHead>
+                      <TableHead className="text-center">Status</TableHead>
+                      <TableHead className="text-right">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredSuppliers.map((supplier) => (
+                      <TableRow key={supplier.id}>
+                        <TableCell className="font-medium">{supplier.name}</TableCell>
+                        <TableCell className="text-muted-foreground">{supplier.document || "-"}</TableCell>
+                        <TableCell>{supplier.responsible || "-"}</TableCell>
+                        <TableCell>
+                          <div className="flex flex-col gap-1">
+                            {supplier.phone && (
+                              <span className="flex items-center gap-1 text-sm">
+                                <Phone className="h-3 w-3" /> {supplier.phone}
+                              </span>
+                            )}
+                            {supplier.website && (
+                              <a
+                                href={supplier.website.startsWith("http") ? supplier.website : `https://${supplier.website}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-1 text-sm text-primary hover:underline"
+                              >
+                                <Globe className="h-3 w-3" /> Site
+                              </a>
+                            )}
+                            {!supplier.phone && !supplier.website && (
+                              <span className="text-muted-foreground">-</span>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {supplier.city && supplier.state
+                            ? `${supplier.city}/${supplier.state}`
+                            : supplier.city || supplier.state || "-"}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Badge variant={supplier.is_active ? "default" : "secondary"}>
+                            {supplier.is_active ? "Ativo" : "Inativo"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-1">
+                            <Button variant="ghost" size="icon" onClick={() => handleEditSupplier(supplier)}>
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => handleDeleteSupplierClick(supplier)}>
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {filteredSuppliers.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                          {supplierSearchTerm ? "Nenhum fornecedor encontrado" : "Nenhum fornecedor cadastrado"}
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
 
       <ProductModal
-        open={modalOpen}
+        open={productModalOpen}
         onOpenChange={(open) => {
-          setModalOpen(open);
+          setProductModalOpen(open);
           if (!open) setSelectedProduct(null);
         }}
         product={selectedProduct}
-        onSubmit={handleSubmit}
+        onSubmit={handleSubmitProduct}
         isLoading={isCreating || isUpdating}
+        suppliers={suppliers}
+      />
+
+      <SupplierModal
+        open={supplierModalOpen}
+        onClose={() => {
+          setSupplierModalOpen(false);
+          setSelectedSupplier(null);
+        }}
+        onSave={handleSaveSupplier}
+        supplier={selectedSupplier}
+        isLoading={isCreatingSupplier || isUpdatingSupplier}
+      />
+
+      <DeleteConfirmModal
+        open={deleteSupplierModalOpen}
+        onOpenChange={setDeleteSupplierModalOpen}
+        onConfirm={confirmDeleteSupplier}
+        title="Excluir Fornecedor"
+        description={`Tem certeza que deseja excluir o fornecedor "${supplierToDelete?.name}"? Esta ação não poderá ser desfeita.`}
+        isLoading={isDeletingSupplier}
       />
     </AppLayoutNew>
   );
