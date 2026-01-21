@@ -22,6 +22,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { ServiceSearchSelect } from "@/components/shared/ServiceSearchSelect";
 import { CaixaSelectModal } from "@/components/caixa/CaixaSelectModal";
 import { Caixa } from "@/hooks/useCaixas";
+import { useAllServiceProducts } from "@/hooks/useServiceProducts";
 
 interface ComandaModalProps {
   comanda: Comanda | null;
@@ -64,6 +65,7 @@ export function ComandaModal({ comanda, open, onClose, professionals, services, 
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState("itens");
   const { items, isLoading, addItem, removeItem, isAdding, isRemoving } = useComandaItems(comanda?.id || null);
+  const { calculateServiceCost } = useAllServiceProducts();
   
   const [editableItems, setEditableItems] = useState<EditableItem[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
@@ -153,7 +155,10 @@ export function ComandaModal({ comanda, open, onClose, professionals, services, 
     const service = services.find((s: any) => s.id === serviceId);
     if (!service) return;
 
-    // Add item to comanda
+    // Calculate product cost for this service
+    const productCost = calculateServiceCost(serviceId);
+
+    // Add item to comanda with product cost
     addItem({
       comanda_id: comanda.id,
       service_id: serviceId,
@@ -162,6 +167,7 @@ export function ComandaModal({ comanda, open, onClose, professionals, services, 
       quantity: 1,
       unit_price: Number(service.price),
       total_price: Number(service.price),
+      product_cost: productCost,
     });
 
     // Create appointment for this service if comanda has a professional

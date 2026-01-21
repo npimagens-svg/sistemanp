@@ -16,6 +16,9 @@ export interface Product {
   min_stock: number;
   is_active: boolean;
   supplier_id: string | null;
+  unit_of_measure: string;
+  unit_quantity: number;
+  is_for_resale: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -31,6 +34,9 @@ export interface ProductInput {
   min_stock?: number;
   is_active?: boolean;
   supplier_id?: string | null;
+  unit_of_measure?: string;
+  unit_quantity?: number;
+  is_for_resale?: boolean;
 }
 
 export function useProducts() {

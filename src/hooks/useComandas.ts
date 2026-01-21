@@ -39,6 +39,7 @@ export interface ComandaItem {
   quantity: number;
   unit_price: number;
   total_price: number;
+  product_cost: number;
   created_at: string;
   professional?: {
     id: string;
@@ -64,6 +65,7 @@ export interface ComandaItemInput {
   quantity: number;
   unit_price: number;
   total_price: number;
+  product_cost?: number;
 }
 
 export function useComandas() {

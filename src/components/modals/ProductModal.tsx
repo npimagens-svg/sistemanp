@@ -30,6 +30,14 @@ interface ProductModalProps {
   suppliers?: Supplier[];
 }
 
+const UNIT_OPTIONS = [
+  { value: "unidade", label: "Unidade" },
+  { value: "ml", label: "Mililitros (ml)" },
+  { value: "g", label: "Gramas (g)" },
+  { value: "kg", label: "Quilogramas (kg)" },
+  { value: "l", label: "Litros (L)" },
+];
+
 export function ProductModal({ open, onOpenChange, product, onSubmit, isLoading, suppliers = [] }: ProductModalProps) {
   const [formData, setFormData] = useState<ProductInput & { supplier_id?: string | null }>({
     name: "",
@@ -42,6 +50,9 @@ export function ProductModal({ open, onOpenChange, product, onSubmit, isLoading,
     min_stock: 0,
     is_active: true,
     supplier_id: null,
+    unit_of_measure: "unidade",
+    unit_quantity: 1,
+    is_for_resale: true,
   });
 
   useEffect(() => {
@@ -56,7 +67,10 @@ export function ProductModal({ open, onOpenChange, product, onSubmit, isLoading,
         current_stock: product.current_stock,
         min_stock: product.min_stock,
         is_active: product.is_active,
-        supplier_id: (product as any).supplier_id || null,
+        supplier_id: product.supplier_id || null,
+        unit_of_measure: product.unit_of_measure || "unidade",
+        unit_quantity: Number(product.unit_quantity) || 1,
+        is_for_resale: product.is_for_resale ?? true,
       });
     } else {
       setFormData({
@@ -70,6 +84,9 @@ export function ProductModal({ open, onOpenChange, product, onSubmit, isLoading,
         min_stock: 0,
         is_active: true,
         supplier_id: null,
+        unit_of_measure: "unidade",
+        unit_quantity: 1,
+        is_for_resale: true,
       });
     }
   }, [product, open]);
@@ -150,6 +167,47 @@ export function ProductModal({ open, onOpenChange, product, onSubmit, isLoading,
             </Select>
           </div>
 
+          {/* Unit of Measure Section */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="unit_of_measure">Unidade de Medida</Label>
+              <Select
+                value={formData.unit_of_measure}
+                onValueChange={(value) => setFormData({ ...formData, unit_of_measure: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione" />
+                </SelectTrigger>
+                <SelectContent>
+                  {UNIT_OPTIONS.map((unit) => (
+                    <SelectItem key={unit.value} value={unit.value}>
+                      {unit.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="unit_quantity">
+                Quantidade Total ({formData.unit_of_measure === "unidade" ? "un" : formData.unit_of_measure})
+              </Label>
+              <Input
+                id="unit_quantity"
+                type="number"
+                min={1}
+                step={formData.unit_of_measure === "unidade" ? 1 : 0.01}
+                value={formData.unit_quantity}
+                onChange={(e) => setFormData({ ...formData, unit_quantity: parseFloat(e.target.value) || 1 })}
+                placeholder={formData.unit_of_measure === "ml" ? "Ex: 1000" : "Ex: 1"}
+              />
+              <p className="text-xs text-muted-foreground">
+                {formData.unit_of_measure !== "unidade" && formData.unit_quantity && formData.cost_price
+                  ? `Custo por ${formData.unit_of_measure}: R$ ${(formData.cost_price / formData.unit_quantity).toFixed(4)}`
+                  : ""}
+              </p>
+            </div>
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="cost_price">Preço de Custo (R$)</Label>
@@ -195,6 +253,17 @@ export function ProductModal({ open, onOpenChange, product, onSubmit, isLoading,
                 onChange={(e) => setFormData({ ...formData, min_stock: parseInt(e.target.value) || 0 })}
               />
             </div>
+          </div>
+          <div className="flex items-center justify-between">
+            <div>
+              <Label htmlFor="is_for_resale">Produto para Revenda</Label>
+              <p className="text-xs text-muted-foreground">Marque se o produto pode ser vendido diretamente</p>
+            </div>
+            <Switch
+              id="is_for_resale"
+              checked={formData.is_for_resale}
+              onCheckedChange={(checked) => setFormData({ ...formData, is_for_resale: checked })}
+            />
           </div>
           <div className="flex items-center justify-between">
             <Label htmlFor="is_active">Produto Ativo</Label>

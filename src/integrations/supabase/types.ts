@@ -504,6 +504,7 @@ export type Database = {
           description: string
           id: string
           item_type: string
+          product_cost: number | null
           product_id: string | null
           professional_id: string | null
           quantity: number
@@ -517,6 +518,7 @@ export type Database = {
           description: string
           id?: string
           item_type?: string
+          product_cost?: number | null
           product_id?: string | null
           professional_id?: string | null
           quantity?: number
@@ -530,6 +532,7 @@ export type Database = {
           description?: string
           id?: string
           item_type?: string
+          product_cost?: number | null
           product_id?: string | null
           professional_id?: string | null
           quantity?: number
@@ -776,12 +779,15 @@ export type Database = {
           description: string | null
           id: string
           is_active: boolean | null
+          is_for_resale: boolean | null
           min_stock: number | null
           name: string
           sale_price: number | null
           salon_id: string
           sku: string | null
           supplier_id: string | null
+          unit_of_measure: string | null
+          unit_quantity: number | null
           updated_at: string
         }
         Insert: {
@@ -792,12 +798,15 @@ export type Database = {
           description?: string | null
           id?: string
           is_active?: boolean | null
+          is_for_resale?: boolean | null
           min_stock?: number | null
           name: string
           sale_price?: number | null
           salon_id: string
           sku?: string | null
           supplier_id?: string | null
+          unit_of_measure?: string | null
+          unit_quantity?: number | null
           updated_at?: string
         }
         Update: {
@@ -808,12 +817,15 @@ export type Database = {
           description?: string | null
           id?: string
           is_active?: boolean | null
+          is_for_resale?: boolean | null
           min_stock?: number | null
           name?: string
           sale_price?: number | null
           salon_id?: string
           sku?: string | null
           supplier_id?: string | null
+          unit_of_measure?: string | null
+          unit_quantity?: number | null
           updated_at?: string
         }
         Relationships: [
@@ -1025,6 +1037,48 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      service_products: {
+        Row: {
+          created_at: string
+          id: string
+          product_id: string
+          quantity_per_use: number
+          service_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          product_id: string
+          quantity_per_use?: number
+          service_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          product_id?: string
+          quantity_per_use?: number
+          service_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_products_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_products_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       services: {
         Row: {
