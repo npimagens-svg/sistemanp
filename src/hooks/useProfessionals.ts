@@ -10,9 +10,11 @@ export interface Professional {
   name: string;
   nickname: string | null;
   cpf: string | null;
+  rg: string | null;
   role: string | null;
   email: string | null;
   phone: string | null;
+  mobile: string | null;
   avatar_url: string | null;
   specialty: string | null;
   commission_percent: number | null;
@@ -20,6 +22,19 @@ export interface Professional {
   can_be_assistant: boolean | null;
   has_schedule: boolean | null;
   create_access: boolean | null;
+  birth_date: string | null;
+  description: string | null;
+  agenda_color: string | null;
+  agenda_order: number | null;
+  site: string | null;
+  facebook: string | null;
+  instagram: string | null;
+  twitter: string | null;
+  cep: string | null;
+  address: string | null;
+  neighborhood: string | null;
+  city: string | null;
+  state: string | null;
   created_at: string;
   updated_at: string;
 }
