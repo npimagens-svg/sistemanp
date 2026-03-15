@@ -244,7 +244,25 @@ export default function Agenda() {
               selected={currentDate}
               onSelect={(date) => date && setCurrentDate(date)}
               locale={ptBR}
-              className="w-full p-0 [&_.rdp-months]:flex [&_.rdp-months]:justify-center [&_.rdp-month]:w-full [&_.rdp-caption]:hidden [&_.rdp-table]:w-full [&_.rdp-head_row]:flex [&_.rdp-head_row]:justify-between [&_.rdp-row]:flex [&_.rdp-row]:justify-between [&_.rdp-head_cell]:flex-1 [&_.rdp-head_cell]:text-center [&_.rdp-head_cell]:w-auto [&_.rdp-head_cell]:text-[0.7rem] [&_.rdp-cell]:flex-1 [&_.rdp-cell]:text-center [&_.rdp-cell]:w-auto [&_.rdp-cell]:h-7 [&_.rdp-day]:h-7 [&_.rdp-day]:w-full [&_.rdp-day]:text-xs [&_.rdp-day]:p-0"
+              month={currentDate}
+              onMonthChange={setCurrentDate}
+              classNames={{
+                months: "flex justify-center w-full",
+                month: "w-full",
+                caption: "hidden",
+                nav: "hidden",
+                table: "w-full border-collapse",
+                head_row: "flex justify-between",
+                head_cell: "flex-1 text-center text-[0.7rem] font-medium text-muted-foreground py-1",
+                row: "flex justify-between mt-1",
+                cell: "flex-1 text-center h-7 p-0",
+                day: "h-7 w-full text-xs p-0 font-normal hover:bg-accent rounded-md transition-colors",
+                day_selected: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground",
+                day_today: "bg-accent text-accent-foreground font-semibold",
+                day_outside: "text-muted-foreground opacity-40",
+                day_disabled: "text-muted-foreground opacity-50",
+              }}
+              className="w-full p-0"
             />
           </div>
 
