@@ -574,6 +574,9 @@ export default function Configuracoes() {
           </TabsList>
 
           <TabsContent value="usuarios" className="space-y-4">
+            {/* Master Professional Profile */}
+            <MasterProfessionalProfile />
+
             {/* Info Card */}
             <Card className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/30">
               <CardContent className="p-4">
