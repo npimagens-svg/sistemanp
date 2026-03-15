@@ -64,7 +64,7 @@ export function useProfessionals() {
     mutationFn: async (input: ProfessionalInput) => {
       if (!salonId) throw new Error("Salão não encontrado");
 
-      const { password, ...professionalData } = input;
+      const { password, access_level, ...professionalData } = input;
 
       // First create the professional record
       const { data, error } = await supabase
