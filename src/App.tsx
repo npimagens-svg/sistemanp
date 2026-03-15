@@ -15,13 +15,15 @@ import Financeiro from "./pages/Financeiro";
 import Comissoes from "./pages/Comissoes";
 import Estoque from "./pages/Estoque";
 import Configuracoes from "./pages/Configuracoes";
-import { Marketing, Relatorios } from "./pages/PlaceholderPages";
+import Relatorios from "./pages/Relatorios";
+import ClientAlerts from "./pages/ClientAlerts";
+import ClientLoyalty from "./pages/ClientLoyalty";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, loading, salonId } = useAuth();
+  const { user, loading } = useAuth();
   if (loading)
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -29,8 +31,6 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
       </div>
     );
   if (!user) return <Navigate to="/auth" replace />;
-  // Removed salonId check - users go directly to dashboard
-  // The salon is already set up, no need for setup-salon flow
   return <>{children}</>;
 }
 
@@ -46,169 +46,26 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/auth" element={user ? <Navigate to="/" replace /> : <AuthNew />} />
-
-      <Route
-        path="/"
-        element={
-          <ProtectedRoute>
-            <Dashboard />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/agenda"
-        element={
-          <ProtectedRoute>
-            <Agenda />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/agenda/*"
-        element={
-          <ProtectedRoute>
-            <Agenda />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/clientes"
-        element={
-          <ProtectedRoute>
-            <Clientes />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/clientes/*"
-        element={
-          <ProtectedRoute>
-            <Clientes />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/servicos"
-        element={
-          <ProtectedRoute>
-            <Servicos />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/profissionais"
-        element={
-          <ProtectedRoute>
-            <Profissionais />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/comandas"
-        element={
-          <ProtectedRoute>
-            <Comandas />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/comandas/*"
-        element={
-          <ProtectedRoute>
-            <Comandas />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/financeiro"
-        element={
-          <ProtectedRoute>
-            <Financeiro />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/financeiro/*"
-        element={
-          <ProtectedRoute>
-            <Financeiro />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/financeiro/comissoes"
-        element={
-          <ProtectedRoute>
-            <Comissoes />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/estoque"
-        element={
-          <ProtectedRoute>
-            <Estoque />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/estoque/*"
-        element={
-          <ProtectedRoute>
-            <Estoque />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/marketing"
-        element={
-          <ProtectedRoute>
-            <Marketing />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/marketing/*"
-        element={
-          <ProtectedRoute>
-            <Marketing />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/relatorios"
-        element={
-          <ProtectedRoute>
-            <Relatorios />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/relatorios/*"
-        element={
-          <ProtectedRoute>
-            <Relatorios />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/configuracoes"
-        element={
-          <ProtectedRoute>
-            <Configuracoes />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/configuracoes/*"
-        element={
-          <ProtectedRoute>
-            <Configuracoes />
-          </ProtectedRoute>
-        }
-      />
-      <Route path="/ia" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-      <Route path="/pagamentos" element={<ProtectedRoute><Financeiro /></ProtectedRoute>} />
+      <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+      <Route path="/agenda" element={<ProtectedRoute><Agenda /></ProtectedRoute>} />
+      <Route path="/agenda/*" element={<ProtectedRoute><Agenda /></ProtectedRoute>} />
+      <Route path="/clientes" element={<ProtectedRoute><Clientes /></ProtectedRoute>} />
+      <Route path="/clientes/avisos" element={<ProtectedRoute><ClientAlerts /></ProtectedRoute>} />
+      <Route path="/clientes/fidelidade" element={<ProtectedRoute><ClientLoyalty /></ProtectedRoute>} />
+      <Route path="/clientes/*" element={<ProtectedRoute><Clientes /></ProtectedRoute>} />
+      <Route path="/servicos" element={<ProtectedRoute><Servicos /></ProtectedRoute>} />
+      <Route path="/profissionais" element={<ProtectedRoute><Profissionais /></ProtectedRoute>} />
+      <Route path="/comandas" element={<ProtectedRoute><Comandas /></ProtectedRoute>} />
+      <Route path="/comandas/*" element={<ProtectedRoute><Comandas /></ProtectedRoute>} />
+      <Route path="/financeiro" element={<ProtectedRoute><Financeiro /></ProtectedRoute>} />
+      <Route path="/financeiro/*" element={<ProtectedRoute><Financeiro /></ProtectedRoute>} />
+      <Route path="/financeiro/comissoes" element={<ProtectedRoute><Comissoes /></ProtectedRoute>} />
+      <Route path="/estoque" element={<ProtectedRoute><Estoque /></ProtectedRoute>} />
+      <Route path="/estoque/*" element={<ProtectedRoute><Estoque /></ProtectedRoute>} />
+      <Route path="/relatorios" element={<ProtectedRoute><Relatorios /></ProtectedRoute>} />
+      <Route path="/relatorios/*" element={<ProtectedRoute><Relatorios /></ProtectedRoute>} />
+      <Route path="/configuracoes" element={<ProtectedRoute><Configuracoes /></ProtectedRoute>} />
+      <Route path="/configuracoes/*" element={<ProtectedRoute><Configuracoes /></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
