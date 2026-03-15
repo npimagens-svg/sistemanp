@@ -233,7 +233,11 @@ export default function ClientAlerts() {
             {form.target_type === "client" && (
               <div>
                 <Label>Cliente</Label>
-                <ClientSearchSelect value={form.target_client_id || ""} onValueChange={(v) => setForm({ ...form, target_client_id: v })} />
+                <ClientSearchSelect
+                  clients={clients || []}
+                  value={form.target_client_id}
+                  onSelect={(v) => setForm({ ...form, target_client_id: v })}
+                />
               </div>
             )}
             {form.target_type === "tag" && (
