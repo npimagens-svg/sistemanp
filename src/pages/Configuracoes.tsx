@@ -563,17 +563,16 @@ export default function Configuracoes() {
               <CreditCard className="h-4 w-4" />
               Financeiro
             </TabsTrigger>
-            <TabsTrigger value="salao" className="flex items-center gap-2">
-              <Building2 className="h-4 w-4" />
-              Dados do Salão
-            </TabsTrigger>
             <TabsTrigger value="sistema" className="flex items-center gap-2">
-              <Settings className="h-4 w-4" />
+              <Building2 className="h-4 w-4" />
               Sistema
             </TabsTrigger>
           </TabsList>
 
           <TabsContent value="usuarios" className="space-y-4">
+            {/* Master Professional Profile */}
+            <MasterProfessionalProfile />
+
             {/* Info Card */}
             <Card className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/30">
               <CardContent className="p-4">
@@ -1002,21 +1001,17 @@ export default function Configuracoes() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="salao">
+          <TabsContent value="sistema" className="space-y-4">
+            {/* Salon Data */}
             <Card>
               <CardHeader>
                 <CardTitle>Dados do Salão</CardTitle>
                 <CardDescription>Informações básicas do estabelecimento.</CardDescription>
               </CardHeader>
               <CardContent>
-                <p className="text-muted-foreground">Em breve: configuração de nome, endereço, logo e dados do salão.</p>
+                <p className="text-muted-foreground">Em breve: configuração de nome, endereço, logo, CNPJ e dados do salão.</p>
               </CardContent>
             </Card>
-          </TabsContent>
-
-          <TabsContent value="sistema" className="space-y-4">
-            {/* Master Professional Profile */}
-            <MasterProfessionalProfile />
 
             {/* Master Transfer Section - Only visible to master user */}
             {isMaster && (
