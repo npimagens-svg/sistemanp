@@ -4,12 +4,9 @@ import {
   Calendar,
   DollarSign,
   Package,
-  Sparkles,
   Users,
-  Megaphone,
   BarChart3,
   Settings,
-  CreditCard,
 } from "lucide-react";
 
 interface NavItem {
@@ -24,10 +21,6 @@ const navItems: NavItem[] = [
     title: "Agenda", 
     url: "/agenda", 
     icon: Calendar,
-    subItems: [
-      { title: "Agenda", url: "/agenda" },
-      { title: "Atendimento em Casa", url: "/agenda/atendimento-casa" },
-    ]
   },
   { 
     title: "Financeiro", 
@@ -38,8 +31,6 @@ const navItems: NavItem[] = [
       { title: "Histórico de Caixas", url: "/financeiro/historico" },
       { title: "Comandas", url: "/comandas" },
       { title: "Comissões", url: "/financeiro/comissoes" },
-      { title: "Entradas e Saídas", url: "/financeiro/entradas-saidas" },
-      { title: "Notas Fiscais", url: "/financeiro/notas" },
     ]
   },
   { 
@@ -49,15 +40,7 @@ const navItems: NavItem[] = [
     subItems: [
       { title: "Produtos", url: "/estoque" },
       { title: "Fornecedores", url: "/estoque/fornecedores" },
-      { title: "Pedidos de Compra", url: "/estoque/pedidos" },
-      { title: "Inventário", url: "/estoque/inventario" },
-      { title: "Solicitações de Saída", url: "/estoque/solicitacoes" },
     ]
-  },
-  { 
-    title: "IA", 
-    url: "/ia", 
-    icon: Sparkles,
   },
   { 
     title: "Clientes", 
@@ -66,30 +49,13 @@ const navItems: NavItem[] = [
     subItems: [
       { title: "Lista de Clientes", url: "/clientes" },
       { title: "Avisos", url: "/clientes/avisos" },
-    ]
-  },
-  { 
-    title: "Marketing", 
-    url: "/marketing", 
-    icon: Megaphone,
-    subItems: [
-      { title: "Promoções", url: "/marketing" },
-      { title: "Agendamento Online", url: "/marketing/agendamento" },
-      { title: "Campanhas de E-mail", url: "/marketing/email" },
-      { title: "Campanhas de SMS", url: "/marketing/sms" },
-      { title: "Fidelidade", url: "/marketing/fidelidade" },
+      { title: "Fidelidade", url: "/clientes/fidelidade" },
     ]
   },
   { 
     title: "Relatórios", 
     url: "/relatorios", 
     icon: BarChart3,
-    subItems: [
-      { title: "Dashboard", url: "/relatorios" },
-      { title: "Favoritos", url: "/relatorios/favoritos" },
-      { title: "Todos", url: "/relatorios/todos" },
-      { title: "Mapa de Calor", url: "/relatorios/mapa-calor" },
-    ]
   },
   { 
     title: "Configurações", 
@@ -100,13 +66,7 @@ const navItems: NavItem[] = [
       { title: "Serviços", url: "/servicos" },
       { title: "Profissionais", url: "/profissionais" },
       { title: "Salão", url: "/configuracoes/salao" },
-      { title: "Integrações", url: "/configuracoes/integracoes" },
     ]
-  },
-  { 
-    title: "Pagamentos", 
-    url: "/pagamentos", 
-    icon: CreditCard,
   },
 ];
 
@@ -114,7 +74,6 @@ export function TopNavigation() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Find active nav item based on current path
   const activeNavItem = navItems.find(item => {
     if (location.pathname === item.url) return true;
     if (item.subItems) {
@@ -125,7 +84,6 @@ export function TopNavigation() {
 
   return (
     <div className="border-b border-border bg-card">
-      {/* Main navigation - scrollable on mobile */}
       <nav className="flex items-center gap-1 px-2 md:px-4 py-2 overflow-x-auto scrollbar-hide md:justify-center">
         {navItems.map((item) => {
           const isActive = activeNavItem?.url === item.url;
@@ -156,7 +114,6 @@ export function TopNavigation() {
         })}
       </nav>
 
-      {/* Sub navigation - scrollable on mobile */}
       {activeNavItem?.subItems && (
         <div className="flex items-center gap-0 px-2 md:px-4 bg-muted/20 border-t border-border overflow-x-auto scrollbar-hide">
           {activeNavItem.subItems.map((subItem) => {

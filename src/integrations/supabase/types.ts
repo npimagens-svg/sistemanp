@@ -294,6 +294,137 @@ export type Database = {
         }
         Relationships: []
       }
+      client_alerts: {
+        Row: {
+          alert_event: string
+          created_at: string
+          description: string
+          id: string
+          is_active: boolean
+          salon_id: string
+          target_client_id: string | null
+          target_tag: string | null
+          target_type: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          alert_event?: string
+          created_at?: string
+          description: string
+          id?: string
+          is_active?: boolean
+          salon_id: string
+          target_client_id?: string | null
+          target_tag?: string | null
+          target_type?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          alert_event?: string
+          created_at?: string
+          description?: string
+          id?: string
+          is_active?: boolean
+          salon_id?: string
+          target_client_id?: string | null
+          target_tag?: string | null
+          target_type?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_alerts_salon_id_fkey"
+            columns: ["salon_id"]
+            isOneToOne: false
+            referencedRelation: "salons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_alerts_target_client_id_fkey"
+            columns: ["target_client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_credits: {
+        Row: {
+          client_id: string
+          comanda_id: string | null
+          created_at: string
+          credit_amount: number
+          expires_at: string
+          id: string
+          is_expired: boolean
+          is_used: boolean
+          min_purchase_amount: number
+          salon_id: string
+          used_at: string | null
+          used_in_comanda_id: string | null
+        }
+        Insert: {
+          client_id: string
+          comanda_id?: string | null
+          created_at?: string
+          credit_amount?: number
+          expires_at: string
+          id?: string
+          is_expired?: boolean
+          is_used?: boolean
+          min_purchase_amount?: number
+          salon_id: string
+          used_at?: string | null
+          used_in_comanda_id?: string | null
+        }
+        Update: {
+          client_id?: string
+          comanda_id?: string | null
+          created_at?: string
+          credit_amount?: number
+          expires_at?: string
+          id?: string
+          is_expired?: boolean
+          is_used?: boolean
+          min_purchase_amount?: number
+          salon_id?: string
+          used_at?: string | null
+          used_in_comanda_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_credits_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_credits_comanda_id_fkey"
+            columns: ["comanda_id"]
+            isOneToOne: false
+            referencedRelation: "comandas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_credits_salon_id_fkey"
+            columns: ["salon_id"]
+            isOneToOne: false
+            referencedRelation: "salons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_credits_used_in_comanda_id_fkey"
+            columns: ["used_in_comanda_id"]
+            isOneToOne: false
+            referencedRelation: "comandas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_history: {
         Row: {
           action_type: string

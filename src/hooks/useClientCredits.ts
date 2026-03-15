@@ -1,0 +1,63 @@
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { addDays } from "date-fns";
+
+const LOYALTY_PERCENT = 0.07; // 7%
+const LOYALTY_VALIDITY_DAYS = 15;
+const MIN_PURCHASE_AMOUNT = 100;
+
+export function useGenerateLoyaltyCredit() {
+  const { salonId } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ clientId, comandaId, comandaTotal }: { clientId: string; comandaId: string; comandaTotal: number }) => {
+      if (!salonId || !clientId || comandaTotal <= 0) return null;
+
+      const creditAmount = Math.round(comandaTotal * LOYALTY_PERCENT * 100) / 100;
+      const expiresAt = addDays(new Date(), LOYALTY_VALIDITY_DAYS).toISOString();
+
+      const { data, error } = await supabase
+        .from("client_credits")
+        .insert({
+          salon_id: salonId,
+          client_id: clientId,
+          comanda_id: comandaId,
+          credit_amount: creditAmount,
+          min_purchase_amount: MIN_PURCHASE_AMOUNT,
+          expires_at: expiresAt,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["client-credits"] });
+    },
+  });
+}
+
+export function useApplyLoyaltyCredit() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ creditId, comandaId }: { creditId: string; comandaId: string }) => {
+      const { error } = await supabase
+        .from("client_credits")
+        .update({
+          is_used: true,
+          used_at: new Date().toISOString(),
+          used_in_comanda_id: comandaId,
+        })
+        .eq("id", creditId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["client-credits"] });
+    },
+  });
+}

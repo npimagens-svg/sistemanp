@@ -679,9 +679,29 @@ export function ComandaModal({ comanda, open, onClose, professionals, services, 
         }
       }
 
+      // Generate loyalty credit (7% discount for next visit)
+      if (comanda.client_id && subtotal > 0) {
+        try {
+          const creditAmount = Math.round(subtotal * 0.07 * 100) / 100;
+          const expiresAt = new Date();
+          expiresAt.setDate(expiresAt.getDate() + 15);
+          await supabase.from("client_credits").insert({
+            salon_id: salonId,
+            client_id: comanda.client_id,
+            comanda_id: comanda.id,
+            credit_amount: creditAmount,
+            min_purchase_amount: 100,
+            expires_at: expiresAt.toISOString(),
+          });
+        } catch (creditError) {
+          console.error("Erro ao gerar crédito de fidelidade:", creditError);
+        }
+      }
+
       queryClient.invalidateQueries({ queryKey: ["comandas", salonId] });
       queryClient.invalidateQueries({ queryKey: ["caixas", salonId] });
       queryClient.invalidateQueries({ queryKey: ["products", salonId] });
+      queryClient.invalidateQueries({ queryKey: ["client-credits"] });
       toast({ title: "Comanda finalizada com sucesso!" });
       onClose();
     } catch (error: any) {
