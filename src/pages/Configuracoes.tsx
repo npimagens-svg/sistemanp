@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { AppLayoutNew } from "@/components/layout/AppLayoutNew";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -325,6 +326,7 @@ const ROLE_LABELS: Record<AppRole, { label: string; description: string; color: 
 
 export default function Configuracoes() {
   const { isMaster, user } = useAuth();
+  const navigate = useNavigate();
   const { users, isLoading, updateRole, updateCanOpenCaixa, deleteAccess, isUpdating, isDeleting } = useUserAccess();
   const { 
     cardBrands, 
@@ -572,6 +574,22 @@ export default function Configuracoes() {
           <TabsContent value="usuarios" className="space-y-4">
             {/* Master Professional Profile */}
             <MasterProfessionalProfile />
+
+            {/* Professional management shortcut */}
+            <Card>
+              <CardContent className="p-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <p className="font-medium">Gerenciamento de Profissionais</p>
+                  <p className="text-sm text-muted-foreground">
+                    Para editar profissionais, especialidades, agenda e comissões por serviço, use a tela de Profissionais.
+                  </p>
+                </div>
+                <Button onClick={() => navigate("/profissionais")} className="gap-2 w-full md:w-auto">
+                  <Users className="h-4 w-4" />
+                  Ir para Profissionais
+                </Button>
+              </CardContent>
+            </Card>
 
             {/* Info Card */}
             <Card className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/30">
