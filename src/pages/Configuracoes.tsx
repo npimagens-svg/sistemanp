@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { AppLayoutNew } from "@/components/layout/AppLayoutNew";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -31,7 +31,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Shield, Users, Settings, MoreHorizontal, Trash2, Loader2, Building2, CreditCard, Plus, Pencil, Landmark, ArrowRightLeft, Lock, Cog, UserCog, Save } from "lucide-react";
+import { Shield, Users, Settings, MoreHorizontal, Trash2, Loader2, Building2, CreditCard, Plus, Pencil, Landmark, ArrowRightLeft, Lock, Cog, UserCog, Save, Calendar, Clock, ToggleLeft } from "lucide-react";
 import { useAuth, AppRole } from "@/contexts/AuthContext";
 import { useUserAccess, UserWithAccess } from "@/hooks/useUserAccess";
 import { useCardBrands, CardBrand, CardBrandInput } from "@/hooks/useCardBrands";
@@ -327,6 +327,8 @@ const ROLE_LABELS: Record<AppRole, { label: string; description: string; color: 
 export default function Configuracoes() {
   const { isMaster, user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const isSalaoRoute = location.pathname.startsWith("/configuracoes/salao");
   const { users, isLoading, updateRole, updateCanOpenCaixa, deleteAccess, isUpdating, isDeleting } = useUserAccess();
   const { 
     cardBrands, 
@@ -551,286 +553,469 @@ export default function Configuracoes() {
     <AppLayoutNew>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Configurações</h1>
-          <p className="text-muted-foreground">Gerencie as configurações do sistema e acessos de usuários.</p>
+          <h1 className="text-2xl font-bold tracking-tight">
+            {isSalaoRoute ? "Configurações do Salão" : "Configurações de Agendamento"}
+          </h1>
+          <p className="text-muted-foreground">
+            {isSalaoRoute 
+              ? "Gerencie os dados do salão, usuários, acessos e configurações financeiras." 
+              : "Configure horários, intervalos e preferências da agenda."}
+          </p>
         </div>
 
-        <Tabs defaultValue="usuarios" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="usuarios" className="flex items-center gap-2">
-              <Users className="h-4 w-4" />
-              Usuários e Acessos
-            </TabsTrigger>
-            <TabsTrigger value="financeiro" className="flex items-center gap-2">
-              <CreditCard className="h-4 w-4" />
-              Financeiro
-            </TabsTrigger>
-            <TabsTrigger value="sistema" className="flex items-center gap-2">
-              <Building2 className="h-4 w-4" />
-              Sistema
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="usuarios" className="space-y-4">
-            {/* Master Professional Profile */}
-            <MasterProfessionalProfile />
-
-            {/* Professional management shortcut */}
-            <Card>
-              <CardContent className="p-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                <div>
-                  <p className="font-medium">Gerenciamento de Profissionais</p>
-                  <p className="text-sm text-muted-foreground">
-                    Para editar profissionais, especialidades, agenda e comissões por serviço, use a tela de Profissionais.
-                  </p>
-                </div>
-                <Button onClick={() => navigate("/profissionais")} className="gap-2 w-full md:w-auto">
-                  <Users className="h-4 w-4" />
-                  Ir para Profissionais
-                </Button>
-              </CardContent>
-            </Card>
-
-            {/* Info Card */}
-            <Card className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/30">
-              <CardContent className="p-4">
-                <div className="flex items-start gap-3">
-                  <Shield className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5" />
-                  <div>
-                    <h4 className="font-medium text-blue-900 dark:text-blue-100">Sobre os níveis de acesso</h4>
-                    <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
-                      Os acessos são criados ao cadastrar um profissional com "Criar acesso ao sistema" habilitado. 
-                      Aqui você pode alterar o nível de permissão de cada usuário.
-                    </p>
-                    {!isMaster && (
-                      <p className="text-sm text-orange-600 dark:text-orange-400 mt-2 font-medium">
-                        ⚠️ Apenas o usuário master pode alterar permissões.
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Users Table */}
+        {!isSalaoRoute ? (
+          /* ===== AGENDAMENTO SETTINGS ===== */
+          <div className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Usuários com Acesso ao Sistema</CardTitle>
-                <CardDescription>
-                  Lista de todos os usuários que podem acessar o sistema.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="p-0">
-                {isLoading ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                  </div>
-                ) : users.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    Nenhum usuário cadastrado.
-                  </div>
-                ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Usuário</TableHead>
-                        <TableHead>Nível de Acesso</TableHead>
-                        <TableHead className="text-center">Abrir Caixa</TableHead>
-                        <TableHead className="w-[80px]">Ações</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {users.map((userAccess) => {
-                        const roleInfo = ROLE_LABELS[userAccess.role];
-                        const isCurrentUser = userAccess.user_id === user?.id;
-                        const isAdmin = userAccess.role === "admin";
-                        
-                        return (
-                          <TableRow key={userAccess.id}>
-                            <TableCell>
-                              <div className="flex items-center gap-3">
-                                <Avatar>
-                                  <AvatarFallback className="bg-primary/10 text-primary">
-                                    {getInitials(userAccess.full_name)}
-                                  </AvatarFallback>
-                                </Avatar>
-                                <div>
-                                  <p className="font-medium">
-                                    {userAccess.full_name}
-                                    {isCurrentUser && (
-                                      <Badge variant="outline" className="ml-2 text-xs">Você</Badge>
-                                    )}
-                                  </p>
-                                </div>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              {isMaster && !isAdmin ? (
-                                <Select
-                                  value={userAccess.role}
-                                  onValueChange={(value) => handleRoleChange(userAccess.user_id, value as AppRole)}
-                                  disabled={isUpdating}
-                                >
-                                  <SelectTrigger className="w-[180px]">
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {Object.entries(ROLE_LABELS)
-                                      .filter(([key]) => key !== "admin")
-                                      .map(([key, value]) => (
-                                        <SelectItem key={key} value={key}>
-                                          <div className="flex items-center gap-2">
-                                            <div className={`h-2 w-2 rounded-full ${value.color}`} />
-                                            {value.label}
-                                          </div>
-                                        </SelectItem>
-                                      ))}
-                                  </SelectContent>
-                                </Select>
-                              ) : (
-                                <div className="flex items-center gap-2">
-                                  <div className={`h-2 w-2 rounded-full ${roleInfo.color}`} />
-                                  <span>{roleInfo.label}</span>
-                                  {isAdmin && (
-                                    <Badge variant="destructive" className="text-xs">Master</Badge>
-                                  )}
-                                </div>
-                              )}
-                            </TableCell>
-                            <TableCell className="text-center">
-                              {isMaster && !isAdmin ? (
-                                <Switch
-                                  checked={userAccess.can_open_caixa}
-                                  onCheckedChange={() => handleToggleCanOpenCaixa(userAccess.user_id, userAccess.can_open_caixa)}
-                                  disabled={isUpdating}
-                                />
-                              ) : (
-                                <Badge variant={userAccess.can_open_caixa ? "default" : "secondary"}>
-                                  {userAccess.can_open_caixa ? "Sim" : "Não"}
-                                </Badge>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              {isMaster && !isAdmin && !isCurrentUser && (
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="icon">
-                                      <MoreHorizontal className="h-4 w-4" />
-                                    </Button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end">
-                                    <DropdownMenuItem
-                                      onClick={() => handleDeleteAccess(userAccess)}
-                                      className="text-destructive"
-                                    >
-                                      <Trash2 className="h-4 w-4 mr-2" />
-                                      Remover Acesso
-                                    </DropdownMenuItem>
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
-                              )}
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Access Levels Configuration */}
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="text-lg">Configuração dos Níveis de Acesso</CardTitle>
-                    <CardDescription>
-                      Configure as permissões de cada nível ou crie níveis personalizados.
-                    </CardDescription>
-                  </div>
-                  {isMaster && (
-                    <Button onClick={() => setCreateAccessLevelModalOpen(true)} className="gap-2">
-                      <Plus className="h-4 w-4" />
-                      Novo Nível
-                    </Button>
-                  )}
+                <div className="flex items-center gap-2">
+                  <Clock className="h-5 w-5 text-primary" />
+                  <CardTitle className="text-lg">Horário de Funcionamento</CardTitle>
                 </div>
+                <CardDescription>Defina os horários de abertura e fechamento do salão.</CardDescription>
               </CardHeader>
               <CardContent>
-                {isLoadingAccessLevels ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Horário de Abertura</Label>
+                    <Input type="time" defaultValue="08:00" />
                   </div>
-                ) : accessLevels.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    Nenhum nível de acesso configurado.
+                  <div className="space-y-2">
+                    <Label>Horário de Fechamento</Label>
+                    <Input type="time" defaultValue="20:00" />
                   </div>
-                ) : (
-                  <div className="grid gap-4 md:grid-cols-2">
-                    {accessLevels.map((level) => {
-                      const enabledCount = Object.values(level.permissions).filter(Boolean).length;
-                      const totalCount = Object.keys(level.permissions).length;
-                      
-                      return (
-                        <div
-                          key={level.id}
-                          className="flex items-start gap-3 p-4 rounded-lg border bg-muted/30 hover:bg-muted/50 transition-colors cursor-pointer group"
-                          onClick={() => {
-                            setSelectedAccessLevel(level);
-                            setAccessLevelConfigModalOpen(true);
-                          }}
-                        >
-                          <div
-                            className="h-4 w-4 rounded-full mt-0.5 shrink-0"
-                            style={{ backgroundColor: level.color }}
-                          />
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <p className="font-medium">{level.name}</p>
-                              {level.is_system && (
-                                <Badge variant="secondary" className="text-xs">
-                                  <Lock className="h-3 w-3 mr-1" />
-                                  Sistema
-                                </Badge>
-                              )}
-                            </div>
-                            <p className="text-sm text-muted-foreground mt-0.5">
-                              {level.description || "Sem descrição"}
-                            </p>
-                            <p className="text-xs text-muted-foreground mt-2">
-                              {enabledCount} de {totalCount} permissões ativas
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                              <Cog className="h-4 w-4" />
-                            </Button>
-                            {!level.is_system && isMaster && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-destructive hover:text-destructive"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setAccessLevelToDelete(level);
-                                  setDeleteAccessLevelModalOpen(true);
-                                }}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
+                </div>
               </CardContent>
             </Card>
-          </TabsContent>
 
-          <TabsContent value="financeiro" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-5 w-5 text-primary" />
+                  <CardTitle className="text-lg">Intervalo de Horários</CardTitle>
+                </div>
+                <CardDescription>Defina o intervalo de tempo entre os horários na agenda.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Intervalo entre horários</Label>
+                    <Select defaultValue="30">
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="15">15 minutos</SelectItem>
+                        <SelectItem value="30">30 minutos</SelectItem>
+                        <SelectItem value="45">45 minutos</SelectItem>
+                        <SelectItem value="60">1 hora</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Colunas padrão na agenda</Label>
+                    <Select defaultValue="6">
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="3">3 colunas</SelectItem>
+                        <SelectItem value="4">4 colunas</SelectItem>
+                        <SelectItem value="5">5 colunas</SelectItem>
+                        <SelectItem value="6">6 colunas</SelectItem>
+                        <SelectItem value="8">8 colunas</SelectItem>
+                        <SelectItem value="10">10 colunas</SelectItem>
+                        <SelectItem value="12">12 colunas</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <ToggleLeft className="h-5 w-5 text-primary" />
+                  <CardTitle className="text-lg">Dias de Funcionamento</CardTitle>
+                </div>
+                <CardDescription>Selecione os dias em que o salão funciona.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"].map((day) => (
+                    <div key={day} className="flex items-center space-x-2">
+                      <Checkbox id={day} defaultChecked={day !== "Domingo"} />
+                      <Label htmlFor={day} className="cursor-pointer">{day}</Label>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Settings className="h-5 w-5 text-primary" />
+                  <CardTitle className="text-lg">Regras de Agendamento</CardTitle>
+                </div>
+                <CardDescription>Configure restrições e preferências para os agendamentos.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Antecedência mínima para agendar</Label>
+                    <Select defaultValue="0">
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="0">Sem restrição</SelectItem>
+                        <SelectItem value="1">1 hora antes</SelectItem>
+                        <SelectItem value="2">2 horas antes</SelectItem>
+                        <SelectItem value="24">1 dia antes</SelectItem>
+                        <SelectItem value="48">2 dias antes</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Antecedência máxima para agendar</Label>
+                    <Select defaultValue="90">
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="7">7 dias</SelectItem>
+                        <SelectItem value="15">15 dias</SelectItem>
+                        <SelectItem value="30">30 dias</SelectItem>
+                        <SelectItem value="60">60 dias</SelectItem>
+                        <SelectItem value="90">90 dias</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="space-y-3 pt-2">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox id="allow_simultaneous" defaultChecked />
+                    <Label htmlFor="allow_simultaneous" className="cursor-pointer">
+                      Permitir agendamentos simultâneos no mesmo horário
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox id="auto_confirm" />
+                    <Label htmlFor="auto_confirm" className="cursor-pointer">
+                      Confirmar agendamentos automaticamente
+                    </Label>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <div className="flex justify-end">
+              <Button className="gap-2">
+                <Save className="h-4 w-4" />
+                Salvar Configurações
+              </Button>
+            </div>
+          </div>
+        ) : (
+          /* ===== SALÃO SETTINGS (with sub-tabs) ===== */
+          <Tabs defaultValue="dados" className="space-y-4">
+            <TabsList>
+              <TabsTrigger value="dados" className="flex items-center gap-2">
+                <Building2 className="h-4 w-4" />
+                Dados do Salão
+              </TabsTrigger>
+              <TabsTrigger value="usuarios" className="flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                Usuários e Acessos
+              </TabsTrigger>
+              <TabsTrigger value="financeiro" className="flex items-center gap-2">
+                <CreditCard className="h-4 w-4" />
+                Financeiro
+              </TabsTrigger>
+              <TabsTrigger value="sistema" className="flex items-center gap-2">
+                <Settings className="h-4 w-4" />
+                Sistema
+              </TabsTrigger>
+            </TabsList>
+
+            {/* Dados do Salão */}
+            <TabsContent value="dados" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Dados do Salão</CardTitle>
+                  <CardDescription>Informações básicas do estabelecimento.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground">Em breve: configuração de nome, endereço, logo, CNPJ e dados do salão.</p>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Usuários e Acessos */}
+            <TabsContent value="usuarios" className="space-y-4">
+              {/* Master Professional Profile */}
+              <MasterProfessionalProfile />
+
+              {/* Professional management shortcut */}
+              <Card>
+                <CardContent className="p-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <p className="font-medium">Gerenciamento de Profissionais</p>
+                    <p className="text-sm text-muted-foreground">
+                      Para editar profissionais, especialidades, agenda e comissões por serviço, use a tela de Profissionais.
+                    </p>
+                  </div>
+                  <Button onClick={() => navigate("/profissionais")} className="gap-2 w-full md:w-auto">
+                    <Users className="h-4 w-4" />
+                    Ir para Profissionais
+                  </Button>
+                </CardContent>
+              </Card>
+
+              {/* Info Card */}
+              <Card className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/30">
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-3">
+                    <Shield className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5" />
+                    <div>
+                      <h4 className="font-medium text-blue-900 dark:text-blue-100">Sobre os níveis de acesso</h4>
+                      <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
+                        Os acessos são criados ao cadastrar um profissional com "Criar acesso ao sistema" habilitado. 
+                        Aqui você pode alterar o nível de permissão de cada usuário.
+                      </p>
+                      {!isMaster && (
+                        <p className="text-sm text-orange-600 dark:text-orange-400 mt-2 font-medium">
+                          ⚠️ Apenas o usuário master pode alterar permissões.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Users Table */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Usuários com Acesso ao Sistema</CardTitle>
+                  <CardDescription>
+                    Lista de todos os usuários que podem acessar o sistema.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="p-0">
+                  {isLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : users.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      Nenhum usuário cadastrado.
+                    </div>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Usuário</TableHead>
+                          <TableHead>Nível de Acesso</TableHead>
+                          <TableHead className="text-center">Abrir Caixa</TableHead>
+                          <TableHead className="w-[80px]">Ações</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {users.map((userAccess) => {
+                          const roleInfo = ROLE_LABELS[userAccess.role];
+                          const isCurrentUser = userAccess.user_id === user?.id;
+                          const isAdmin = userAccess.role === "admin";
+                          
+                          return (
+                            <TableRow key={userAccess.id}>
+                              <TableCell>
+                                <div className="flex items-center gap-3">
+                                  <Avatar>
+                                    <AvatarFallback className="bg-primary/10 text-primary">
+                                      {getInitials(userAccess.full_name)}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <div>
+                                    <p className="font-medium">
+                                      {userAccess.full_name}
+                                      {isCurrentUser && (
+                                        <Badge variant="outline" className="ml-2 text-xs">Você</Badge>
+                                      )}
+                                    </p>
+                                  </div>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                {isMaster && !isAdmin ? (
+                                  <Select
+                                    value={userAccess.role}
+                                    onValueChange={(value) => handleRoleChange(userAccess.user_id, value as AppRole)}
+                                    disabled={isUpdating}
+                                  >
+                                    <SelectTrigger className="w-[180px]">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {Object.entries(ROLE_LABELS)
+                                        .filter(([key]) => key !== "admin")
+                                        .map(([key, value]) => (
+                                          <SelectItem key={key} value={key}>
+                                            <div className="flex items-center gap-2">
+                                              <div className={`h-2 w-2 rounded-full ${value.color}`} />
+                                              {value.label}
+                                            </div>
+                                          </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                  </Select>
+                                ) : (
+                                  <div className="flex items-center gap-2">
+                                    <div className={`h-2 w-2 rounded-full ${roleInfo.color}`} />
+                                    <span>{roleInfo.label}</span>
+                                    {isAdmin && (
+                                      <Badge variant="destructive" className="text-xs">Master</Badge>
+                                    )}
+                                  </div>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                {isMaster && !isAdmin ? (
+                                  <Switch
+                                    checked={userAccess.can_open_caixa}
+                                    onCheckedChange={() => handleToggleCanOpenCaixa(userAccess.user_id, userAccess.can_open_caixa)}
+                                    disabled={isUpdating}
+                                  />
+                                ) : (
+                                  <Badge variant={userAccess.can_open_caixa ? "default" : "secondary"}>
+                                    {userAccess.can_open_caixa ? "Sim" : "Não"}
+                                  </Badge>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                {isMaster && !isAdmin && !isCurrentUser && (
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button variant="ghost" size="icon">
+                                        <MoreHorizontal className="h-4 w-4" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                      <DropdownMenuItem
+                                        onClick={() => handleDeleteAccess(userAccess)}
+                                        className="text-destructive"
+                                      >
+                                        <Trash2 className="h-4 w-4 mr-2" />
+                                        Remover Acesso
+                                      </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Access Levels Configuration */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-lg">Configuração dos Níveis de Acesso</CardTitle>
+                      <CardDescription>
+                        Configure as permissões de cada nível ou crie níveis personalizados.
+                      </CardDescription>
+                    </div>
+                    {isMaster && (
+                      <Button onClick={() => setCreateAccessLevelModalOpen(true)} className="gap-2">
+                        <Plus className="h-4 w-4" />
+                        Novo Nível
+                      </Button>
+                    )}
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {isLoadingAccessLevels ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : accessLevels.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      Nenhum nível de acesso configurado.
+                    </div>
+                  ) : (
+                    <div className="grid gap-4 md:grid-cols-2">
+                      {accessLevels.map((level) => {
+                        const enabledCount = Object.values(level.permissions).filter(Boolean).length;
+                        const totalCount = Object.keys(level.permissions).length;
+                        
+                        return (
+                          <div
+                            key={level.id}
+                            className="flex items-start gap-3 p-4 rounded-lg border bg-muted/30 hover:bg-muted/50 transition-colors cursor-pointer group"
+                            onClick={() => {
+                              setSelectedAccessLevel(level);
+                              setAccessLevelConfigModalOpen(true);
+                            }}
+                          >
+                            <div
+                              className="h-4 w-4 rounded-full mt-0.5 shrink-0"
+                              style={{ backgroundColor: level.color }}
+                            />
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <p className="font-medium">{level.name}</p>
+                                {level.is_system && (
+                                  <Badge variant="secondary" className="text-xs">
+                                    <Lock className="h-3 w-3 mr-1" />
+                                    Sistema
+                                  </Badge>
+                                )}
+                              </div>
+                              <p className="text-sm text-muted-foreground mt-0.5">
+                                {level.description || "Sem descrição"}
+                              </p>
+                              <p className="text-xs text-muted-foreground mt-2">
+                                {enabledCount} de {totalCount} permissões ativas
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <Cog className="h-4 w-4" />
+                              </Button>
+                              {!level.is_system && isMaster && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-destructive hover:text-destructive"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setAccessLevelToDelete(level);
+                                    setDeleteAccessLevelModalOpen(true);
+                                  }}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Financeiro */}
+            <TabsContent value="financeiro" className="space-y-4">
             {/* Card Brands */}
             <Card>
               <CardHeader>
@@ -1017,69 +1202,60 @@ export default function Configuracoes() {
                 </div>
               </CardContent>
             </Card>
-          </TabsContent>
+            </TabsContent>
 
-          <TabsContent value="sistema" className="space-y-4">
-            {/* Salon Data */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Dados do Salão</CardTitle>
-                <CardDescription>Informações básicas do estabelecimento.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">Em breve: configuração de nome, endereço, logo, CNPJ e dados do salão.</p>
-              </CardContent>
-            </Card>
-
-            {/* Master Transfer Section - Only visible to master user */}
-            {isMaster && (
-              <Card className="border-red-200 dark:border-red-800">
-                <CardHeader>
-                  <div className="flex items-center gap-2">
-                    <ArrowRightLeft className="h-5 w-5 text-red-600 dark:text-red-400" />
-                    <CardTitle className="text-lg text-red-600 dark:text-red-400">
-                      Transferir Acesso Master
-                    </CardTitle>
-                  </div>
-                  <CardDescription>
-                    Transfira seu acesso master para outro usuário. Esta ação é irreversível.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 p-4 rounded-lg">
-                      <p className="text-sm text-red-700 dark:text-red-300">
-                        <strong>Atenção:</strong> Ao transferir o acesso master, você perderá as permissões exclusivas de:
-                      </p>
-                      <ul className="mt-2 text-sm text-red-600 dark:text-red-400 list-disc list-inside">
-                        <li>Excluir registros do sistema</li>
-                        <li>Alterar permissões de outros usuários</li>
-                        <li>Remover acessos de usuários</li>
-                        <li>Transferir acesso master novamente</li>
-                      </ul>
-                    </div>
-                    
-                    {eligibleUsersForMaster.length > 0 ? (
-                      <Button
-                        variant="destructive"
-                        onClick={() => setTransferMasterModalOpen(true)}
-                        className="gap-2"
-                      >
-                        <ArrowRightLeft className="h-4 w-4" />
+            {/* Sistema */}
+            <TabsContent value="sistema" className="space-y-4">
+              {/* Master Transfer Section - Only visible to master user */}
+              {isMaster && (
+                <Card className="border-red-200 dark:border-red-800">
+                  <CardHeader>
+                    <div className="flex items-center gap-2">
+                      <ArrowRightLeft className="h-5 w-5 text-red-600 dark:text-red-400" />
+                      <CardTitle className="text-lg text-red-600 dark:text-red-400">
                         Transferir Acesso Master
-                      </Button>
-                    ) : (
-                      <p className="text-sm text-muted-foreground">
-                        Não há outros usuários disponíveis para receber o acesso master. 
-                        Cadastre novos profissionais com acesso ao sistema primeiro.
-                      </p>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
-        </Tabs>
+                      </CardTitle>
+                    </div>
+                    <CardDescription>
+                      Transfira seu acesso master para outro usuário. Esta ação é irreversível.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 p-4 rounded-lg">
+                        <p className="text-sm text-red-700 dark:text-red-300">
+                          <strong>Atenção:</strong> Ao transferir o acesso master, você perderá as permissões exclusivas de:
+                        </p>
+                        <ul className="mt-2 text-sm text-red-600 dark:text-red-400 list-disc list-inside">
+                          <li>Excluir registros do sistema</li>
+                          <li>Alterar permissões de outros usuários</li>
+                          <li>Remover acessos de usuários</li>
+                          <li>Transferir acesso master novamente</li>
+                        </ul>
+                      </div>
+                      
+                      {eligibleUsersForMaster.length > 0 ? (
+                        <Button
+                          variant="destructive"
+                          onClick={() => setTransferMasterModalOpen(true)}
+                          className="gap-2"
+                        >
+                          <ArrowRightLeft className="h-4 w-4" />
+                          Transferir Acesso Master
+                        </Button>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">
+                          Não há outros usuários disponíveis para receber o acesso master. 
+                          Cadastre novos profissionais com acesso ao sistema primeiro.
+                        </p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
+          </Tabs>
+        )}
       </div>
 
       <DeleteConfirmModal
