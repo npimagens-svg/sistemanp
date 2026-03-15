@@ -42,6 +42,7 @@ export interface ProfessionalInput {
   avatar_url?: string | null;
   password?: string; // Password for creating system access
   access_level?: AppRole; // System access level
+  user_id?: string | null; // Link to auth user
 }
 
 export function useProfessionals() {

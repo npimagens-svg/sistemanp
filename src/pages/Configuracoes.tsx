@@ -122,6 +122,7 @@ function MasterProfessionalProfile() {
         email: user?.email || "",
         is_active: true,
         create_access: false,
+        user_id: user?.id || null,
       });
     }
     setIsEditing(false);
