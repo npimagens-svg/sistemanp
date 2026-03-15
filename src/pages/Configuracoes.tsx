@@ -621,6 +621,14 @@ export default function Configuracoes() {
           </>
         )}
 
+        {/* ===== COMISSÕES ===== */}
+        {subPage === "comissoes" && (
+          <>
+            <SettingsBreadcrumb label="Comissões" />
+            <CommissionSettingsPage />
+          </>
+        )}
+
         {/* ===== FINANCEIRO ===== */}
         {subPage === "financeiro" && (
           <>
