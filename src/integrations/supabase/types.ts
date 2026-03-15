@@ -789,6 +789,101 @@ export type Database = {
           },
         ]
       }
+      commission_settings: {
+        Row: {
+          admin_fee_display: string
+          admin_fee_enabled: boolean
+          admin_fee_percent: number
+          admin_fee_scope: string
+          anticipation_fee_enabled: boolean
+          anticipation_fee_percent: number
+          card_fee_display: string
+          card_fee_mode: string
+          card_payment_date: string
+          created_at: string
+          custom_card_fee_percent: number
+          dual_assistant_rule: string
+          gift_card_commission_percent: number
+          id: string
+          package_commission_enabled: boolean
+          package_commission_percent: number
+          presale_commission_percent: number
+          presale_commission_rule: string
+          product_cost_deduction: string
+          receipt_footer_message: string
+          salon_id: string
+          service_cost_enabled: boolean
+          service_fee_display: string
+          show_costs_values: boolean
+          show_revenue_values: boolean
+          updated_at: string
+        }
+        Insert: {
+          admin_fee_display?: string
+          admin_fee_enabled?: boolean
+          admin_fee_percent?: number
+          admin_fee_scope?: string
+          anticipation_fee_enabled?: boolean
+          anticipation_fee_percent?: number
+          card_fee_display?: string
+          card_fee_mode?: string
+          card_payment_date?: string
+          created_at?: string
+          custom_card_fee_percent?: number
+          dual_assistant_rule?: string
+          gift_card_commission_percent?: number
+          id?: string
+          package_commission_enabled?: boolean
+          package_commission_percent?: number
+          presale_commission_percent?: number
+          presale_commission_rule?: string
+          product_cost_deduction?: string
+          receipt_footer_message?: string
+          salon_id: string
+          service_cost_enabled?: boolean
+          service_fee_display?: string
+          show_costs_values?: boolean
+          show_revenue_values?: boolean
+          updated_at?: string
+        }
+        Update: {
+          admin_fee_display?: string
+          admin_fee_enabled?: boolean
+          admin_fee_percent?: number
+          admin_fee_scope?: string
+          anticipation_fee_enabled?: boolean
+          anticipation_fee_percent?: number
+          card_fee_display?: string
+          card_fee_mode?: string
+          card_payment_date?: string
+          created_at?: string
+          custom_card_fee_percent?: number
+          dual_assistant_rule?: string
+          gift_card_commission_percent?: number
+          id?: string
+          package_commission_enabled?: boolean
+          package_commission_percent?: number
+          presale_commission_percent?: number
+          presale_commission_rule?: string
+          product_cost_deduction?: string
+          receipt_footer_message?: string
+          salon_id?: string
+          service_cost_enabled?: boolean
+          service_fee_display?: string
+          show_costs_values?: boolean
+          show_revenue_values?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commission_settings_salon_id_fkey"
+            columns: ["salon_id"]
+            isOneToOne: true
+            referencedRelation: "salons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       financial_transactions: {
         Row: {
           amount: number
