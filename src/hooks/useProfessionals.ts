@@ -64,7 +64,7 @@ export function useProfessionals() {
     mutationFn: async (input: ProfessionalInput) => {
       if (!salonId) throw new Error("Salão não encontrado");
 
-      const { password, ...professionalData } = input;
+      const { password, access_level, ...professionalData } = input;
 
       // First create the professional record
       const { data, error } = await supabase
@@ -117,7 +117,7 @@ export function useProfessionals() {
   const updateMutation = useMutation({
     mutationFn: async ({ id, ...input }: ProfessionalInput & { id: string }) => {
       // Extract password before updating - it's not a column in professionals table
-      const { password, ...professionalData } = input;
+      const { password, access_level, ...professionalData } = input;
 
       // Update professional record (without password)
       const { data, error } = await supabase
