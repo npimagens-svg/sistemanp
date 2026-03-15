@@ -1096,6 +1096,118 @@ export type Database = {
           },
         ]
       }
+      professional_bank_details: {
+        Row: {
+          account_digit: string | null
+          account_holder: string | null
+          account_number: string | null
+          account_type: string
+          agency: string | null
+          bank_name: string | null
+          created_at: string
+          holder_cpf: string | null
+          id: string
+          person_type: string
+          professional_id: string
+          updated_at: string
+        }
+        Insert: {
+          account_digit?: string | null
+          account_holder?: string | null
+          account_number?: string | null
+          account_type?: string
+          agency?: string | null
+          bank_name?: string | null
+          created_at?: string
+          holder_cpf?: string | null
+          id?: string
+          person_type?: string
+          professional_id: string
+          updated_at?: string
+        }
+        Update: {
+          account_digit?: string | null
+          account_holder?: string | null
+          account_number?: string | null
+          account_type?: string
+          agency?: string | null
+          bank_name?: string | null
+          created_at?: string
+          holder_cpf?: string | null
+          id?: string
+          person_type?: string
+          professional_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "professional_bank_details_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: true
+            referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      professional_commission_rules: {
+        Row: {
+          card_payment_date: string | null
+          contract_end: string | null
+          contract_start: string | null
+          contract_type: string | null
+          created_at: string
+          deduct_admin_fee: boolean | null
+          deduct_anticipation: boolean | null
+          deduct_card_fee: boolean | null
+          deduct_product_cost: boolean | null
+          deduct_service_cost: boolean | null
+          id: string
+          payment_frequency: string | null
+          professional_id: string
+          updated_at: string
+        }
+        Insert: {
+          card_payment_date?: string | null
+          contract_end?: string | null
+          contract_start?: string | null
+          contract_type?: string | null
+          created_at?: string
+          deduct_admin_fee?: boolean | null
+          deduct_anticipation?: boolean | null
+          deduct_card_fee?: boolean | null
+          deduct_product_cost?: boolean | null
+          deduct_service_cost?: boolean | null
+          id?: string
+          payment_frequency?: string | null
+          professional_id: string
+          updated_at?: string
+        }
+        Update: {
+          card_payment_date?: string | null
+          contract_end?: string | null
+          contract_start?: string | null
+          contract_type?: string | null
+          created_at?: string
+          deduct_admin_fee?: boolean | null
+          deduct_anticipation?: boolean | null
+          deduct_card_fee?: boolean | null
+          deduct_product_cost?: boolean | null
+          deduct_service_cost?: boolean | null
+          id?: string
+          payment_frequency?: string | null
+          professional_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "professional_commission_rules_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: true
+            referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       professional_service_commissions: {
         Row: {
           assistant_commission_percent: number | null
@@ -1144,64 +1256,165 @@ export type Database = {
           },
         ]
       }
+      professional_work_schedules: {
+        Row: {
+          created_at: string
+          end_time: string
+          friday: boolean
+          id: string
+          monday: boolean
+          professional_id: string
+          saturday: boolean
+          start_time: string
+          sunday: boolean
+          thursday: boolean
+          tuesday: boolean
+          updated_at: string
+          wednesday: boolean
+        }
+        Insert: {
+          created_at?: string
+          end_time?: string
+          friday?: boolean
+          id?: string
+          monday?: boolean
+          professional_id: string
+          saturday?: boolean
+          start_time?: string
+          sunday?: boolean
+          thursday?: boolean
+          tuesday?: boolean
+          updated_at?: string
+          wednesday?: boolean
+        }
+        Update: {
+          created_at?: string
+          end_time?: string
+          friday?: boolean
+          id?: string
+          monday?: boolean
+          professional_id?: string
+          saturday?: boolean
+          start_time?: string
+          sunday?: boolean
+          thursday?: boolean
+          tuesday?: boolean
+          updated_at?: string
+          wednesday?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "professional_work_schedules_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professionals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       professionals: {
         Row: {
+          address: string | null
+          agenda_color: string | null
+          agenda_order: number | null
           avatar_url: string | null
+          birth_date: string | null
           can_be_assistant: boolean | null
+          cep: string | null
+          city: string | null
           commission_percent: number | null
           cpf: string | null
           create_access: boolean | null
           created_at: string
+          description: string | null
           email: string | null
+          facebook: string | null
           has_schedule: boolean | null
           id: string
+          instagram: string | null
           is_active: boolean | null
+          mobile: string | null
           name: string
+          neighborhood: string | null
           nickname: string | null
           phone: string | null
+          rg: string | null
           role: string | null
           salon_id: string
+          site: string | null
           specialty: string | null
+          state: string | null
+          twitter: string | null
           updated_at: string
           user_id: string | null
         }
         Insert: {
+          address?: string | null
+          agenda_color?: string | null
+          agenda_order?: number | null
           avatar_url?: string | null
+          birth_date?: string | null
           can_be_assistant?: boolean | null
+          cep?: string | null
+          city?: string | null
           commission_percent?: number | null
           cpf?: string | null
           create_access?: boolean | null
           created_at?: string
+          description?: string | null
           email?: string | null
+          facebook?: string | null
           has_schedule?: boolean | null
           id?: string
+          instagram?: string | null
           is_active?: boolean | null
+          mobile?: string | null
           name: string
+          neighborhood?: string | null
           nickname?: string | null
           phone?: string | null
+          rg?: string | null
           role?: string | null
           salon_id: string
+          site?: string | null
           specialty?: string | null
+          state?: string | null
+          twitter?: string | null
           updated_at?: string
           user_id?: string | null
         }
         Update: {
+          address?: string | null
+          agenda_color?: string | null
+          agenda_order?: number | null
           avatar_url?: string | null
+          birth_date?: string | null
           can_be_assistant?: boolean | null
+          cep?: string | null
+          city?: string | null
           commission_percent?: number | null
           cpf?: string | null
           create_access?: boolean | null
           created_at?: string
+          description?: string | null
           email?: string | null
+          facebook?: string | null
           has_schedule?: boolean | null
           id?: string
+          instagram?: string | null
           is_active?: boolean | null
+          mobile?: string | null
           name?: string
+          neighborhood?: string | null
           nickname?: string | null
           phone?: string | null
+          rg?: string | null
           role?: string | null
           salon_id?: string
+          site?: string | null
           specialty?: string | null
+          state?: string | null
+          twitter?: string | null
           updated_at?: string
           user_id?: string | null
         }

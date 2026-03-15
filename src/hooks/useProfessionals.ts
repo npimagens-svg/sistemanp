@@ -10,9 +10,11 @@ export interface Professional {
   name: string;
   nickname: string | null;
   cpf: string | null;
+  rg: string | null;
   role: string | null;
   email: string | null;
   phone: string | null;
+  mobile: string | null;
   avatar_url: string | null;
   specialty: string | null;
   commission_percent: number | null;
@@ -20,6 +22,19 @@ export interface Professional {
   can_be_assistant: boolean | null;
   has_schedule: boolean | null;
   create_access: boolean | null;
+  birth_date: string | null;
+  description: string | null;
+  agenda_color: string | null;
+  agenda_order: number | null;
+  site: string | null;
+  facebook: string | null;
+  instagram: string | null;
+  twitter: string | null;
+  cep: string | null;
+  address: string | null;
+  neighborhood: string | null;
+  city: string | null;
+  state: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -30,9 +45,11 @@ export interface ProfessionalInput {
   name: string;
   nickname?: string;
   cpf?: string;
+  rg?: string;
   role?: string;
   email?: string;
   phone?: string;
+  mobile?: string;
   specialty?: string;
   commission_percent?: number;
   is_active?: boolean;
@@ -40,9 +57,22 @@ export interface ProfessionalInput {
   has_schedule?: boolean;
   create_access?: boolean;
   avatar_url?: string | null;
-  password?: string; // Password for creating system access
-  access_level?: AppRole; // System access level
-  user_id?: string | null; // Link to auth user
+  birth_date?: string;
+  description?: string;
+  agenda_color?: string;
+  agenda_order?: number;
+  site?: string;
+  facebook?: string;
+  instagram?: string;
+  twitter?: string;
+  cep?: string;
+  address?: string;
+  neighborhood?: string;
+  city?: string;
+  state?: string;
+  password?: string;
+  access_level?: AppRole;
+  user_id?: string | null;
 }
 
 export function useProfessionals() {

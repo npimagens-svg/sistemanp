@@ -1,371 +1,949 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AppLayoutNew } from "@/components/layout/AppLayoutNew";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Textarea } from "@/components/ui/textarea";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Plus, Search, MoreHorizontal, Pencil, Trash2, Loader2, Percent, User, UserX, RotateCcw } from "lucide-react";
+  Plus, Search, Loader2, Save, Trash2, UserCog, KeyRound, Scissors,
+  FileText, Clock, CreditCard, Phone, MapPin, X,
+} from "lucide-react";
 import { useProfessionals, Professional, ProfessionalInput } from "@/hooks/useProfessionals";
-import { ProfessionalModal } from "@/components/modals/ProfessionalModal";
-import { TransferAppointmentsModal } from "@/components/modals/TransferAppointmentsModal";
+import { useProfessionalWorkSchedules, WorkScheduleInput } from "@/hooks/useProfessionalWorkSchedules";
+import { useProfessionalBankDetails, BankDetailsInput } from "@/hooks/useProfessionalBankDetails";
+import { useProfessionalCommissionRules, CommissionRulesInput } from "@/hooks/useProfessionalCommissionRules";
 import { ProfessionalCommissionsTab } from "@/components/professionals/ProfessionalCommissionsTab";
+import { AvatarUpload } from "@/components/shared/AvatarUpload";
+import { useCepLookup } from "@/hooks/useCepLookup";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { ProfessionalModal } from "@/components/modals/ProfessionalModal";
+import { TransferAppointmentsModal } from "@/components/modals/TransferAppointmentsModal";
 
+const SPECIALTIES = [
+  { value: "cabeleireiro", label: "Cabeleireiro(a)" },
+  { value: "manicure", label: "Manicure" },
+  { value: "esteticista", label: "Esteticista" },
+  { value: "maquiador", label: "Maquiador(a)" },
+  { value: "barbeiro", label: "Barbeiro" },
+  { value: "depilador", label: "Depilador(a)" },
+  { value: "massagista", label: "Massagista" },
+  { value: "recepcionista", label: "Recepcionista" },
+  { value: "gerente", label: "Gerente" },
+  { value: "outro", label: "Outro" },
+];
+
+const CONTRACT_TYPES = [
+  { value: "parceiro", label: "Profissional Parceiro" },
+  { value: "clt", label: "CLT" },
+  { value: "autonomo", label: "Autônomo" },
+  { value: "mei", label: "MEI" },
+];
+
+const PAYMENT_FREQUENCIES = [
+  { value: "semanal", label: "Semanal" },
+  { value: "quinzenal", label: "Quinzenal" },
+  { value: "mensal", label: "Mensal" },
+];
+
+const BANKS = [
+  "Banco do Brasil", "Bradesco", "Caixa Econômica", "Itaú", "Santander",
+  "Nubank", "Inter", "C6 Bank", "PagBank", "Sicredi", "Sicoob", "Outro",
+];
+
+const STATES = [
+  "AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG","PA","PB","PR","PE","PI","RJ","RN","RS","RO","RR","SC","SP","SE","TO"
+];
+
+function getInitials(name: string) {
+  return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
+}
+
+// ===== SIDEBAR =====
+function ProfessionalSidebar({
+  professionals,
+  selectedId,
+  onSelect,
+  onAdd,
+  search,
+  onSearchChange,
+  showInactive,
+  onToggleInactive,
+  inactiveCount,
+}: {
+  professionals: Professional[];
+  selectedId: string | null;
+  onSelect: (p: Professional) => void;
+  onAdd: () => void;
+  search: string;
+  onSearchChange: (s: string) => void;
+  showInactive: boolean;
+  onToggleInactive: () => void;
+  inactiveCount: number;
+}) {
+  return (
+    <div className="w-64 shrink-0 border-r bg-muted/30 flex flex-col h-full">
+      <div className="p-3 space-y-2">
+        <Button onClick={onAdd} className="w-full gap-2" size="sm">
+          <Plus className="h-4 w-4" /> Adicionar Profissional
+        </Button>
+        <div className="relative">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <Input
+            placeholder="Pesquisar profissional"
+            value={search}
+            onChange={(e) => onSearchChange(e.target.value)}
+            className="pl-8 h-8 text-sm"
+          />
+          {search && (
+            <button onClick={() => onSearchChange("")} className="absolute right-2 top-1/2 -translate-y-1/2">
+              <X className="h-3 w-3 text-muted-foreground" />
+            </button>
+          )}
+        </div>
+        <div className="text-xs text-muted-foreground text-right">Total: {professionals.length}</div>
+      </div>
+      <div className="flex-1 overflow-y-auto">
+        {professionals.map((p) => (
+          <button
+            key={p.id}
+            onClick={() => onSelect(p)}
+            className={`w-full flex items-center gap-2.5 px-3 py-2 text-left text-sm transition-colors hover:bg-muted ${
+              selectedId === p.id ? "bg-primary/10 border-l-4 border-primary font-medium" : "border-l-4 border-transparent"
+            }`}
+          >
+            <Avatar className="h-8 w-8 shrink-0">
+              {p.avatar_url && <AvatarImage src={p.avatar_url} />}
+              <AvatarFallback className="text-xs bg-primary/10 text-primary">
+                {getInitials(p.name)}
+              </AvatarFallback>
+            </Avatar>
+            <span className="truncate uppercase text-xs">{p.nickname || p.name}</span>
+            {p.user_id && (
+              <Badge variant="outline" className="ml-auto text-[10px] px-1 py-0 shrink-0">MASTER</Badge>
+            )}
+          </button>
+        ))}
+      </div>
+      {inactiveCount > 0 && (
+        <button
+          onClick={onToggleInactive}
+          className="p-3 text-xs text-primary hover:underline text-center border-t"
+        >
+          {showInactive ? "Ver ativos" : `Profissionais excluídos (${inactiveCount})`}
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ===== MAIN FORM =====
+function ProfessionalForm({ professional }: { professional: Professional }) {
+  const { canDelete, isMaster } = useAuth();
+  const { toast } = useToast();
+  const { updateProfessional, isUpdating, deactivateProfessional, reactivateProfessional } = useProfessionals();
+  const { schedules, upsertSchedule, deleteSchedule, isSaving: isSavingSchedule } = useProfessionalWorkSchedules(professional.id);
+  const { bankDetails, saveBankDetails, deleteBankDetails, isSaving: isSavingBank } = useProfessionalBankDetails(professional.id);
+  const { rules, saveRules, isSaving: isSavingRules } = useProfessionalCommissionRules(professional.id);
+  const { lookupCep, isLoading: isLookingUpCep } = useCepLookup();
+
+  // Professional data form
+  const [form, setForm] = useState({
+    name: "", nickname: "", cpf: "", rg: "", role: "", email: "", phone: "",
+    specialty: "", commission_percent: 0, can_be_assistant: false, has_schedule: true,
+    avatar_url: null as string | null, birth_date: "", description: "",
+    agenda_color: "#000000", agenda_order: 0,
+    mobile: "", site: "", facebook: "", instagram: "", twitter: "",
+    cep: "", address: "", neighborhood: "", city: "", state: "",
+  });
+
+  // Work schedule form
+  const [scheduleForm, setScheduleForm] = useState({
+    start_time: "09:00", end_time: "19:00",
+    monday: false, tuesday: true, wednesday: true, thursday: true,
+    friday: true, saturday: true, sunday: false,
+  });
+
+  // Bank details form
+  const [bankForm, setBankForm] = useState({
+    person_type: "fisica", account_holder: "", holder_cpf: "",
+    bank_name: "", account_type: "corrente", agency: "", account_number: "", account_digit: "",
+  });
+
+  // Commission rules form
+  const [rulesForm, setRulesForm] = useState({
+    contract_type: "parceiro", contract_start: "", contract_end: "",
+    payment_frequency: "mensal", card_payment_date: "sale_date",
+    deduct_anticipation: true, deduct_card_fee: true,
+    deduct_admin_fee: true, deduct_service_cost: true, deduct_product_cost: true,
+  });
+
+  // Load professional data
+  useEffect(() => {
+    const p = professional as any;
+    setForm({
+      name: p.name || "", nickname: p.nickname || "", cpf: p.cpf || "", rg: p.rg || "",
+      role: p.role || "", email: p.email || "", phone: p.phone || "",
+      specialty: p.specialty || "", commission_percent: Number(p.commission_percent) || 0,
+      can_be_assistant: p.can_be_assistant || false, has_schedule: p.has_schedule ?? true,
+      avatar_url: p.avatar_url || null, birth_date: p.birth_date || "",
+      description: p.description || "", agenda_color: p.agenda_color || "#000000",
+      agenda_order: p.agenda_order || 0,
+      mobile: p.mobile || "", site: p.site || "", facebook: p.facebook || "",
+      instagram: p.instagram || "", twitter: p.twitter || "",
+      cep: p.cep || "", address: p.address || "", neighborhood: p.neighborhood || "",
+      city: p.city || "", state: p.state || "",
+    });
+  }, [professional]);
+
+  // Load schedule
+  useEffect(() => {
+    if (schedules.length > 0) {
+      const s = schedules[0];
+      setScheduleForm({
+        start_time: s.start_time || "09:00", end_time: s.end_time || "19:00",
+        monday: s.monday, tuesday: s.tuesday, wednesday: s.wednesday,
+        thursday: s.thursday, friday: s.friday, saturday: s.saturday, sunday: s.sunday,
+      });
+    }
+  }, [schedules]);
+
+  // Load bank details
+  useEffect(() => {
+    if (bankDetails) {
+      setBankForm({
+        person_type: bankDetails.person_type || "fisica",
+        account_holder: bankDetails.account_holder || "",
+        holder_cpf: bankDetails.holder_cpf || "",
+        bank_name: bankDetails.bank_name || "",
+        account_type: bankDetails.account_type || "corrente",
+        agency: bankDetails.agency || "",
+        account_number: bankDetails.account_number || "",
+        account_digit: bankDetails.account_digit || "",
+      });
+    }
+  }, [bankDetails]);
+
+  // Load commission rules
+  useEffect(() => {
+    if (rules) {
+      setRulesForm({
+        contract_type: rules.contract_type || "parceiro",
+        contract_start: rules.contract_start || "",
+        contract_end: rules.contract_end || "",
+        payment_frequency: rules.payment_frequency || "mensal",
+        card_payment_date: rules.card_payment_date || "sale_date",
+        deduct_anticipation: rules.deduct_anticipation,
+        deduct_card_fee: rules.deduct_card_fee,
+        deduct_admin_fee: rules.deduct_admin_fee,
+        deduct_service_cost: rules.deduct_service_cost,
+        deduct_product_cost: rules.deduct_product_cost,
+      });
+    }
+  }, [rules]);
+
+  const handleSaveProfile = () => {
+    if (!form.name.trim()) {
+      toast({ title: "Nome é obrigatório", variant: "destructive" });
+      return;
+    }
+    updateProfessional({ id: professional.id, ...form, is_active: professional.is_active } as any);
+  };
+
+  const handleSaveSchedule = () => {
+    const existingId = schedules.length > 0 ? schedules[0].id : undefined;
+    upsertSchedule({
+      ...(existingId ? { id: existingId } : {}),
+      professional_id: professional.id,
+      ...scheduleForm,
+    } as any);
+  };
+
+  const handleSaveBankDetails = () => {
+    saveBankDetails({ professional_id: professional.id, ...bankForm });
+  };
+
+  const handleSaveRules = () => {
+    saveRules({
+      professional_id: professional.id,
+      ...rulesForm,
+      contract_start: rulesForm.contract_start || null,
+      contract_end: rulesForm.contract_end || null,
+    });
+  };
+
+  const handleCepLookup = async () => {
+    const result = await lookupCep(form.cep);
+    if (result) {
+      setForm((prev) => ({
+        ...prev,
+        address: result.address,
+        neighborhood: result.neighborhood,
+        city: result.city,
+        state: result.state,
+      }));
+    }
+  };
+
+  const DAYS = [
+    { key: "monday" as const, label: "Seg" },
+    { key: "tuesday" as const, label: "Ter" },
+    { key: "wednesday" as const, label: "Qua" },
+    { key: "thursday" as const, label: "Qui" },
+    { key: "friday" as const, label: "Sex" },
+    { key: "saturday" as const, label: "Sáb" },
+    { key: "sunday" as const, label: "Dom" },
+  ];
+
+  return (
+    <div className="flex-1 overflow-y-auto p-6 space-y-2">
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-2xl font-bold tracking-tight">Profissionais</h1>
+        <div className="flex gap-2">
+          <Button onClick={handleSaveProfile} disabled={isUpdating} className="gap-2">
+            <Save className="h-4 w-4" />
+            {isUpdating ? "Salvando..." : "Salvar Alterações"}
+          </Button>
+          {canDelete && professional.is_active && (
+            <Button variant="destructive" size="sm" onClick={() => {
+              // Will be handled by parent via deactivation
+            }}>
+              Excluir
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* ===== DADOS PESSOAIS (always visible) ===== */}
+      <div className="grid grid-cols-[auto_1fr_auto] gap-6 items-start">
+        {/* Avatar */}
+        <div className="space-y-1">
+          <AvatarUpload
+            currentAvatarUrl={form.avatar_url}
+            name={form.name}
+            onAvatarChange={(url) => setForm({ ...form, avatar_url: url })}
+            folder="professionals"
+            size="lg"
+          />
+          <p className="text-xs text-muted-foreground text-center">Tamanho máximo: 4 Mb</p>
+        </div>
+
+        {/* Main fields */}
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Nome conforme documento: <span className="text-muted-foreground">(Obrigatório)</span></Label>
+              <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Qual o CPF?</Label>
+              <Input value={form.cpf} onChange={(e) => setForm({ ...form, cpf: e.target.value })} placeholder="000.000.000-00" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Nome Social:</Label>
+              <Input value={form.nickname} onChange={(e) => setForm({ ...form, nickname: e.target.value })} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Qual o RG?</Label>
+              <Input value={form.rg} onChange={(e) => setForm({ ...form, rg: e.target.value })} />
+            </div>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="can_be_assistant"
+              checked={form.can_be_assistant}
+              onCheckedChange={(c) => setForm({ ...form, can_be_assistant: c as boolean })}
+            />
+            <Label htmlFor="can_be_assistant" className="text-sm cursor-pointer">
+              Esse profissional pode ser um assistente
+            </Label>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Cargo: <span className="text-muted-foreground">(Obrigatório)</span></Label>
+              <Select value={form.role} onValueChange={(v) => setForm({ ...form, role: v })}>
+                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectContent>
+                  {SPECIALTIES.map((s) => (
+                    <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Qual a data de nascimento?</Label>
+              <Input type="date" value={form.birth_date} onChange={(e) => setForm({ ...form, birth_date: e.target.value })} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Possui alguma especialidade?</Label>
+              <Input value={form.specialty} onChange={(e) => setForm({ ...form, specialty: e.target.value })} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Qual <strong>cor</strong> deverá aparecer na agenda?</Label>
+              <div className="flex items-center gap-2">
+                <Input value={form.agenda_color} onChange={(e) => setForm({ ...form, agenda_color: e.target.value })} className="flex-1" />
+                <input type="color" value={form.agenda_color} onChange={(e) => setForm({ ...form, agenda_color: e.target.value })} className="h-9 w-9 rounded border cursor-pointer" />
+              </div>
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Escreva uma descrição sobre este profissional:</Label>
+            <Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3} />
+          </div>
+        </div>
+
+        {/* Right side checkboxes */}
+        <div className="space-y-3 border rounded-lg p-4 w-64">
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="has_schedule"
+              checked={form.has_schedule}
+              onCheckedChange={(c) => setForm({ ...form, has_schedule: c as boolean })}
+            />
+            <Label htmlFor="has_schedule" className="text-sm cursor-pointer font-medium">
+              Este profissional possui agenda
+            </Label>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Qual <strong>ordem</strong> na Agenda?</Label>
+            <Input type="number" min={0} value={form.agenda_order} onChange={(e) => setForm({ ...form, agenda_order: Number(e.target.value) })} className="w-20" />
+          </div>
+          <Button
+            variant="default"
+            size="sm"
+            className="w-full mt-2"
+            onClick={() => {
+              const el = document.getElementById("accordion-commissions");
+              el?.click();
+            }}
+          >
+            Ver Comissão Profissional
+          </Button>
+        </div>
+      </div>
+
+      {/* ===== ACCORDION SECTIONS ===== */}
+      <Accordion type="multiple" className="space-y-2 mt-6">
+        {/* ACESSO */}
+        <AccordionItem value="acesso" className="border rounded-lg px-4">
+          <AccordionTrigger className="hover:no-underline">
+            <div className="flex items-center gap-2">
+              <KeyRound className="h-4 w-4 text-muted-foreground" />
+              <span>Acesso</span>
+            </div>
+          </AccordionTrigger>
+          <AccordionContent className="space-y-4 pb-4">
+            {professional.create_access ? (
+              <div className="space-y-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">E-mail de acesso:</Label>
+                  <div className="flex items-center gap-2">
+                    <Input value={form.email} readOnly className="bg-muted" />
+                    <Button variant="outline" size="sm" className="gap-1 shrink-0">
+                      <KeyRound className="h-3.5 w-3.5" /> Trocar Senha
+                    </Button>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg">
+                  <div className="h-2 w-2 rounded-full bg-green-500" />
+                  <span className="text-sm text-green-700 dark:text-green-300">Este profissional possui acesso ao sistema</span>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">E-mail para acesso:</Label>
+                  <Input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Para criar acesso ao sistema, use o botão "Adicionar Profissional" e marque "Criar acesso ao sistema".
+                </p>
+              </div>
+            )}
+          </AccordionContent>
+        </AccordionItem>
+
+        {/* SERVIÇO E COMISSÃO */}
+        <AccordionItem value="commissions" className="border rounded-lg px-4">
+          <AccordionTrigger id="accordion-commissions" className="hover:no-underline">
+            <div className="flex items-center gap-2">
+              <Scissors className="h-4 w-4 text-muted-foreground" />
+              <span>Serviço e Comissão</span>
+            </div>
+          </AccordionTrigger>
+          <AccordionContent className="pb-4">
+            <ProfessionalCommissionsTab
+              professionalId={professional.id}
+              defaultCommission={professional.commission_percent || 0}
+            />
+          </AccordionContent>
+        </AccordionItem>
+
+        {/* REGRAS DE CONTRATO E COMISSÃO */}
+        <AccordionItem value="contract-rules" className="border rounded-lg px-4">
+          <AccordionTrigger className="hover:no-underline">
+            <div className="flex items-center gap-2">
+              <FileText className="h-4 w-4 text-muted-foreground" />
+              <span>Regras de Contrato e Comissão</span>
+            </div>
+          </AccordionTrigger>
+          <AccordionContent className="space-y-6 pb-4">
+            <p className="text-sm text-muted-foreground">
+              Preencha as informações de contrato e comissão dos seus funcionários.
+            </p>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Tipo de contratação:</Label>
+                <Select value={rulesForm.contract_type} onValueChange={(v) => setRulesForm({ ...rulesForm, contract_type: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {CONTRACT_TYPES.map((t) => (
+                      <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Data de início do contrato:</Label>
+                <Input type="date" value={rulesForm.contract_start} onChange={(e) => setRulesForm({ ...rulesForm, contract_start: e.target.value })} />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Data de encerramento do contrato:</Label>
+                <Input type="date" value={rulesForm.contract_end} onChange={(e) => setRulesForm({ ...rulesForm, contract_end: e.target.value })} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Repasse de pagamento:</Label>
+                <Select value={rulesForm.payment_frequency} onValueChange={(v) => setRulesForm({ ...rulesForm, payment_frequency: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {PAYMENT_FREQUENCIES.map((f) => (
+                      <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="space-y-4 border rounded-lg p-4 bg-muted/30">
+              <p className="text-sm text-center text-muted-foreground">
+                Gostaria de configurar <strong>condições de comissão</strong> especiais para este profissional?
+              </p>
+
+              {/* Card payment date */}
+              <div className="flex items-center justify-between p-3 border rounded">
+                <span className="text-sm">Se o cliente pagou o serviço com <strong>cartão</strong>, seu profissional receberá na:</span>
+                <RadioGroup
+                  value={rulesForm.card_payment_date}
+                  onValueChange={(v) => setRulesForm({ ...rulesForm, card_payment_date: v })}
+                  className="flex gap-4"
+                >
+                  <div className="flex items-center space-x-1.5">
+                    <RadioGroupItem value="sale_date" id="sale_date" />
+                    <Label htmlFor="sale_date" className="text-sm cursor-pointer">Data da venda</Label>
+                  </div>
+                  <div className="flex items-center space-x-1.5">
+                    <RadioGroupItem value="settlement_date" id="settlement_date" />
+                    <Label htmlFor="settlement_date" className="text-sm cursor-pointer">Data do recebimento</Label>
+                  </div>
+                </RadioGroup>
+              </div>
+
+              {/* Fee toggles */}
+              {[
+                { key: "deduct_anticipation" as const, label: "Taxa de antecipação" },
+                { key: "deduct_card_fee" as const, label: "Taxa de cartão" },
+                { key: "deduct_admin_fee" as const, label: "Taxa de administração do estabelecimento" },
+                { key: "deduct_service_cost" as const, label: "Taxa de custo dos serviços" },
+                { key: "deduct_product_cost" as const, label: "Taxa de produto" },
+              ].map(({ key, label }) => (
+                <div key={key} className="flex items-center justify-between p-3 border rounded">
+                  <span className="text-sm font-medium">{label}</span>
+                  <div className="flex items-center gap-2">
+                    <Badge variant={rulesForm[key] ? "default" : "secondary"} className="text-xs">
+                      {rulesForm[key] ? "Ativo" : "Inativo"}
+                    </Badge>
+                    <RadioGroup
+                      value={rulesForm[key] ? "descontar" : "nao_descontar"}
+                      onValueChange={(v) => setRulesForm({ ...rulesForm, [key]: v === "descontar" })}
+                      className="flex gap-3"
+                    >
+                      <div className="flex items-center space-x-1.5">
+                        <RadioGroupItem value="nao_descontar" id={`${key}_no`} />
+                        <Label htmlFor={`${key}_no`} className="text-sm cursor-pointer">Não descontar</Label>
+                      </div>
+                      <div className="flex items-center space-x-1.5">
+                        <RadioGroupItem value="descontar" id={`${key}_yes`} />
+                        <Label htmlFor={`${key}_yes`} className="text-sm cursor-pointer">Descontar</Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex justify-end">
+              <Button onClick={handleSaveRules} disabled={isSavingRules} className="gap-2">
+                <Save className="h-4 w-4" />
+                {isSavingRules ? "Salvando..." : "Salvar Regras"}
+              </Button>
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+
+        {/* HORÁRIO DE TRABALHO */}
+        <AccordionItem value="work-schedule" className="border rounded-lg px-4">
+          <AccordionTrigger className="hover:no-underline">
+            <div className="flex items-center gap-2">
+              <Clock className="h-4 w-4 text-muted-foreground" />
+              <span>Horário de Trabalho</span>
+            </div>
+          </AccordionTrigger>
+          <AccordionContent className="space-y-4 pb-4">
+            <div className="border rounded-lg overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Horário de Entrada</TableHead>
+                    <TableHead>Horário de Saída</TableHead>
+                    {DAYS.map((d) => (
+                      <TableHead key={d.key} className="text-center w-12">{d.label}</TableHead>
+                    ))}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  <TableRow>
+                    <TableCell>
+                      <Input type="time" value={scheduleForm.start_time} onChange={(e) => setScheduleForm({ ...scheduleForm, start_time: e.target.value })} className="w-28" />
+                    </TableCell>
+                    <TableCell>
+                      <Input type="time" value={scheduleForm.end_time} onChange={(e) => setScheduleForm({ ...scheduleForm, end_time: e.target.value })} className="w-28" />
+                    </TableCell>
+                    {DAYS.map((d) => (
+                      <TableCell key={d.key} className="text-center">
+                        <Checkbox
+                          checked={scheduleForm[d.key]}
+                          onCheckedChange={(c) => setScheduleForm({ ...scheduleForm, [d.key]: c as boolean })}
+                        />
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </div>
+            <div className="flex justify-end">
+              <Button onClick={handleSaveSchedule} disabled={isSavingSchedule} className="gap-2">
+                <Save className="h-4 w-4" />
+                {isSavingSchedule ? "Salvando..." : "Salvar Horário"}
+              </Button>
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+
+        {/* RECEBIMENTO DE COMISSÃO */}
+        <AccordionItem value="bank-details" className="border rounded-lg px-4">
+          <AccordionTrigger className="hover:no-underline">
+            <div className="flex items-center gap-2">
+              <CreditCard className="h-4 w-4 text-muted-foreground" />
+              <span>Recebimento de Comissão (Dados Bancários)</span>
+            </div>
+          </AccordionTrigger>
+          <AccordionContent className="space-y-4 pb-4">
+            <p className="text-sm text-muted-foreground">
+              Preencha os campos com as informações bancárias do profissional para o pagamento das comissões.
+            </p>
+
+            {/* Person type */}
+            <div className="space-y-1.5">
+              <Label className="text-xs">Tipo de conta:</Label>
+              <RadioGroup
+                value={bankForm.person_type}
+                onValueChange={(v) => setBankForm({ ...bankForm, person_type: v })}
+                className="flex gap-4"
+              >
+                <div className="flex items-center space-x-1.5">
+                  <RadioGroupItem value="fisica" id="pf" />
+                  <Label htmlFor="pf" className="text-sm cursor-pointer">Pessoa Física</Label>
+                </div>
+                <div className="flex items-center space-x-1.5">
+                  <RadioGroupItem value="juridica" id="pj" />
+                  <Label htmlFor="pj" className="text-sm cursor-pointer">Pessoa Jurídica</Label>
+                </div>
+              </RadioGroup>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Nome do titular: <span className="text-muted-foreground">(Obrigatório)</span></Label>
+                <Input value={bankForm.account_holder} onChange={(e) => setBankForm({ ...bankForm, account_holder: e.target.value })} />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">CPF do titular: <span className="text-muted-foreground">(Obrigatório)</span></Label>
+                <Input value={bankForm.holder_cpf} onChange={(e) => setBankForm({ ...bankForm, holder_cpf: e.target.value })} />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Banco: <span className="text-muted-foreground">(Obrigatório)</span></Label>
+                <Select value={bankForm.bank_name} onValueChange={(v) => setBankForm({ ...bankForm, bank_name: v })}>
+                  <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                  <SelectContent>
+                    {BANKS.map((b) => (
+                      <SelectItem key={b} value={b}>{b}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Modelo de conta: <span className="text-muted-foreground">(Obrigatório)</span></Label>
+                <RadioGroup
+                  value={bankForm.account_type}
+                  onValueChange={(v) => setBankForm({ ...bankForm, account_type: v })}
+                  className="flex gap-4 mt-1"
+                >
+                  <div className="flex items-center space-x-1.5">
+                    <RadioGroupItem value="corrente" id="corrente" />
+                    <Label htmlFor="corrente" className="text-sm cursor-pointer">Corrente</Label>
+                  </div>
+                  <div className="flex items-center space-x-1.5">
+                    <RadioGroupItem value="poupanca" id="poupanca" />
+                    <Label htmlFor="poupanca" className="text-sm cursor-pointer">Poupança</Label>
+                  </div>
+                </RadioGroup>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Agência: <span className="text-muted-foreground">(Obrigatório)</span></Label>
+                <Input value={bankForm.agency} onChange={(e) => setBankForm({ ...bankForm, agency: e.target.value })} />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Conta:</Label>
+                <Input value={bankForm.account_number} onChange={(e) => setBankForm({ ...bankForm, account_number: e.target.value })} />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Dígito:</Label>
+                <Input value={bankForm.account_digit} onChange={(e) => setBankForm({ ...bankForm, account_digit: e.target.value })} className="w-20" />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <button onClick={() => deleteBankDetails()} className="text-sm text-destructive hover:underline">
+                Remover dados bancários
+              </button>
+              <Button onClick={handleSaveBankDetails} disabled={isSavingBank} className="gap-2">
+                <Save className="h-4 w-4" />
+                {isSavingBank ? "Salvando..." : "Salvar Dados"}
+              </Button>
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+
+        {/* CONTATO PROFISSIONAL */}
+        <AccordionItem value="contact" className="border rounded-lg px-4">
+          <AccordionTrigger className="hover:no-underline">
+            <div className="flex items-center gap-2">
+              <Phone className="h-4 w-4 text-muted-foreground" />
+              <span>Contato profissional</span>
+            </div>
+          </AccordionTrigger>
+          <AccordionContent className="space-y-4 pb-4">
+            <div className="grid grid-cols-4 gap-4">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Qual é o <strong>telefone</strong>?</Label>
+                <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Qual é o <strong>celular</strong>?</Label>
+                <Input value={form.mobile} onChange={(e) => setForm({ ...form, mobile: e.target.value })} />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Qual é o <strong>site</strong>?</Label>
+                <Input value={form.site} onChange={(e) => setForm({ ...form, site: e.target.value })} />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Qual é o <strong>e-mail</strong>?</Label>
+                <Input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Qual é o <strong>Facebook</strong>?</Label>
+                <Input value={form.facebook} onChange={(e) => setForm({ ...form, facebook: e.target.value })} />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Qual é o <strong>Instagram</strong>?</Label>
+                <Input value={form.instagram} onChange={(e) => setForm({ ...form, instagram: e.target.value })} />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Qual é o <strong>Twitter</strong>?</Label>
+                <Input value={form.twitter} onChange={(e) => setForm({ ...form, twitter: e.target.value })} />
+              </div>
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+
+        {/* ENDEREÇO */}
+        <AccordionItem value="address" className="border rounded-lg px-4">
+          <AccordionTrigger className="hover:no-underline">
+            <div className="flex items-center gap-2">
+              <MapPin className="h-4 w-4 text-muted-foreground" />
+              <span>Endereço</span>
+            </div>
+          </AccordionTrigger>
+          <AccordionContent className="space-y-4 pb-4">
+            <div className="grid grid-cols-4 gap-4">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Qual é o <strong>CEP</strong>?</Label>
+                <div className="flex gap-1">
+                  <Input
+                    value={form.cep}
+                    onChange={(e) => setForm({ ...form, cep: e.target.value })}
+                    onBlur={() => { if (form.cep.replace(/\D/g, "").length === 8) handleCepLookup(); }}
+                  />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Qual é o <strong>endereço</strong>?</Label>
+                <Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Qual é o <strong>bairro</strong>?</Label>
+                <Input value={form.neighborhood} onChange={(e) => setForm({ ...form, neighborhood: e.target.value })} />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Qual é a <strong>cidade</strong>?</Label>
+                <Input value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} />
+              </div>
+            </div>
+            <div className="grid grid-cols-4 gap-4">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Qual é o <strong>estado</strong>?</Label>
+                <Select value={form.state} onValueChange={(v) => setForm({ ...form, state: v })}>
+                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>
+                    {STATES.map((s) => (
+                      <SelectItem key={s} value={s}>{s}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
+    </div>
+  );
+}
+
+// ===== MAIN PAGE =====
 export function Profissionais() {
-  const { 
-    professionals, 
-    isLoading, 
-    createProfessional, 
-    updateProfessional, 
-    deactivateProfessional, 
-    reactivateProfessional,
-    isCreating, 
-    isUpdating, 
-    isDeactivating,
-    isReactivating 
-  } = useProfessionals();
+  const { professionals, isLoading, createProfessional, deactivateProfessional, isCreating, isDeactivating } = useProfessionals();
   const { canDelete } = useAuth();
   const { toast } = useToast();
-  
+
   const [search, setSearch] = useState("");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [showInactive, setShowInactive] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [transferModalOpen, setTransferModalOpen] = useState(false);
-  const [selectedProfessional, setSelectedProfessional] = useState<Professional | null>(null);
-  const [activeTab, setActiveTab] = useState("list");
-  const [selectedForCommissions, setSelectedForCommissions] = useState<Professional | null>(null);
-  const [showInactive, setShowInactive] = useState(false);
 
-  // Separate active and inactive professionals
   const activeProfessionals = professionals.filter((p) => p.is_active);
   const inactiveProfessionals = professionals.filter((p) => !p.is_active);
-
-  const filteredProfessionals = (showInactive ? inactiveProfessionals : activeProfessionals).filter((professional) =>
-    professional.name.toLowerCase().includes(search.toLowerCase()) ||
-    professional.email?.toLowerCase().includes(search.toLowerCase()) ||
-    professional.specialty?.toLowerCase().includes(search.toLowerCase())
+  const displayList = showInactive ? inactiveProfessionals : activeProfessionals;
+  const filtered = displayList.filter((p) =>
+    p.name.toLowerCase().includes(search.toLowerCase()) ||
+    p.email?.toLowerCase().includes(search.toLowerCase())
   );
 
-  const handleCreate = () => {
-    setSelectedProfessional(null);
-    setModalOpen(true);
-  };
-
-  const handleEdit = (professional: Professional) => {
-    setSelectedProfessional(professional);
-    setModalOpen(true);
-  };
-
-  const handleDeactivate = (professional: Professional) => {
-    if (!canDelete) {
-      toast({
-        title: "Acesso negado",
-        description: "Apenas o usuário master pode desativar profissionais.",
-        variant: "destructive",
-      });
-      return;
+  // Auto-select first professional
+  useEffect(() => {
+    if (!selectedId && filtered.length > 0) {
+      setSelectedId(filtered[0].id);
     }
-    setSelectedProfessional(professional);
-    setTransferModalOpen(true);
-  };
+  }, [filtered, selectedId]);
 
-  const handleReactivate = (professional: Professional) => {
-    if (!canDelete) {
-      toast({
-        title: "Acesso negado",
-        description: "Apenas o usuário master pode reativar profissionais.",
-        variant: "destructive",
-      });
-      return;
-    }
-    reactivateProfessional(professional.id);
-  };
+  const selectedProfessional = professionals.find((p) => p.id === selectedId) || null;
 
   const handleSubmit = (data: ProfessionalInput & { id?: string }) => {
-    if (data.id) {
-      updateProfessional(data as ProfessionalInput & { id: string });
-    } else {
-      createProfessional(data);
-    }
+    createProfessional(data);
   };
-
-  const confirmDeactivate = (targetProfessionalId: string | null) => {
-    if (selectedProfessional) {
-      deactivateProfessional({ 
-        id: selectedProfessional.id, 
-        targetProfessionalId: targetProfessionalId || undefined 
-      });
-      setTransferModalOpen(false);
-      setSelectedProfessional(null);
-    }
-  };
-
-  const handleManageCommissions = (professional: Professional) => {
-    setSelectedForCommissions(professional);
-    setActiveTab("commissions");
-  };
-
-  const getInitials = (name: string) => {
-    return name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase()
-      .slice(0, 2);
-  };
-
-  const SPECIALTY_LABELS: Record<string, string> = {
-    cabeleireiro: "Cabeleireiro(a)",
-    manicure: "Manicure",
-    esteticista: "Esteticista",
-    maquiador: "Maquiador(a)",
-    barbeiro: "Barbeiro",
-    depilador: "Depilador(a)",
-    massagista: "Massagista",
-    recepcionista: "Recepcionista",
-    gerente: "Gerente",
-    outro: "Outro",
-  };
-
-  const getSpecialtyLabel = (role: string) => SPECIALTY_LABELS[role] || role;
 
   return (
     <AppLayoutNew>
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <div className="flex items-center justify-between mb-6">
-          <TabsList>
-            <TabsTrigger value="list" className="flex items-center gap-2">
-              <User className="h-4 w-4" />
-              Lista de Profissionais
-            </TabsTrigger>
-            {selectedForCommissions && (
-              <TabsTrigger value="commissions" className="flex items-center gap-2">
-                <Percent className="h-4 w-4" />
-                Comissões: {selectedForCommissions.name}
-              </TabsTrigger>
-            )}
-          </TabsList>
-          <Button onClick={handleCreate}>
-            <Plus className="h-4 w-4 mr-2" />
-            Novo Profissional
-          </Button>
-        </div>
+      <div className="flex h-[calc(100vh-4rem)] -m-6">
+        <ProfessionalSidebar
+          professionals={filtered}
+          selectedId={selectedId}
+          onSelect={(p) => setSelectedId(p.id)}
+          onAdd={() => setModalOpen(true)}
+          search={search}
+          onSearchChange={setSearch}
+          showInactive={showInactive}
+          onToggleInactive={() => setShowInactive(!showInactive)}
+          inactiveCount={inactiveProfessionals.length}
+        />
 
-        <TabsContent value="list" className="space-y-4">
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-4">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Buscar por nome, email ou especialidade..."
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-                <Button
-                  variant={showInactive ? "default" : "outline"}
-                  onClick={() => setShowInactive(!showInactive)}
-                  className="gap-2"
-                >
-                  <UserX className="h-4 w-4" />
-                  {showInactive ? "Mostrando Inativos" : "Ver Inativos"}
-                  {inactiveProfessionals.length > 0 && (
-                    <Badge variant="secondary" className="ml-1">
-                      {inactiveProfessionals.length}
-                    </Badge>
-                  )}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-0">
-              {isLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                </div>
-              ) : filteredProfessionals.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  {search 
-                    ? "Nenhum profissional encontrado." 
-                    : showInactive 
-                      ? "Nenhum profissional inativo." 
-                      : "Nenhum profissional cadastrado."}
-                </div>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Profissional</TableHead>
-                      <TableHead>Especialidade</TableHead>
-                      <TableHead>Contato</TableHead>
-                      <TableHead>Comissão Padrão</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="w-[100px]">Ações</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredProfessionals.map((professional) => (
-                      <TableRow key={professional.id} className={!professional.is_active ? "opacity-60" : ""}>
-                        <TableCell>
-                          <div className="flex items-center gap-3">
-                            <Avatar>
-                              <AvatarFallback className="bg-primary/10 text-primary">
-                                {getInitials(professional.name)}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <p className="font-medium">{professional.name}</p>
-                              {professional.email && (
-                                <p className="text-sm text-muted-foreground">{professional.email}</p>
-                              )}
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {(professional as any).role ? (
-                            <Badge variant="secondary">{getSpecialtyLabel((professional as any).role)}</Badge>
-                          ) : (
-                            <span className="text-muted-foreground">-</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {professional.phone || <span className="text-muted-foreground">-</span>}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{professional.commission_percent || 0}%</Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={professional.is_active ? "default" : "secondary"}>
-                            {professional.is_active ? "Ativo" : "Inativo"}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              {professional.is_active ? (
-                                <>
-                                  <DropdownMenuItem onClick={() => handleEdit(professional)}>
-                                    <Pencil className="h-4 w-4 mr-2" />
-                                    Editar
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => handleManageCommissions(professional)}>
-                                    <Percent className="h-4 w-4 mr-2" />
-                                    Comissões por Serviço
-                                  </DropdownMenuItem>
-                                  {canDelete && (
-                                    <DropdownMenuItem
-                                      onClick={() => handleDeactivate(professional)}
-                                      className="text-destructive"
-                                    >
-                                      <Trash2 className="h-4 w-4 mr-2" />
-                                      Desativar
-                                    </DropdownMenuItem>
-                                  )}
-                                </>
-                              ) : (
-                                canDelete && (
-                                  <DropdownMenuItem
-                                    onClick={() => handleReactivate(professional)}
-                                    className="text-green-600"
-                                    disabled={isReactivating}
-                                  >
-                                    <RotateCcw className="h-4 w-4 mr-2" />
-                                    Reativar
-                                  </DropdownMenuItem>
-                                )
-                              )}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {selectedForCommissions && (
-          <TabsContent value="commissions">
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center gap-4 mb-6">
-                  <Avatar className="h-12 w-12">
-                    <AvatarFallback className="bg-primary/10 text-primary text-lg">
-                      {getInitials(selectedForCommissions.name)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <h2 className="text-xl font-semibold">{selectedForCommissions.name}</h2>
-                    <p className="text-muted-foreground">
-                      Especialidade: {getSpecialtyLabel((selectedForCommissions as any).role) || "Não definida"} • 
-                      Comissão Padrão: {selectedForCommissions.commission_percent || 0}%
-                    </p>
-                  </div>
-                  <Button 
-                    variant="outline" 
-                    className="ml-auto"
-                    onClick={() => {
-                      setActiveTab("list");
-                      setSelectedForCommissions(null);
-                    }}
-                  >
-                    Voltar para Lista
-                  </Button>
-                </div>
-
-                <ProfessionalCommissionsTab
-                  professionalId={selectedForCommissions.id}
-                  defaultCommission={selectedForCommissions.commission_percent || 0}
-                />
-              </CardContent>
-            </Card>
-          </TabsContent>
+        {isLoading ? (
+          <div className="flex-1 flex items-center justify-center">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          </div>
+        ) : selectedProfessional ? (
+          <ProfessionalForm professional={selectedProfessional} />
+        ) : (
+          <div className="flex-1 flex items-center justify-center text-muted-foreground">
+            <div className="text-center space-y-2">
+              <UserCog className="h-12 w-12 mx-auto opacity-50" />
+              <p>Selecione um profissional ou adicione um novo.</p>
+              <Button onClick={() => setModalOpen(true)} className="gap-2 mt-2">
+                <Plus className="h-4 w-4" /> Adicionar Profissional
+              </Button>
+            </div>
+          </div>
         )}
-      </Tabs>
+      </div>
 
       <ProfessionalModal
         open={modalOpen}
         onOpenChange={setModalOpen}
-        professional={selectedProfessional}
+        professional={null}
         onSubmit={handleSubmit}
-        isLoading={isCreating || isUpdating}
+        isLoading={isCreating}
       />
 
-      <TransferAppointmentsModal
-        open={transferModalOpen}
-        onOpenChange={setTransferModalOpen}
-        professional={selectedProfessional}
-        professionals={professionals}
-        onConfirm={confirmDeactivate}
-        isLoading={isDeactivating}
-      />
+      {selectedProfessional && (
+        <TransferAppointmentsModal
+          open={transferModalOpen}
+          onOpenChange={setTransferModalOpen}
+          professional={selectedProfessional}
+          professionals={professionals}
+          onConfirm={(targetId) => {
+            deactivateProfessional({ id: selectedProfessional.id, targetProfessionalId: targetId || undefined });
+            setTransferModalOpen(false);
+            setSelectedId(null);
+          }}
+          isLoading={isDeactivating}
+        />
+      )}
     </AppLayoutNew>
   );
 }
