@@ -117,7 +117,7 @@ export function useProfessionals() {
   const updateMutation = useMutation({
     mutationFn: async ({ id, ...input }: ProfessionalInput & { id: string }) => {
       // Extract password before updating - it's not a column in professionals table
-      const { password, ...professionalData } = input;
+      const { password, access_level, ...professionalData } = input;
 
       // Update professional record (without password)
       const { data, error } = await supabase
