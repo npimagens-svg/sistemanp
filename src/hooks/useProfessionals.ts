@@ -45,9 +45,11 @@ export interface ProfessionalInput {
   name: string;
   nickname?: string;
   cpf?: string;
+  rg?: string;
   role?: string;
   email?: string;
   phone?: string;
+  mobile?: string;
   specialty?: string;
   commission_percent?: number;
   is_active?: boolean;
@@ -55,9 +57,22 @@ export interface ProfessionalInput {
   has_schedule?: boolean;
   create_access?: boolean;
   avatar_url?: string | null;
-  password?: string; // Password for creating system access
-  access_level?: AppRole; // System access level
-  user_id?: string | null; // Link to auth user
+  birth_date?: string;
+  description?: string;
+  agenda_color?: string;
+  agenda_order?: number;
+  site?: string;
+  facebook?: string;
+  instagram?: string;
+  twitter?: string;
+  cep?: string;
+  address?: string;
+  neighborhood?: string;
+  city?: string;
+  state?: string;
+  password?: string;
+  access_level?: AppRole;
+  user_id?: string | null;
 }
 
 export function useProfessionals() {
