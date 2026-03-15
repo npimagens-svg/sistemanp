@@ -433,7 +433,7 @@ export default function Configuracoes() {
                 icon={Percent}
                 title="Comissões"
                 description="Defina as regras de comissões do seu estabelecimento"
-                onClick={() => navigate("/financeiro/comissoes")}
+                onClick={() => navigate("/configuracoes/comissoes")}
               />
               <SettingsCard
                 icon={UserCog}
