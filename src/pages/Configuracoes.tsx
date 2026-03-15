@@ -563,12 +563,8 @@ export default function Configuracoes() {
               <CreditCard className="h-4 w-4" />
               Financeiro
             </TabsTrigger>
-            <TabsTrigger value="salao" className="flex items-center gap-2">
-              <Building2 className="h-4 w-4" />
-              Dados do Salão
-            </TabsTrigger>
             <TabsTrigger value="sistema" className="flex items-center gap-2">
-              <Settings className="h-4 w-4" />
+              <Building2 className="h-4 w-4" />
               Sistema
             </TabsTrigger>
           </TabsList>
