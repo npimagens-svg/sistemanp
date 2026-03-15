@@ -48,7 +48,273 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 
-const ROLE_LABELS: Record<AppRole, { label: string; description: string; color: string }> = {
+const SPECIALTIES = [
+  { value: "cabeleireiro", label: "Cabeleireiro(a)" },
+  { value: "manicure", label: "Manicure" },
+  { value: "esteticista", label: "Esteticista" },
+  { value: "maquiador", label: "Maquiador(a)" },
+  { value: "barbeiro", label: "Barbeiro" },
+  { value: "depilador", label: "Depilador(a)" },
+  { value: "massagista", label: "Massagista" },
+  { value: "recepcionista", label: "Recepcionista" },
+  { value: "gerente", label: "Gerente" },
+  { value: "outro", label: "Outro" },
+];
+
+function MasterProfessionalProfile() {
+  const { user, salonId } = useAuth();
+  const { professionals, createProfessional, updateProfessional, isCreating, isUpdating } = useProfessionals();
+  const { toast } = useToast();
+
+  // Find if master user already has a professional record linked
+  const masterProfessional = professionals.find(
+    (p) => p.user_id === user?.id || p.email === user?.email
+  );
+
+  const [formData, setFormData] = useState({
+    name: "",
+    nickname: "",
+    cpf: "",
+    role: "",
+    phone: "",
+    specialty: "",
+    commission_percent: 0,
+    can_be_assistant: false,
+    has_schedule: true,
+    avatar_url: null as string | null,
+  });
+
+  const [isEditing, setIsEditing] = useState(false);
+
+  useEffect(() => {
+    if (masterProfessional) {
+      setFormData({
+        name: masterProfessional.name,
+        nickname: masterProfessional.nickname || "",
+        cpf: masterProfessional.cpf || "",
+        role: masterProfessional.role || "",
+        phone: masterProfessional.phone || "",
+        specialty: masterProfessional.specialty || "",
+        commission_percent: Number(masterProfessional.commission_percent) || 0,
+        can_be_assistant: masterProfessional.can_be_assistant || false,
+        has_schedule: masterProfessional.has_schedule ?? true,
+        avatar_url: masterProfessional.avatar_url || null,
+      });
+    }
+  }, [masterProfessional]);
+
+  const handleSave = () => {
+    if (!formData.name.trim()) {
+      toast({ title: "Nome é obrigatório", variant: "destructive" });
+      return;
+    }
+
+    if (masterProfessional) {
+      updateProfessional({
+        id: masterProfessional.id,
+        ...formData,
+        email: user?.email || "",
+        is_active: true,
+      });
+    } else {
+      createProfessional({
+        ...formData,
+        email: user?.email || "",
+        is_active: true,
+        create_access: false,
+      });
+    }
+    setIsEditing(false);
+  };
+
+  const showForm = isEditing || !masterProfessional;
+
+  return (
+    <Card className="border-primary/20">
+      <CardHeader>
+        <div className="flex items-center gap-2">
+          <UserCog className="h-5 w-5 text-primary" />
+          <CardTitle className="text-lg">Meu Perfil Profissional</CardTitle>
+        </div>
+        <CardDescription>
+          Configure seus dados como profissional do salão. Isso permite que você apareça na agenda, receba agendamentos e comissões.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {!masterProfessional && !isEditing ? (
+          <div className="text-center py-6 space-y-4">
+            <UserCog className="h-12 w-12 mx-auto text-muted-foreground opacity-50" />
+            <div>
+              <p className="text-muted-foreground">Você ainda não está cadastrado como profissional do salão.</p>
+              <p className="text-sm text-muted-foreground">Cadastre-se para aparecer na agenda e receber agendamentos.</p>
+            </div>
+            <Button onClick={() => {
+              setFormData(prev => ({ ...prev, name: user?.user_metadata?.full_name || user?.email?.split("@")[0] || "" }));
+              setIsEditing(true);
+            }} className="gap-2">
+              <Plus className="h-4 w-4" />
+              Cadastrar como Profissional
+            </Button>
+          </div>
+        ) : showForm ? (
+          <div className="space-y-6">
+            {/* Avatar */}
+            <div className="flex justify-center">
+              <AvatarUpload
+                currentAvatarUrl={formData.avatar_url}
+                name={formData.name}
+                onAvatarChange={(url) => setFormData({ ...formData, avatar_url: url })}
+                folder="professionals"
+                size="lg"
+              />
+            </div>
+
+            {/* Row 1: Nome e Apelido */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Nome Completo <span className="text-destructive">*</span></Label>
+                <Input
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Apelido</Label>
+                <Input
+                  value={formData.nickname}
+                  onChange={(e) => setFormData({ ...formData, nickname: e.target.value })}
+                />
+              </div>
+            </div>
+
+            {/* Row 2: CPF e Especialidade */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>CPF</Label>
+                <Input
+                  value={formData.cpf}
+                  onChange={(e) => setFormData({ ...formData, cpf: e.target.value })}
+                  placeholder="000.000.000-00"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Especialidade <span className="text-destructive">*</span></Label>
+                <Select
+                  value={formData.role}
+                  onValueChange={(value) => setFormData({ ...formData, role: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SPECIALTIES.map((spec) => (
+                      <SelectItem key={spec.value} value={spec.value}>
+                        {spec.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Row 3: Telefone e Comissão */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Telefone</Label>
+                <Input
+                  value={formData.phone}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Comissão Padrão (%)</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={formData.commission_percent}
+                  onChange={(e) => setFormData({ ...formData, commission_percent: Number(e.target.value) })}
+                />
+              </div>
+            </div>
+
+            {/* Checkboxes */}
+            <div className="space-y-3">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="master_has_schedule"
+                  checked={formData.has_schedule}
+                  onCheckedChange={(checked) => setFormData({ ...formData, has_schedule: checked as boolean })}
+                />
+                <Label htmlFor="master_has_schedule" className="cursor-pointer">
+                  Possuo agenda (aparecer na agenda do salão)
+                </Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="master_can_be_assistant"
+                  checked={formData.can_be_assistant}
+                  onCheckedChange={(checked) => setFormData({ ...formData, can_be_assistant: checked as boolean })}
+                />
+                <Label htmlFor="master_can_be_assistant" className="cursor-pointer">
+                  Posso ser assistente
+                </Label>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-3 justify-end">
+              {masterProfessional && (
+                <Button variant="outline" onClick={() => setIsEditing(false)}>
+                  Cancelar
+                </Button>
+              )}
+              <Button onClick={handleSave} disabled={isCreating || isUpdating} className="gap-2">
+                <Save className="h-4 w-4" />
+                {isCreating || isUpdating ? "Salvando..." : "Salvar"}
+              </Button>
+            </div>
+          </div>
+        ) : (
+          /* Display mode */
+          <div className="space-y-4">
+            <div className="flex items-center gap-4">
+              <Avatar className="h-16 w-16">
+                <AvatarFallback className="bg-primary/10 text-primary text-xl">
+                  {masterProfessional.name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold">{masterProfessional.name}</h3>
+                {masterProfessional.nickname && (
+                  <p className="text-sm text-muted-foreground">"{masterProfessional.nickname}"</p>
+                )}
+                <div className="flex items-center gap-2 mt-1">
+                  {masterProfessional.role && (
+                    <Badge variant="secondary">
+                      {SPECIALTIES.find(s => s.value === masterProfessional.role)?.label || masterProfessional.role}
+                    </Badge>
+                  )}
+                  <Badge variant={masterProfessional.has_schedule ? "default" : "outline"}>
+                    {masterProfessional.has_schedule ? "Com agenda" : "Sem agenda"}
+                  </Badge>
+                  <Badge variant="outline">{masterProfessional.commission_percent || 0}% comissão</Badge>
+                </div>
+              </div>
+              <Button variant="outline" onClick={() => setIsEditing(true)} className="gap-2">
+                <Pencil className="h-4 w-4" />
+                Editar
+              </Button>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+
   admin: { label: "Administrador", description: "Acesso total ao sistema", color: "bg-red-500" },
   manager: { label: "Gerente", description: "Acesso completo exceto configurações do salão", color: "bg-orange-500" },
   receptionist: { label: "Recepcionista", description: "Agenda, clientes, comandas e caixa", color: "bg-blue-500" },
