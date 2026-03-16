@@ -466,18 +466,22 @@ Lista horários disponíveis de um profissional em uma data específica.
         </CardContent>
       </Card>
 
-      {/* GPT Maker Tip */}
+      {/* Download Documentation */}
       <Card className="border-primary/20 bg-primary/5">
         <CardContent className="p-4">
           <div className="flex items-start gap-3">
             <Bot className="h-5 w-5 text-primary mt-0.5" />
-            <div>
+            <div className="flex-1">
               <h4 className="font-medium text-foreground">Dica: Integrando com GPT Maker</h4>
-              <p className="text-sm text-muted-foreground mt-1">
+              <p className="text-sm text-muted-foreground mt-1 mb-3">
                 No GPT Maker, configure uma "API Action" com o método POST para a URL acima.
                 Adicione o header <code className="text-xs bg-muted px-1 rounded">x-webhook-key</code> com sua chave.
-                O agente pode usar as ações acima para buscar serviços, cadastrar clientes e criar agendamentos automaticamente.
+                Baixe a documentação completa abaixo e envie para a IA configurar automaticamente.
               </p>
+              <Button onClick={generateDocumentation} className="gap-2">
+                <Download className="h-4 w-4" />
+                Baixar Documentação Completa
+              </Button>
             </div>
           </div>
         </CardContent>
