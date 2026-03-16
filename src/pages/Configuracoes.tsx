@@ -709,6 +709,12 @@ export default function Configuracoes() {
                 description="Gerencie as regras de acesso dos seus profissionais"
                 onClick={() => navigate("/configuracoes/acessos")}
               />
+              <SettingsCard
+                icon={Webhook}
+                title="Webhook / Agente IA"
+                description="Conecte seu agente de IA para agendar, cadastrar clientes e mais"
+                onClick={() => navigate("/configuracoes/webhook")}
+              />
             </div>
           </>
         )}

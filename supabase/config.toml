@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.save-setup-config]
 verify_jwt = false
+
+[functions.webhook-agent]
+verify_jwt = false
