@@ -1546,32 +1546,44 @@ export type Database = {
       salons: {
         Row: {
           address: string | null
+          city_registration: string | null
+          cnpj: string | null
           created_at: string
           email: string | null
           id: string
           logo_url: string | null
           name: string
           phone: string | null
+          state_registration: string | null
+          trade_name: string | null
           updated_at: string
         }
         Insert: {
           address?: string | null
+          city_registration?: string | null
+          cnpj?: string | null
           created_at?: string
           email?: string | null
           id?: string
           logo_url?: string | null
           name: string
           phone?: string | null
+          state_registration?: string | null
+          trade_name?: string | null
           updated_at?: string
         }
         Update: {
           address?: string | null
+          city_registration?: string | null
+          cnpj?: string | null
           created_at?: string
           email?: string | null
           id?: string
           logo_url?: string | null
           name?: string
           phone?: string | null
+          state_registration?: string | null
+          trade_name?: string | null
           updated_at?: string
         }
         Relationships: []
