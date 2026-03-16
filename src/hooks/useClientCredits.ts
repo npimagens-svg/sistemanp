@@ -1,7 +1,9 @@
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { addDays } from "date-fns";
+import { addDays, format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { sendEmail } from "@/lib/sendEmail";
 
 const LOYALTY_PERCENT = 0.07; // 7%
 const LOYALTY_VALIDITY_DAYS = 15;
