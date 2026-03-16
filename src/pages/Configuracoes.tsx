@@ -56,6 +56,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSchedulingSettings, SchedulingSettings } from "@/hooks/useSchedulingSettings";
 import { WebhookSettingsSection } from "@/components/settings/WebhookSettingsSection";
+import { ApiGatewaySettingsSection } from "@/components/settings/ApiGatewaySettingsSection";
 
 const SPECIALTIES = [
   { value: "cabeleireiro", label: "Cabeleireiro(a)" },
