@@ -107,7 +107,7 @@ export function useUserAccess() {
   const updateCanOpenCaixaMutation = useMutation({
     mutationFn: async ({ userId, canOpenCaixa }: { userId: string; canOpenCaixa: boolean }) => {
       if (!salonId) throw new Error("Salão não encontrado");
-      if (!isMaster) throw new Error("Apenas o usuário master pode alterar permissões");
+      if (!canManageAccess) throw new Error("Você não tem permissão para alterar acessos");
 
       const { error } = await supabase
         .from("user_roles")
