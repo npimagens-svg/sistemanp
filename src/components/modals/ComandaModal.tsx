@@ -98,6 +98,7 @@ export function ComandaModal({ comanda, open, onClose, professionals, services, 
   const [selectedCaixaId, setSelectedCaixaId] = useState<string | null>(null);
   const [caixaSelectModalOpen, setCaixaSelectModalOpen] = useState(false);
   const [serviceProductUsages, setServiceProductUsages] = useState<Record<string, ProductUsage[]>>({});
+  const [saveOverpaymentAsCredit, setSaveOverpaymentAsCredit] = useState(false);
 
   // Determine if comanda is from today
   const comandaDate = comanda ? new Date(comanda.created_at) : new Date();
