@@ -79,7 +79,7 @@ export function AccessLevelConfigModal({
               value={name}
               onChange={(e) => setName(e.target.value)}
               onBlur={handleNameBlur}
-              disabled={isSystem}
+              disabled={isAdmin}
             />
           </div>
 
