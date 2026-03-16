@@ -69,106 +69,84 @@ export function DashboardStats() {
       if (!salonId) return null;
 
       const now = new Date();
-      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
-      const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).toISOString();
-      const yesterdayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1).toISOString();
+      // This month
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+      const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1).toISOString();
+      // Last month
+      const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
+      const lastMonthEnd = monthStart;
 
-      const weekStart = new Date(now);
-      weekStart.setDate(now.getDate() - now.getDay());
-      weekStart.setHours(0, 0, 0, 0);
-      const lastWeekStart = new Date(weekStart);
-      lastWeekStart.setDate(lastWeekStart.getDate() - 7);
-
-      // Today's revenue (closed comandas)
-      const { data: todayCom } = await supabase
+      // This month revenue
+      const { data: monthCom } = await supabase
         .from("comandas")
         .select("total")
         .eq("salon_id", salonId)
-        .gte("closed_at", todayStart)
-        .lt("closed_at", todayEnd)
+        .gte("closed_at", monthStart)
+        .lt("closed_at", monthEnd)
         .eq("is_paid", true);
 
-      const todayRevenue = todayCom?.reduce((s, c) => s + (c.total || 0), 0) ?? 0;
+      const monthRevenue = monthCom?.reduce((s, c) => s + (c.total || 0), 0) ?? 0;
 
-      // Yesterday's revenue
-      const { data: yesterdayCom } = await supabase
+      // Last month revenue
+      const { data: lastMonthCom } = await supabase
         .from("comandas")
         .select("total")
         .eq("salon_id", salonId)
-        .gte("closed_at", yesterdayStart)
-        .lt("closed_at", todayStart)
+        .gte("closed_at", lastMonthStart)
+        .lt("closed_at", lastMonthEnd)
         .eq("is_paid", true);
 
-      const yesterdayRevenue = yesterdayCom?.reduce((s, c) => s + (c.total || 0), 0) ?? 0;
+      const lastMonthRevenue = lastMonthCom?.reduce((s, c) => s + (c.total || 0), 0) ?? 0;
 
-      // Today's appointments
-      const { count: todayAppts } = await supabase
+      // This month appointments
+      const { count: monthAppts } = await supabase
         .from("appointments")
         .select("id", { count: "exact", head: true })
         .eq("salon_id", salonId)
-        .gte("scheduled_at", todayStart)
-        .lt("scheduled_at", todayEnd);
+        .gte("scheduled_at", monthStart)
+        .lt("scheduled_at", monthEnd);
 
-      // Yesterday's appointments
-      const { count: yesterdayAppts } = await supabase
+      // Last month appointments
+      const { count: lastMonthAppts } = await supabase
         .from("appointments")
         .select("id", { count: "exact", head: true })
         .eq("salon_id", salonId)
-        .gte("scheduled_at", yesterdayStart)
-        .lt("scheduled_at", todayStart);
+        .gte("scheduled_at", lastMonthStart)
+        .lt("scheduled_at", lastMonthEnd);
 
-      // This week ticket
-      const { data: weekCom } = await supabase
-        .from("comandas")
-        .select("total")
-        .eq("salon_id", salonId)
-        .gte("closed_at", weekStart.toISOString())
-        .eq("is_paid", true);
+      // This month ticket
+      const monthCount = monthCom?.length ?? 0;
+      const monthTicket = monthCount > 0 ? monthRevenue / monthCount : 0;
 
-      const weekRevenue = weekCom?.reduce((s, c) => s + (c.total || 0), 0) ?? 0;
-      const weekCount = weekCom?.length ?? 0;
-      const weekTicket = weekCount > 0 ? weekRevenue / weekCount : 0;
+      // Last month ticket
+      const lastMonthCount = lastMonthCom?.length ?? 0;
+      const lastMonthTicket = lastMonthCount > 0 ? lastMonthRevenue / lastMonthCount : 0;
 
-      // Last week ticket
-      const { data: lastWeekCom } = await supabase
-        .from("comandas")
-        .select("total")
-        .eq("salon_id", salonId)
-        .gte("closed_at", lastWeekStart.toISOString())
-        .lt("closed_at", weekStart.toISOString())
-        .eq("is_paid", true);
-
-      const lastWeekRevenue = lastWeekCom?.reduce((s, c) => s + (c.total || 0), 0) ?? 0;
-      const lastWeekCount = lastWeekCom?.length ?? 0;
-      const lastWeekTicket = lastWeekCount > 0 ? lastWeekRevenue / lastWeekCount : 0;
-
-      // New clients today
-      const { count: newClientsToday } = await supabase
+      // New clients this month
+      const { count: newClientsMonth } = await supabase
         .from("clients")
         .select("id", { count: "exact", head: true })
         .eq("salon_id", salonId)
-        .gte("created_at", todayStart)
-        .lt("created_at", todayEnd);
+        .gte("created_at", monthStart)
+        .lt("created_at", monthEnd);
 
-      // New clients yesterday
-      const { count: newClientsYesterday } = await supabase
+      // New clients last month
+      const { count: newClientsLastMonth } = await supabase
         .from("clients")
         .select("id", { count: "exact", head: true })
         .eq("salon_id", salonId)
-        .gte("created_at", yesterdayStart)
-        .lt("created_at", todayStart);
-
-      const todayTicket = (todayAppts ?? 0) > 0 ? todayRevenue / (todayAppts ?? 1) : 0;
+        .gte("created_at", lastMonthStart)
+        .lt("created_at", lastMonthEnd);
 
       return {
-        todayRevenue,
-        revenueChange: calcChange(todayRevenue, yesterdayRevenue),
-        todayAppts: todayAppts ?? 0,
-        apptsChange: calcChange(todayAppts ?? 0, yesterdayAppts ?? 0),
-        weekTicket,
-        ticketChange: calcChange(weekTicket, lastWeekTicket),
-        newClients: newClientsToday ?? 0,
-        clientsChange: calcChange(newClientsToday ?? 0, newClientsYesterday ?? 0),
+        monthRevenue,
+        revenueChange: calcChange(monthRevenue, lastMonthRevenue),
+        monthAppts: monthAppts ?? 0,
+        apptsChange: calcChange(monthAppts ?? 0, lastMonthAppts ?? 0),
+        monthTicket,
+        ticketChange: calcChange(monthTicket, lastMonthTicket),
+        newClients: newClientsMonth ?? 0,
+        clientsChange: calcChange(newClientsMonth ?? 0, newClientsLastMonth ?? 0),
       };
     },
     enabled: !!salonId,
@@ -177,31 +155,31 @@ export function DashboardStats() {
 
   const stats = [
     {
-      title: "Faturamento Hoje",
-      value: formatCurrency(data?.todayRevenue ?? 0),
+      title: "Faturamento do Mês",
+      value: formatCurrency(data?.monthRevenue ?? 0),
       change: data?.revenueChange ?? 0,
-      changeLabel: "vs ontem",
+      changeLabel: "vs mês anterior",
       icon: <DollarSign className="h-6 w-6" />,
     },
     {
-      title: "Atendimentos Hoje",
-      value: String(data?.todayAppts ?? 0),
+      title: "Atendimentos do Mês",
+      value: String(data?.monthAppts ?? 0),
       change: data?.apptsChange ?? 0,
-      changeLabel: "vs ontem",
+      changeLabel: "vs mês anterior",
       icon: <Calendar className="h-6 w-6" />,
     },
     {
       title: "Ticket Médio",
-      value: formatCurrency(data?.weekTicket ?? 0),
+      value: formatCurrency(data?.monthTicket ?? 0),
       change: data?.ticketChange ?? 0,
-      changeLabel: "vs semana",
+      changeLabel: "vs mês anterior",
       icon: <TrendingUp className="h-6 w-6" />,
     },
     {
       title: "Novos Clientes",
       value: String(data?.newClients ?? 0),
       change: data?.clientsChange ?? 0,
-      changeLabel: "vs ontem",
+      changeLabel: "vs mês anterior",
       icon: <Users className="h-6 w-6" />,
     },
   ];
