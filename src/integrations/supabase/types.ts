@@ -1502,6 +1502,80 @@ export type Database = {
         }
         Relationships: []
       }
+      scheduling_settings: {
+        Row: {
+          allow_simultaneous: boolean
+          auto_confirm: boolean
+          closing_time: string
+          created_at: string
+          default_columns: number
+          friday: boolean
+          id: string
+          max_advance_days: number
+          min_advance_hours: number
+          monday: boolean
+          opening_time: string
+          salon_id: string
+          saturday: boolean
+          slot_interval_minutes: number
+          sunday: boolean
+          thursday: boolean
+          tuesday: boolean
+          updated_at: string
+          wednesday: boolean
+        }
+        Insert: {
+          allow_simultaneous?: boolean
+          auto_confirm?: boolean
+          closing_time?: string
+          created_at?: string
+          default_columns?: number
+          friday?: boolean
+          id?: string
+          max_advance_days?: number
+          min_advance_hours?: number
+          monday?: boolean
+          opening_time?: string
+          salon_id: string
+          saturday?: boolean
+          slot_interval_minutes?: number
+          sunday?: boolean
+          thursday?: boolean
+          tuesday?: boolean
+          updated_at?: string
+          wednesday?: boolean
+        }
+        Update: {
+          allow_simultaneous?: boolean
+          auto_confirm?: boolean
+          closing_time?: string
+          created_at?: string
+          default_columns?: number
+          friday?: boolean
+          id?: string
+          max_advance_days?: number
+          min_advance_hours?: number
+          monday?: boolean
+          opening_time?: string
+          salon_id?: string
+          saturday?: boolean
+          slot_interval_minutes?: number
+          sunday?: boolean
+          thursday?: boolean
+          tuesday?: boolean
+          updated_at?: string
+          wednesday?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scheduling_settings_salon_id_fkey"
+            columns: ["salon_id"]
+            isOneToOne: true
+            referencedRelation: "salons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       service_products: {
         Row: {
           created_at: string
