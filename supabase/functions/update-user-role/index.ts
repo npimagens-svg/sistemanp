@@ -46,6 +46,7 @@ Deno.serve(async (req) => {
     const userId = String(body?.userId ?? "").trim();
     const salonId = String(body?.salonId ?? "").trim();
     const newRole = String(body?.newRole ?? "").trim();
+    const accessLevelId = body?.accessLevelId ? String(body.accessLevelId).trim() : null;
 
     if (!userId || !salonId || !newRole) {
       return new Response(JSON.stringify({ error: "Missing required fields" }), {
@@ -90,10 +91,15 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Update user role
+    // Update user role and optionally access_level_id
+    const updatePayload: Record<string, unknown> = { role: newRole };
+    if (accessLevelId !== null) {
+      updatePayload.access_level_id = accessLevelId;
+    }
+
     const { error: updateError } = await adminClient
       .from("user_roles")
-      .update({ role: newRole })
+      .update(updatePayload)
       .eq("user_id", userId)
       .eq("salon_id", salonId);
 
