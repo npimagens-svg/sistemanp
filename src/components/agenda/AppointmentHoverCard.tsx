@@ -41,7 +41,7 @@ export function AppointmentHoverCard({ appointment, children }: AppointmentHover
       <HoverCardTrigger asChild>
         {children}
       </HoverCardTrigger>
-      <HoverCardContent className="w-72 p-4" side="top" align="start">
+      <HoverCardContent className="w-72 p-4 z-[60]" side="top" align="start">
         <div className="space-y-3">
           {/* Date and Client Name */}
           <div>
