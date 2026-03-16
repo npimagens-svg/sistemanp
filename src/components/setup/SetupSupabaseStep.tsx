@@ -32,36 +32,27 @@ export default function SetupSupabaseStep({ data, updateData, onNext }: Props) {
     setConnectionStatus("idle");
 
     try {
-      const testClient = createClient(data.supabaseUrl.trim(), data.supabaseServiceRoleKey.trim(), {
-        auth: { persistSession: false },
-      });
+      const result = await checkExternalSchema(data.supabaseUrl, data.supabaseServiceRoleKey);
 
-      const { error } = await testClient.from("salons").select("id", { count: "exact", head: true });
-
-      if (error) {
-        if (error.message?.includes("schema cache") || error.message?.includes("relation") || error.code === "PGRST204") {
-          setConnectionStatus("no_schema");
-          toast({
-            title: "⚠️ Conexão OK, mas as tabelas não existem",
-            description: "Informe a senha do banco e clique em 'Criar Schema Automaticamente'",
-            variant: "destructive",
-          });
-          return;
-        }
-        throw error;
+      if (result.status === "no_schema") {
+        setConnectionStatus("no_schema");
+        toast({
+          title: "⚠️ Conexão OK, mas as tabelas ainda não estão disponíveis",
+          description: "Informe a senha do banco e clique em 'Criar Schema Automaticamente'",
+          variant: "destructive",
+        });
+        return;
       }
 
       setConnectionStatus("success");
       toast({ title: "✅ Conexão e schema verificados com sucesso!" });
     } catch (err: any) {
-      if (connectionStatus !== "no_schema") {
-        setConnectionStatus("error");
-        toast({
-          title: "Falha na conexão",
-          description: err.message || "Verifique as credenciais e tente novamente",
-          variant: "destructive",
-        });
-      }
+      setConnectionStatus("error");
+      toast({
+        title: "Falha na conexão",
+        description: err.message || "Verifique as credenciais e tente novamente",
+        variant: "destructive",
+      });
     } finally {
       setTesting(false);
     }
