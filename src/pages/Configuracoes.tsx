@@ -902,8 +902,15 @@ export default function Configuracoes() {
                     )}
                   </div>
                 </CardHeader>
-                <CardContent>
-                  {isLoadingAccessLevels ? (
+                  {accessLevelsError ? (
+                    <div className="text-center py-8 text-destructive">
+                      Erro ao carregar grupos: {(accessLevelsError as Error).message}
+                      <br />
+                      <Button variant="outline" size="sm" className="mt-2" onClick={() => queryClient.invalidateQueries({ queryKey: ["access-levels"] })}>
+                        Tentar novamente
+                      </Button>
+                    </div>
+                  ) : isLoadingAccessLevels ? (
                     <div className="flex items-center justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
                   ) : accessLevels.length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground">
