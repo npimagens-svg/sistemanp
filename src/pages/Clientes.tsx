@@ -187,6 +187,12 @@ export default function Clientes() {
               <Plus className="h-4 w-4" />
               Adicionar Cliente
             </Button>
+            {isMaster && (
+              <Button variant="outline" className="gap-2" onClick={() => setImportOpen(true)}>
+                <Upload className="h-4 w-4" />
+                Importar
+              </Button>
+            )}
             <Button variant="outline" className="gap-2">
               <Merge className="h-4 w-4" />
               Unir cadastros duplicados
