@@ -23,6 +23,7 @@ import { useProfessionals, Professional, ProfessionalInput } from "@/hooks/usePr
 import { useProfessionalWorkSchedules, WorkScheduleInput } from "@/hooks/useProfessionalWorkSchedules";
 import { useProfessionalBankDetails, BankDetailsInput } from "@/hooks/useProfessionalBankDetails";
 import { useProfessionalCommissionRules, CommissionRulesInput } from "@/hooks/useProfessionalCommissionRules";
+import { useAccessLevels } from "@/hooks/useAccessLevels";
 import { ProfessionalCommissionsTab } from "@/components/professionals/ProfessionalCommissionsTab";
 import { AvatarUpload } from "@/components/shared/AvatarUpload";
 import { useCepLookup } from "@/hooks/useCepLookup";
