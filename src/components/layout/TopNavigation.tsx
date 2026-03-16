@@ -125,7 +125,9 @@ export function TopNavigation() {
       {activeNavItem?.subItems && (
         <div className="flex items-center gap-0 px-2 md:px-4 bg-muted/20 border-t border-border overflow-x-auto scrollbar-hide">
           {activeNavItem.subItems.map((subItem) => {
-            const isSubActive = location.pathname === subItem.url;
+            const isSubActive = location.pathname + location.search === subItem.url || 
+              (subItem.url.includes("?") && location.pathname + location.search === subItem.url) ||
+              (!subItem.url.includes("?") && location.pathname === subItem.url);
             
             return (
               <button
