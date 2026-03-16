@@ -540,99 +540,105 @@ function ProfessionalForm({ professional }: { professional: Professional }) {
           </AccordionTrigger>
           <AccordionContent className="space-y-4 pb-4">
             {professional.create_access || professional.user_id ? (
-              <div className="space-y-4">
-                <div className="space-y-1.5">
-                  <Label className="text-xs">E-mail de acesso:</Label>
-                  <div className="flex items-center gap-2">
-                    <Input value={form.email} readOnly className="bg-muted" />
-                    {isMaster && (
-                      <>
-                        <Button variant="outline" size="sm" className="gap-1 shrink-0">
-                          <KeyRound className="h-3.5 w-3.5" /> Trocar Senha
-                        </Button>
-                        <Button variant="destructive" size="sm" className="gap-1 shrink-0" onClick={handleDeleteAccess}>
-                          <Trash2 className="h-3.5 w-3.5" /> Excluir Acesso
-                        </Button>
-                      </>
-                    )}
+              <div className="space-y-4 max-w-2xl">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">E-mail de acesso:</Label>
+                    <div className="flex items-center gap-2">
+                      <Input value={form.email} readOnly className="bg-muted" />
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Nível de acesso:</Label>
+                    <Select
+                      value={selectedAccessLevelId || ""}
+                      onValueChange={handleAccessLevelChange}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o nível de acesso" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {accessLevels.map((level) => (
+                          <SelectItem key={level.id} value={level.id}>
+                            {level.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
 
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Nível de acesso:</Label>
-                  <Select
-                    value={selectedAccessLevelId || ""}
-                    onValueChange={handleAccessLevelChange}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o nível de acesso" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {accessLevels.map((level) => (
-                        <SelectItem key={level.id} value={level.id}>
-                          {level.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground">
-                    Não encontrou o acesso ideal? Configure os níveis de acesso em{" "}
-                    <a href="/configuracoes?tab=usuarios" className="text-primary underline">Configurações → Usuários e Acessos</a>.
-                  </p>
-                </div>
+                {isMaster && (
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm" className="gap-1">
+                      <KeyRound className="h-3.5 w-3.5" /> Trocar Senha
+                    </Button>
+                    <Button variant="destructive" size="sm" className="gap-1" onClick={handleDeleteAccess}>
+                      <Trash2 className="h-3.5 w-3.5" /> Excluir Acesso
+                    </Button>
+                  </div>
+                )}
 
-                <div className="flex items-center gap-2 p-3 bg-accent/50 border border-border rounded-lg">
+                <p className="text-xs text-muted-foreground">
+                  Não encontrou o acesso ideal? Configure os níveis em{" "}
+                  <a href="/configuracoes?tab=usuarios" className="text-primary underline">Configurações → Usuários e Acessos</a>.
+                </p>
+
+                <div className="flex items-center gap-2 p-2.5 bg-accent/50 border border-border rounded-lg w-fit">
                   <div className="h-2 w-2 rounded-full bg-green-500" />
                   <span className="text-sm">Este profissional possui acesso ao sistema</span>
                 </div>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-4 max-w-2xl">
                 <p className="text-sm text-muted-foreground">
                   Este profissional ainda não possui acesso ao sistema. Preencha os dados abaixo para criar o acesso.
                 </p>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">E-mail para acesso:</Label>
-                  <Input
-                    value={newAccessEmail || form.email}
-                    onChange={(e) => setNewAccessEmail(e.target.value)}
-                    placeholder="email@exemplo.com"
-                  />
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">E-mail para acesso:</Label>
+                    <Input
+                      value={newAccessEmail || form.email}
+                      onChange={(e) => setNewAccessEmail(e.target.value)}
+                      placeholder="email@exemplo.com"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Senha de acesso:</Label>
+                    <Input
+                      type="password"
+                      value={newAccessPassword}
+                      onChange={(e) => setNewAccessPassword(e.target.value)}
+                      placeholder="Mínimo 6 caracteres"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Nível de acesso:</Label>
+                    <Select
+                      value={selectedAccessLevelId || ""}
+                      onValueChange={(v) => setSelectedAccessLevelId(v)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {accessLevels.map((level) => (
+                          <SelectItem key={level.id} value={level.id}>
+                            {level.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Senha de acesso:</Label>
-                  <Input
-                    type="password"
-                    value={newAccessPassword}
-                    onChange={(e) => setNewAccessPassword(e.target.value)}
-                    placeholder="Mínimo 6 caracteres"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Nível de acesso:</Label>
-                  <Select
-                    value={selectedAccessLevelId || ""}
-                    onValueChange={(v) => setSelectedAccessLevelId(v)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o nível de acesso" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {accessLevels.map((level) => (
-                        <SelectItem key={level.id} value={level.id}>
-                          {level.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground">
-                    Não encontrou o acesso ideal? Configure os níveis de acesso em{" "}
-                    <a href="/configuracoes/acessos" className="text-primary underline">Configurações → Grupos de Acessos</a>.
-                  </p>
-                </div>
+                <p className="text-xs text-muted-foreground">
+                  Não encontrou o acesso ideal? Configure em{" "}
+                  <a href="/configuracoes/acessos" className="text-primary underline">Configurações → Grupos de Acessos</a>.
+                </p>
                 <Button
                   onClick={handleCreateAccess}
                   disabled={isCreatingAccess}
+                  size="sm"
                   className="gap-2"
                 >
                   {isCreatingAccess ? <Loader2 className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}
