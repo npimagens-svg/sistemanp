@@ -122,9 +122,14 @@ Deno.serve(async (req) => {
     const validRoles = ["admin", "manager", "receptionist", "financial", "professional"];
     const roleToAssign = validRoles.includes(accessLevel) ? accessLevel : "professional";
     
+    const roleInsertData: Record<string, unknown> = { user_id: newUserId, salon_id: salonId, role: roleToAssign };
+    if (accessLevelId) {
+      roleInsertData.access_level_id = accessLevelId;
+    }
+    
     const { error: roleInsertError } = await adminClient
       .from("user_roles")
-      .insert({ user_id: newUserId, salon_id: salonId, role: roleToAssign });
+      .insert(roleInsertData);
 
     if (roleInsertError) {
       console.error("create-professional-access: user_roles insert failed", roleInsertError);
