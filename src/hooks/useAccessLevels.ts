@@ -252,15 +252,33 @@ export function useAccessLevels() {
         if (error) throw error;
       }
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["access-levels", salonId] });
+    onMutate: async (data) => {
+      // Optimistic update
+      await queryClient.cancelQueries({ queryKey: ["access-levels", salonId] });
+      const previous = queryClient.getQueryData<AccessLevelWithPermissions[]>(["access-levels", salonId]);
+      queryClient.setQueryData<AccessLevelWithPermissions[]>(["access-levels", salonId], (old) => {
+        if (!old) return old;
+        return old.map(level => {
+          if (level.id === data.accessLevelId) {
+            return { ...level, permissions: { ...level.permissions, [data.permissionKey]: data.enabled } };
+          }
+          return level;
+        });
+      });
+      return { previous };
     },
-    onError: (error: Error) => {
+    onError: (error: Error, _vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(["access-levels", salonId], context.previous);
+      }
       toast({
         title: "Erro ao atualizar permissão",
         description: error.message,
         variant: "destructive",
       });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["access-levels", salonId] });
     },
   });
 
