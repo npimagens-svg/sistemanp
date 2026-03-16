@@ -972,7 +972,7 @@ export default function Configuracoes() {
                                 )}
                               </TableCell>
                               <TableCell className="text-center">
-                                {isMaster && !isAdmin ? (
+                                {canManageAccess && !isAdmin ? (
                                   <Switch checked={userAccess.can_open_caixa} onCheckedChange={() => handleToggleCanOpenCaixa(userAccess.user_id, userAccess.can_open_caixa)} disabled={isUpdating} />
                                 ) : (
                                   <Badge variant={userAccess.can_open_caixa ? "default" : "secondary"}>{userAccess.can_open_caixa ? "Sim" : "Não"}</Badge>
