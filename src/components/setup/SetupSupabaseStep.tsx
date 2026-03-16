@@ -65,36 +65,40 @@ export default function SetupSupabaseStep({ data, updateData, onNext }: Props) {
     }
 
     setCreatingSchema(true);
+    setConnectionStatus("idle");
 
     try {
-      // Call our edge function to create the schema on the external Supabase
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/setup-schema`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-          },
-          body: JSON.stringify({
-            supabaseUrl: data.supabaseUrl.trim(),
-            dbPassword: data.supabaseDbPassword.trim(),
-            schemaSql: SETUP_SCHEMA_SQL,
-          }),
-        }
-      );
+      const { data: result, error } = await supabase.functions.invoke("setup-schema", {
+        body: {
+          supabaseUrl: data.supabaseUrl.trim(),
+          dbPassword: data.supabaseDbPassword.trim(),
+          schemaSql: SETUP_SCHEMA_SQL,
+        },
+      });
 
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || "Erro ao criar o schema");
+      if (error) {
+        throw new Error(error.message || "Erro ao criar o schema");
       }
 
-      toast({ title: "✅ Schema criado com sucesso!" });
+      if (!result?.success) {
+        throw new Error(result?.error || "Erro ao criar o schema");
+      }
 
-      // Now re-test the connection
-      await handleTest();
+      const validation = await waitForExternalSchema(data.supabaseUrl, data.supabaseServiceRoleKey);
+
+      if (validation.status !== "success") {
+        setConnectionStatus("no_schema");
+        toast({
+          title: "Schema criado, aguardando sincronização",
+          description: "As tabelas foram criadas, mas a API do projeto externo ainda está atualizando. Tente 'Testar Conexão' em alguns segundos.",
+        });
+        return;
+      }
+
+      setConnectionStatus("success");
+      toast({ title: "✅ Schema criado e sincronizado com sucesso!" });
     } catch (err: any) {
+      setConnectionStatus("error");
       toast({
         title: "Erro ao criar o schema",
         description: err.message || "Verifique a senha do banco e tente novamente",
