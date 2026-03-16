@@ -257,6 +257,52 @@ function ProfessionalForm({ professional }: { professional: Professional }) {
     }
   }, [rules]);
 
+  // Load access level for this professional
+  useEffect(() => {
+    if (professional.user_id && salonId) {
+      supabase
+        .from("user_roles")
+        .select("access_level_id")
+        .eq("user_id", professional.user_id)
+        .eq("salon_id", salonId)
+        .maybeSingle()
+        .then(({ data }) => {
+          setSelectedAccessLevelId(data?.access_level_id || null);
+        });
+    }
+  }, [professional.user_id, salonId]);
+
+  const handleAccessLevelChange = async (accessLevelId: string) => {
+    if (!professional.user_id || !salonId) return;
+    setSelectedAccessLevelId(accessLevelId);
+    const { error } = await supabase.functions.invoke("update-user-role", {
+      body: {
+        userId: professional.user_id,
+        salonId,
+        newRole: "professional",
+        accessLevelId,
+      },
+    });
+    if (error) {
+      toast({ title: "Erro ao atualizar nível de acesso", variant: "destructive" });
+    } else {
+      toast({ title: "Nível de acesso atualizado!" });
+    }
+  };
+
+  const handleDeleteAccess = async () => {
+    if (!professional.user_id || !salonId) return;
+    if (!confirm("Tem certeza que deseja excluir o acesso deste profissional ao sistema?")) return;
+    const { error } = await supabase.functions.invoke("delete-user-access", {
+      body: { userId: professional.user_id, salonId },
+    });
+    if (error) {
+      toast({ title: "Erro ao excluir acesso", variant: "destructive" });
+    } else {
+      toast({ title: "Acesso excluído com sucesso!" });
+    }
+  };
+
   const handleSaveProfile = () => {
     if (!form.name.trim()) {
       toast({ title: "Nome é obrigatório", variant: "destructive" });
