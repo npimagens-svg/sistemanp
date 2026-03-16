@@ -106,7 +106,12 @@ export function useAccessLevels() {
   const accessLevelsQuery = useQuery({
     queryKey: ["access-levels", salonId],
     queryFn: async () => {
-      if (!salonId) return [];
+      if (!salonId) {
+        console.warn("[useAccessLevels] salonId is null, returning empty");
+        return [];
+      }
+
+      console.log("[useAccessLevels] Fetching access levels for salon:", salonId);
 
       const { data: levels, error: levelsError } = await supabase
         .from("access_levels")
@@ -115,7 +120,12 @@ export function useAccessLevels() {
         .order("is_system", { ascending: false })
         .order("name");
 
-      if (levelsError) throw levelsError;
+      if (levelsError) {
+        console.error("[useAccessLevels] Error fetching levels:", levelsError);
+        throw levelsError;
+      }
+      
+      console.log("[useAccessLevels] Found levels:", levels?.length);
       if (!levels || levels.length === 0) return [];
 
       const levelIds = levels.map(l => l.id);
