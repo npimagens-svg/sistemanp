@@ -26,8 +26,68 @@ export default function Clientes() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [importOpen, setImportOpen] = useState(false);
 
   const { clients, isLoading, createClient, updateClient, deleteClient, isCreating, isUpdating, isDeleting } = useClients();
+  const { isMaster, salonId } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const clientImportFields: ImportField[] = [
+    { key: "name", label: "Nome", required: true },
+    { key: "email", label: "E-mail" },
+    { key: "phone", label: "Telefone" },
+    { key: "phone_landline", label: "Telefone fixo" },
+    { key: "cpf", label: "CPF" },
+    { key: "rg", label: "RG" },
+    { key: "birth_date", label: "Data de nascimento" },
+    { key: "gender", label: "Gênero" },
+    { key: "cep", label: "CEP" },
+    { key: "state", label: "Estado" },
+    { key: "city", label: "Cidade" },
+    { key: "neighborhood", label: "Bairro" },
+    { key: "address", label: "Endereço" },
+    { key: "address_number", label: "Número" },
+    { key: "address_complement", label: "Complemento" },
+    { key: "profession", label: "Profissão" },
+    { key: "how_met", label: "Como conheceu" },
+    { key: "notes", label: "Observações" },
+  ];
+
+  const handleImportClients = async (records: Record<string, any>[]) => {
+    if (!salonId) throw new Error("Salão não encontrado");
+    const rows = records.map(r => ({
+      salon_id: salonId,
+      name: String(r.name),
+      email: r.email ? String(r.email) : null,
+      phone: r.phone ? String(r.phone) : null,
+      phone_landline: r.phone_landline ? String(r.phone_landline) : null,
+      cpf: r.cpf ? String(r.cpf) : null,
+      rg: r.rg ? String(r.rg) : null,
+      birth_date: r.birth_date ? String(r.birth_date) : null,
+      gender: r.gender ? String(r.gender).toLowerCase() : null,
+      cep: r.cep ? String(r.cep) : null,
+      state: r.state ? String(r.state) : null,
+      city: r.city ? String(r.city) : null,
+      neighborhood: r.neighborhood ? String(r.neighborhood) : null,
+      address: r.address ? String(r.address) : null,
+      address_number: r.address_number ? String(r.address_number) : null,
+      address_complement: r.address_complement ? String(r.address_complement) : null,
+      profession: r.profession ? String(r.profession) : null,
+      how_met: r.how_met ? String(r.how_met) : null,
+      notes: r.notes ? String(r.notes) : null,
+    }));
+
+    // Insert in batches of 50
+    for (let i = 0; i < rows.length; i += 50) {
+      const batch = rows.slice(i, i + 50);
+      const { error } = await supabase.from("clients").insert(batch);
+      if (error) throw error;
+    }
+
+    queryClient.invalidateQueries({ queryKey: ["clients"] });
+    toast({ title: `${rows.length} clientes importados com sucesso!` });
+  };
 
   const filteredClients = clients.filter((client) => {
     const query = searchQuery.toLowerCase();
