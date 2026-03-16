@@ -5,6 +5,7 @@ import {
   DollarSign,
   Package,
   Users,
+  Megaphone,
   BarChart3,
   Settings,
 } from "lucide-react";
@@ -49,7 +50,17 @@ const navItems: NavItem[] = [
     subItems: [
       { title: "Lista de Clientes", url: "/clientes" },
       { title: "Avisos", url: "/clientes/avisos" },
-      { title: "Fidelidade", url: "/clientes/fidelidade" },
+    ]
+  },
+  {
+    title: "Marketing",
+    url: "/marketing",
+    icon: Megaphone,
+    subItems: [
+      { title: "Promoções", url: "/marketing?tab=promocoes" },
+      { title: "Campanhas de E-mail", url: "/marketing?tab=email" },
+      { title: "Campanhas de SMS", url: "/marketing?tab=sms" },
+      { title: "Fidelidade", url: "/marketing?tab=fidelidade" },
     ]
   },
   { 
@@ -71,7 +82,10 @@ export function TopNavigation() {
   const activeNavItem = navItems.find(item => {
     if (location.pathname === item.url) return true;
     if (item.subItems) {
-      return item.subItems.some(sub => location.pathname.startsWith(sub.url));
+      return item.subItems.some(sub => {
+        const subUrl = sub.url.split("?")[0];
+        return location.pathname === subUrl || location.pathname.startsWith(subUrl + "/");
+      });
     }
     return location.pathname.startsWith(item.url);
   });
@@ -111,7 +125,9 @@ export function TopNavigation() {
       {activeNavItem?.subItems && (
         <div className="flex items-center gap-0 px-2 md:px-4 bg-muted/20 border-t border-border overflow-x-auto scrollbar-hide">
           {activeNavItem.subItems.map((subItem) => {
-            const isSubActive = location.pathname === subItem.url;
+            const isSubActive = location.pathname + location.search === subItem.url || 
+              (subItem.url.includes("?") && location.pathname + location.search === subItem.url) ||
+              (!subItem.url.includes("?") && location.pathname === subItem.url);
             
             return (
               <button

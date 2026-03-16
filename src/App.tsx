@@ -16,6 +16,7 @@ import Comissoes from "./pages/Comissoes";
 import Estoque from "./pages/Estoque";
 import Configuracoes from "./pages/Configuracoes";
 import Relatorios from "./pages/Relatorios";
+import Marketing from "./pages/Marketing";
 import ClientAlerts from "./pages/ClientAlerts";
 import ClientLoyalty from "./pages/ClientLoyalty";
 import NotFound from "./pages/NotFound";
@@ -63,6 +64,8 @@ function AppRoutes() {
       <Route path="/financeiro/comissoes" element={<ProtectedRoute><Comissoes /></ProtectedRoute>} />
       <Route path="/estoque" element={<ProtectedRoute><Estoque /></ProtectedRoute>} />
       <Route path="/estoque/*" element={<ProtectedRoute><Estoque /></ProtectedRoute>} />
+      <Route path="/marketing" element={<ProtectedRoute><Marketing /></ProtectedRoute>} />
+      <Route path="/marketing/*" element={<ProtectedRoute><Marketing /></ProtectedRoute>} />
       <Route path="/relatorios" element={<ProtectedRoute><Relatorios /></ProtectedRoute>} />
       <Route path="/relatorios/*" element={<ProtectedRoute><Relatorios /></ProtectedRoute>} />
       <Route path="/configuracoes" element={<ProtectedRoute><Configuracoes /></ProtectedRoute>} />
