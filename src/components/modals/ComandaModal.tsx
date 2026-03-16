@@ -1073,7 +1073,23 @@ export function ComandaModal({ comanda, open, onClose, professionals, services, 
                 </Card>
               )}
 
-              {/* Total to Pay */}
+              {/* Save underpayment as debt option */}
+              {difference > 0.01 && comanda?.client_id && (
+                <Card className="border-destructive/30 bg-destructive/5">
+                  <CardContent className="p-4 flex items-center gap-3">
+                    <Checkbox 
+                      id="save-debt"
+                      checked={saveUnderpaymentAsDebt}
+                      onCheckedChange={(checked) => setSaveUnderpaymentAsDebt(!!checked)}
+                    />
+                    <label htmlFor="save-debt" className="flex items-center gap-2 cursor-pointer text-sm font-medium">
+                      <AlertTriangle className="h-4 w-4 text-destructive" />
+                      Salvar {formatCurrency(difference)} como dívida do cliente
+                    </label>
+                  </CardContent>
+                </Card>
+              )}
+
               <Card className="bg-muted/50">
                 <CardContent className="p-4 flex items-center justify-between">
                   <div className="flex items-center gap-2">
