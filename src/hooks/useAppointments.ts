@@ -86,7 +86,8 @@ export function useAppointments(date?: Date) {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["appointments", salonId] });
+      // Invalidate all appointment queries regardless of date
+      queryClient.invalidateQueries({ queryKey: ["appointments"] });
       toast({ title: "Agendamento criado com sucesso!" });
     },
     onError: (error: Error) => {
