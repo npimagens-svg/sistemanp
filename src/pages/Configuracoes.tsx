@@ -718,6 +718,12 @@ export default function Configuracoes() {
                 description="Conecte seu agente de IA para agendar, cadastrar clientes e mais"
                 onClick={() => navigate("/configuracoes/webhook")}
               />
+              <SettingsCard
+                icon={Globe}
+                title="API REST"
+                description="API completa para integração com ERPs, apps mobile e dashboards"
+                onClick={() => navigate("/configuracoes/api")}
+              />
             </div>
           </>
         )}
