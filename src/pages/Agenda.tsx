@@ -40,14 +40,14 @@ function generateTimeSlots(openingTime: string, closingTime: string, intervalMin
 }
 
 const statusColors: Record<string, string> = {
-  scheduled: "bg-[#e74c3c]",      // Vermelho - Agendado (como AVEC)
-  confirmed: "bg-[#2ecc71]",      // Verde - Confirmado
-  in_progress: "bg-[#16a085]",    // Teal - Em Atendimento (como AVEC)
+  scheduled: "bg-[#4a7c59]",      // Verde escuro - Agendado
+  confirmed: "bg-[#3b82c4]",      // Azul - Confirmado
+  in_progress: "bg-[#16a34a]",    // Verde vivo - Em Atendimento
   completed: "bg-[#3b5998]",      // Azul escuro - Finalizado
-  paid: "bg-[#9b59b6]",           // Roxo - Pago
-  awaiting: "bg-[#f39c12]",       // Amarelo - Aguardando
-  no_show: "bg-[#95a5a6]",        // Cinza - Faltou
-  cancelled: "bg-[#7f8c8d]",      // Cinza escuro - Cancelado
+  paid: "bg-[#dc2626]",           // Vermelho - Pago
+  awaiting: "bg-[#d4a127]",       // Dourado - Aguardando
+  no_show: "bg-[#9ca3af]",        // Cinza claro - Faltou
+  cancelled: "bg-[#6b7280]",      // Cinza - Cancelado
   blocked: "bg-[#34495e]",
 };
 
