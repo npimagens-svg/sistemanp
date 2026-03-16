@@ -79,7 +79,7 @@ export function useUserAccess() {
   const updateRoleMutation = useMutation({
     mutationFn: async ({ userId, newRole, accessLevelId }: { userId: string; newRole: AppRole; accessLevelId?: string | null }) => {
       if (!salonId) throw new Error("Salão não encontrado");
-      if (!isMaster) throw new Error("Apenas o usuário master pode alterar permissões");
+      if (!canManageAccess) throw new Error("Você não tem permissão para alterar acessos");
 
       if (newRole === "admin") {
         throw new Error("Não é permitido definir um usuário como admin");
