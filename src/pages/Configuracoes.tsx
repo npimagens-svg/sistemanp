@@ -34,7 +34,7 @@ import {
 import {
   Shield, Users, Settings, MoreHorizontal, Trash2, Loader2, Building2,
   CreditCard, Plus, Pencil, Landmark, ArrowRightLeft, Lock, Cog, UserCog,
-  Save, Calendar, Clock, ToggleLeft, ChevronRight, Home, DollarSign, Percent, Package, Webhook
+  Save, Calendar, Clock, ToggleLeft, ChevronRight, Home, DollarSign, Percent, Package, Webhook, Globe
 } from "lucide-react";
 import { CommissionSettingsPage } from "@/components/settings/CommissionSettingsPage";
 import { useAuth, AppRole } from "@/contexts/AuthContext";
@@ -56,6 +56,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSchedulingSettings, SchedulingSettings } from "@/hooks/useSchedulingSettings";
 import { WebhookSettingsSection } from "@/components/settings/WebhookSettingsSection";
+import { ApiGatewaySettingsSection } from "@/components/settings/ApiGatewaySettingsSection";
 
 const SPECIALTIES = [
   { value: "cabeleireiro", label: "Cabeleireiro(a)" },
@@ -583,6 +584,7 @@ export default function Configuracoes() {
     if (path.startsWith("/configuracoes/profissionais")) return "profissionais";
     if (path.startsWith("/configuracoes/sistema")) return "sistema";
     if (path.startsWith("/configuracoes/webhook")) return "webhook";
+    if (path.startsWith("/configuracoes/api")) return "api";
     if (path.startsWith("/configuracoes/salao")) return "hub";
     return "hub";
   })();
@@ -715,6 +717,12 @@ export default function Configuracoes() {
                 title="Webhook / Agente IA"
                 description="Conecte seu agente de IA para agendar, cadastrar clientes e mais"
                 onClick={() => navigate("/configuracoes/webhook")}
+              />
+              <SettingsCard
+                icon={Globe}
+                title="API REST"
+                description="API completa para integração com ERPs, apps mobile e dashboards"
+                onClick={() => navigate("/configuracoes/api")}
               />
             </div>
           </>
@@ -1137,6 +1145,15 @@ export default function Configuracoes() {
             <SettingsBreadcrumb label="Webhook / Agente IA" />
             <h1 className="text-2xl font-bold tracking-tight">Webhook / Agente IA</h1>
             <WebhookSettingsSection />
+          </>
+        )}
+
+        {/* ===== API REST ===== */}
+        {subPage === "api" && (
+          <>
+            <SettingsBreadcrumb label="API REST" />
+            <h1 className="text-2xl font-bold tracking-tight">API REST Gateway</h1>
+            <ApiGatewaySettingsSection />
           </>
         )}
       </div>
