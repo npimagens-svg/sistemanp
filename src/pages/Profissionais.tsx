@@ -190,6 +190,7 @@ function ProfessionalForm({ professional }: { professional: Professional }) {
   const [bankForm, setBankForm] = useState({
     person_type: "fisica", account_holder: "", holder_cpf: "",
     bank_name: "", account_type: "corrente", agency: "", account_number: "", account_digit: "",
+    transfer_type: "ted", pix_key: "",
   });
 
   // Commission rules form
@@ -242,6 +243,8 @@ function ProfessionalForm({ professional }: { professional: Professional }) {
         agency: bankDetails.agency || "",
         account_number: bankDetails.account_number || "",
         account_digit: bankDetails.account_digit || "",
+        transfer_type: (bankDetails as any).transfer_type || "ted",
+        pix_key: (bankDetails as any).pix_key || "",
       });
     }
   }, [bankDetails]);
@@ -842,7 +845,7 @@ function ProfessionalForm({ professional }: { professional: Professional }) {
 
             {/* Person type */}
             <div className="space-y-1.5">
-              <Label className="text-xs">Tipo de conta:</Label>
+              <Label className="text-xs">Tipo de pessoa:</Label>
               <RadioGroup
                 value={bankForm.person_type}
                 onValueChange={(v) => setBankForm({ ...bankForm, person_type: v })}
@@ -859,62 +862,107 @@ function ProfessionalForm({ professional }: { professional: Professional }) {
               </RadioGroup>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label className="text-xs">Nome do titular: <span className="text-muted-foreground">(Obrigatório)</span></Label>
-                <Input value={bankForm.account_holder} onChange={(e) => setBankForm({ ...bankForm, account_holder: e.target.value })} />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">CPF do titular: <span className="text-muted-foreground">(Obrigatório)</span></Label>
-                <Input value={bankForm.holder_cpf} onChange={(e) => setBankForm({ ...bankForm, holder_cpf: e.target.value })} />
-              </div>
+            {/* Transfer type */}
+            <div className="space-y-1.5">
+              <Label className="text-xs">Forma de transferência:</Label>
+              <RadioGroup
+                value={bankForm.transfer_type}
+                onValueChange={(v) => setBankForm({ ...bankForm, transfer_type: v })}
+                className="flex gap-4"
+              >
+                <div className="flex items-center space-x-1.5">
+                  <RadioGroupItem value="ted" id="transfer-ted" />
+                  <Label htmlFor="transfer-ted" className="text-sm cursor-pointer">TED</Label>
+                </div>
+                <div className="flex items-center space-x-1.5">
+                  <RadioGroupItem value="pix" id="transfer-pix" />
+                  <Label htmlFor="transfer-pix" className="text-sm cursor-pointer">PIX</Label>
+                </div>
+              </RadioGroup>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label className="text-xs">Banco: <span className="text-muted-foreground">(Obrigatório)</span></Label>
-                <Select value={bankForm.bank_name} onValueChange={(v) => setBankForm({ ...bankForm, bank_name: v })}>
-                  <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
-                  <SelectContent>
-                    {BANKS.map((b) => (
-                      <SelectItem key={b} value={b}>{b}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">Modelo de conta: <span className="text-muted-foreground">(Obrigatório)</span></Label>
-                <RadioGroup
-                  value={bankForm.account_type}
-                  onValueChange={(v) => setBankForm({ ...bankForm, account_type: v })}
-                  className="flex gap-4 mt-1"
-                >
-                  <div className="flex items-center space-x-1.5">
-                    <RadioGroupItem value="corrente" id="corrente" />
-                    <Label htmlFor="corrente" className="text-sm cursor-pointer">Corrente</Label>
+            {bankForm.transfer_type === "ted" ? (
+              <>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Nome do titular: <span className="text-muted-foreground">(Obrigatório)</span></Label>
+                    <Input value={bankForm.account_holder} onChange={(e) => setBankForm({ ...bankForm, account_holder: e.target.value })} />
                   </div>
-                  <div className="flex items-center space-x-1.5">
-                    <RadioGroupItem value="poupanca" id="poupanca" />
-                    <Label htmlFor="poupanca" className="text-sm cursor-pointer">Poupança</Label>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">{bankForm.person_type === "fisica" ? "CPF" : "CNPJ"} do titular: <span className="text-muted-foreground">(Obrigatório)</span></Label>
+                    <Input value={bankForm.holder_cpf} onChange={(e) => setBankForm({ ...bankForm, holder_cpf: e.target.value })} />
                   </div>
-                </RadioGroup>
-              </div>
-            </div>
+                </div>
 
-            <div className="grid grid-cols-3 gap-4">
-              <div className="space-y-1.5">
-                <Label className="text-xs">Agência: <span className="text-muted-foreground">(Obrigatório)</span></Label>
-                <Input value={bankForm.agency} onChange={(e) => setBankForm({ ...bankForm, agency: e.target.value })} />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Banco: <span className="text-muted-foreground">(Obrigatório)</span></Label>
+                    <Select value={bankForm.bank_name} onValueChange={(v) => setBankForm({ ...bankForm, bank_name: v })}>
+                      <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                      <SelectContent>
+                        {BANKS.map((b) => (
+                          <SelectItem key={b} value={b}>{b}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Modelo de conta: <span className="text-muted-foreground">(Obrigatório)</span></Label>
+                    <RadioGroup
+                      value={bankForm.account_type}
+                      onValueChange={(v) => setBankForm({ ...bankForm, account_type: v })}
+                      className="flex gap-4 mt-1"
+                    >
+                      <div className="flex items-center space-x-1.5">
+                        <RadioGroupItem value="corrente" id="corrente" />
+                        <Label htmlFor="corrente" className="text-sm cursor-pointer">Corrente</Label>
+                      </div>
+                      <div className="flex items-center space-x-1.5">
+                        <RadioGroupItem value="poupanca" id="poupanca" />
+                        <Label htmlFor="poupanca" className="text-sm cursor-pointer">Poupança</Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Agência: <span className="text-muted-foreground">(Obrigatório)</span></Label>
+                    <Input value={bankForm.agency} onChange={(e) => setBankForm({ ...bankForm, agency: e.target.value })} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Conta:</Label>
+                    <Input value={bankForm.account_number} onChange={(e) => setBankForm({ ...bankForm, account_number: e.target.value })} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Dígito:</Label>
+                    <Input value={bankForm.account_digit} onChange={(e) => setBankForm({ ...bankForm, account_digit: e.target.value })} className="w-20" />
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Chave PIX: <span className="text-muted-foreground">(Obrigatório)</span></Label>
+                  <Input
+                    placeholder="CPF, e-mail, telefone ou chave aleatória"
+                    value={bankForm.pix_key}
+                    onChange={(e) => setBankForm({ ...bankForm, pix_key: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Banco: <span className="text-muted-foreground">(Obrigatório)</span></Label>
+                  <Select value={bankForm.bank_name} onValueChange={(v) => setBankForm({ ...bankForm, bank_name: v })}>
+                    <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                    <SelectContent>
+                      {BANKS.map((b) => (
+                        <SelectItem key={b} value={b}>{b}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">Conta:</Label>
-                <Input value={bankForm.account_number} onChange={(e) => setBankForm({ ...bankForm, account_number: e.target.value })} />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">Dígito:</Label>
-                <Input value={bankForm.account_digit} onChange={(e) => setBankForm({ ...bankForm, account_digit: e.target.value })} className="w-20" />
-              </div>
-            </div>
+            )}
 
             <div className="flex items-center justify-between">
               <button onClick={() => deleteBankDetails()} className="text-sm text-destructive hover:underline">

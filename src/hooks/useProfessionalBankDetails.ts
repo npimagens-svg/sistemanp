@@ -13,6 +13,8 @@ export interface BankDetails {
   agency: string | null;
   account_number: string | null;
   account_digit: string | null;
+  transfer_type: string;
+  pix_key: string | null;
 }
 
 export interface BankDetailsInput {
@@ -25,6 +27,8 @@ export interface BankDetailsInput {
   agency: string;
   account_number: string;
   account_digit: string;
+  transfer_type: string;
+  pix_key: string;
 }
 
 export function useProfessionalBankDetails(professionalId: string | null) {

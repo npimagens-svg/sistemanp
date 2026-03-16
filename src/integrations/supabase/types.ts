@@ -1108,7 +1108,9 @@ export type Database = {
           holder_cpf: string | null
           id: string
           person_type: string
+          pix_key: string | null
           professional_id: string
+          transfer_type: string
           updated_at: string
         }
         Insert: {
@@ -1122,7 +1124,9 @@ export type Database = {
           holder_cpf?: string | null
           id?: string
           person_type?: string
+          pix_key?: string | null
           professional_id: string
+          transfer_type?: string
           updated_at?: string
         }
         Update: {
@@ -1136,7 +1140,9 @@ export type Database = {
           holder_cpf?: string | null
           id?: string
           person_type?: string
+          pix_key?: string | null
           professional_id?: string
+          transfer_type?: string
           updated_at?: string
         }
         Relationships: [
