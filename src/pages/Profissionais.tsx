@@ -243,6 +243,8 @@ function ProfessionalForm({ professional }: { professional: Professional }) {
         agency: bankDetails.agency || "",
         account_number: bankDetails.account_number || "",
         account_digit: bankDetails.account_digit || "",
+        transfer_type: (bankDetails as any).transfer_type || "ted",
+        pix_key: (bankDetails as any).pix_key || "",
       });
     }
   }, [bankDetails]);
