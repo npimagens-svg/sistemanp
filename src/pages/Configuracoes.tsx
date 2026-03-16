@@ -34,7 +34,7 @@ import {
 import {
   Shield, Users, Settings, MoreHorizontal, Trash2, Loader2, Building2,
   CreditCard, Plus, Pencil, Landmark, ArrowRightLeft, Lock, Cog, UserCog,
-  Save, Calendar, Clock, ToggleLeft, ChevronRight, Home, DollarSign, Percent, Package
+  Save, Calendar, Clock, ToggleLeft, ChevronRight, Home, DollarSign, Percent, Package, Webhook
 } from "lucide-react";
 import { CommissionSettingsPage } from "@/components/settings/CommissionSettingsPage";
 import { useAuth, AppRole } from "@/contexts/AuthContext";
@@ -55,6 +55,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSchedulingSettings, SchedulingSettings } from "@/hooks/useSchedulingSettings";
+import { WebhookSettingsSection } from "@/components/settings/WebhookSettingsSection";
 
 const SPECIALTIES = [
   { value: "cabeleireiro", label: "Cabeleireiro(a)" },
@@ -581,6 +582,7 @@ export default function Configuracoes() {
     if (path.startsWith("/configuracoes/acessos")) return "acessos";
     if (path.startsWith("/configuracoes/profissionais")) return "profissionais";
     if (path.startsWith("/configuracoes/sistema")) return "sistema";
+    if (path.startsWith("/configuracoes/webhook")) return "webhook";
     if (path.startsWith("/configuracoes/salao")) return "hub";
     return "hub";
   })();
@@ -707,6 +709,12 @@ export default function Configuracoes() {
                 title="Grupos de Acessos"
                 description="Gerencie as regras de acesso dos seus profissionais"
                 onClick={() => navigate("/configuracoes/acessos")}
+              />
+              <SettingsCard
+                icon={Webhook}
+                title="Webhook / Agente IA"
+                description="Conecte seu agente de IA para agendar, cadastrar clientes e mais"
+                onClick={() => navigate("/configuracoes/webhook")}
               />
             </div>
           </>
@@ -1120,6 +1128,15 @@ export default function Configuracoes() {
                 </Card>
               )}
             </div>
+          </>
+        )}
+
+        {/* ===== WEBHOOK / AGENTE IA ===== */}
+        {subPage === "webhook" && (
+          <>
+            <SettingsBreadcrumb label="Webhook / Agente IA" />
+            <h1 className="text-2xl font-bold tracking-tight">Webhook / Agente IA</h1>
+            <WebhookSettingsSection />
           </>
         )}
       </div>
