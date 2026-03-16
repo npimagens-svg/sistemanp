@@ -529,6 +529,17 @@ export default function Agenda() {
               <div className="flex items-center justify-center py-20">
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
               </div>
+            ) : !isSalonWorkDay(currentDate) ? (
+              <div className="text-center py-20 text-muted-foreground">
+                <Ban className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p className="text-lg font-medium mb-2">Salão fechado neste dia</p>
+                <p className="text-sm">
+                  {currentDate.toLocaleDateString("pt-BR", { weekday: "long" })} não é um dia de funcionamento.
+                </p>
+                <Button variant="outline" className="mt-4" onClick={goToToday}>
+                  Ir para Hoje
+                </Button>
+              </div>
             ) : filteredProfessionals.length === 0 ? (
               <div className="text-center py-20 text-muted-foreground">
                 <p className="mb-4">Nenhum profissional cadastrado para exibir na agenda.</p>
