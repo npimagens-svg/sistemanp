@@ -152,13 +152,15 @@ function ProfessionalSidebar({
 
 // ===== MAIN FORM =====
 function ProfessionalForm({ professional }: { professional: Professional }) {
-  const { canDelete, isMaster } = useAuth();
+  const { canDelete, isMaster, salonId } = useAuth();
   const { toast } = useToast();
   const { updateProfessional, isUpdating, deactivateProfessional, reactivateProfessional } = useProfessionals();
   const { schedules, upsertSchedule, deleteSchedule, isSaving: isSavingSchedule } = useProfessionalWorkSchedules(professional.id);
   const { bankDetails, saveBankDetails, deleteBankDetails, isSaving: isSavingBank } = useProfessionalBankDetails(professional.id);
   const { rules, saveRules, isSaving: isSavingRules } = useProfessionalCommissionRules(professional.id);
+  const { accessLevels } = useAccessLevels();
   const { lookupCep, isLoading: isLookingUpCep } = useCepLookup();
+  const [selectedAccessLevelId, setSelectedAccessLevelId] = useState<string | null>(null);
 
   // Professional data form
   const [form, setForm] = useState({
