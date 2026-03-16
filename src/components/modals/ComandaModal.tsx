@@ -736,9 +736,12 @@ export function ComandaModal({ comanda, open, onClose, professionals, services, 
         }
       }
 
+      queryClient.invalidateQueries({ queryKey: ["comandas"] });
+      queryClient.invalidateQueries({ queryKey: ["comanda_items", comanda.id] });
       queryClient.invalidateQueries({ queryKey: ["caixas", salonId] });
       queryClient.invalidateQueries({ queryKey: ["products", salonId] });
       queryClient.invalidateQueries({ queryKey: ["client-credits"] });
+      queryClient.invalidateQueries({ queryKey: ["client_comandas"] });
       toast({ title: "Comanda finalizada com sucesso!" });
       onClose();
     } catch (error: any) {
