@@ -952,6 +952,65 @@ export type Database = {
           },
         ]
       }
+      email_campaigns: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          name: string
+          recipients_count: number | null
+          salon_id: string
+          scheduled_at: string | null
+          sent_at: string | null
+          status: string
+          subject: string
+          target_client_ids: string[] | null
+          target_tag: string | null
+          target_type: string
+          updated_at: string
+        }
+        Insert: {
+          body?: string
+          created_at?: string
+          id?: string
+          name: string
+          recipients_count?: number | null
+          salon_id: string
+          scheduled_at?: string | null
+          sent_at?: string | null
+          status?: string
+          subject: string
+          target_client_ids?: string[] | null
+          target_tag?: string | null
+          target_type?: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          name?: string
+          recipients_count?: number | null
+          salon_id?: string
+          scheduled_at?: string | null
+          sent_at?: string | null
+          status?: string
+          subject?: string
+          target_client_ids?: string[] | null
+          target_tag?: string | null
+          target_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_campaigns_salon_id_fkey"
+            columns: ["salon_id"]
+            isOneToOne: false
+            referencedRelation: "salons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       financial_transactions: {
         Row: {
           amount: number
@@ -1543,6 +1602,79 @@ export type Database = {
           },
         ]
       }
+      promotions: {
+        Row: {
+          created_at: string
+          description: string | null
+          discount_type: string
+          discount_value: number
+          end_date: string | null
+          id: string
+          is_active: boolean
+          name: string
+          salon_id: string
+          start_date: string | null
+          target_product_id: string | null
+          target_service_id: string | null
+          target_type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          discount_type?: string
+          discount_value?: number
+          end_date?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          salon_id: string
+          start_date?: string | null
+          target_product_id?: string | null
+          target_service_id?: string | null
+          target_type?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          discount_type?: string
+          discount_value?: number
+          end_date?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          salon_id?: string
+          start_date?: string | null
+          target_product_id?: string | null
+          target_service_id?: string | null
+          target_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "promotions_salon_id_fkey"
+            columns: ["salon_id"]
+            isOneToOne: false
+            referencedRelation: "salons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "promotions_target_product_id_fkey"
+            columns: ["target_product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "promotions_target_service_id_fkey"
+            columns: ["target_service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       salons: {
         Row: {
           address: string | null
@@ -1747,6 +1879,62 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "services_salon_id_fkey"
+            columns: ["salon_id"]
+            isOneToOne: false
+            referencedRelation: "salons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sms_campaigns: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          name: string
+          recipients_count: number | null
+          salon_id: string
+          scheduled_at: string | null
+          sent_at: string | null
+          status: string
+          target_client_ids: string[] | null
+          target_tag: string | null
+          target_type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          name: string
+          recipients_count?: number | null
+          salon_id: string
+          scheduled_at?: string | null
+          sent_at?: string | null
+          status?: string
+          target_client_ids?: string[] | null
+          target_tag?: string | null
+          target_type?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          name?: string
+          recipients_count?: number | null
+          salon_id?: string
+          scheduled_at?: string | null
+          sent_at?: string | null
+          status?: string
+          target_client_ids?: string[] | null
+          target_tag?: string | null
+          target_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sms_campaigns_salon_id_fkey"
             columns: ["salon_id"]
             isOneToOne: false
             referencedRelation: "salons"
