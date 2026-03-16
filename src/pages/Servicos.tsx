@@ -126,6 +126,14 @@ export default function Servicos() {
       </div>
       <ServiceModal open={modalOpen} onOpenChange={setModalOpen} service={selectedService} onSubmit={handleSubmit} isLoading={isCreating || isUpdating} />
       <DeleteConfirmModal open={deleteOpen} onOpenChange={setDeleteOpen} title="Excluir Serviço" description={`Tem certeza que deseja excluir "${selectedService?.name}"?`} onConfirm={() => { if (selectedService) { deleteService(selectedService.id); setDeleteOpen(false); } }} isLoading={isDeleting} />
+      <ImportModal
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        title="Importar Serviços"
+        description="Importe serviços de uma planilha XLS, XLSX ou CSV exportada de outro sistema."
+        fields={serviceImportFields}
+        onImport={handleImportServices}
+      />
     </AppLayoutNew>
   );
 }
