@@ -512,6 +512,15 @@ export default function Estoque() {
         onOpenChange={setStockExitModalOpen}
         products={products}
       />
+
+      <ImportModal
+        open={importProductsOpen}
+        onOpenChange={setImportProductsOpen}
+        title="Importar Produtos"
+        description="Importe produtos de uma planilha XLS, XLSX ou CSV exportada de outro sistema."
+        fields={productImportFields}
+        onImport={handleImportProducts}
+      />
     </AppLayoutNew>
   );
 }
