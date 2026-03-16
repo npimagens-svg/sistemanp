@@ -36,6 +36,9 @@ export function ServiceModal({ open, onOpenChange, service, onSubmit, isLoading 
     commission_percent: 0,
     category: "",
     is_active: true,
+    send_return_reminder: false,
+    return_reminder_days: 30,
+    return_reminder_message: "",
   });
   const [activeTab, setActiveTab] = useState("info");
   const [selectedProductId, setSelectedProductId] = useState<string>("");
@@ -68,6 +71,9 @@ export function ServiceModal({ open, onOpenChange, service, onSubmit, isLoading 
         commission_percent: Number(service.commission_percent) || 0,
         category: service.category || "",
         is_active: service.is_active,
+        send_return_reminder: service.send_return_reminder || false,
+        return_reminder_days: service.return_reminder_days || 30,
+        return_reminder_message: service.return_reminder_message || "",
       });
     } else {
       setFormData({
@@ -78,6 +84,9 @@ export function ServiceModal({ open, onOpenChange, service, onSubmit, isLoading 
         commission_percent: 0,
         category: "",
         is_active: true,
+        send_return_reminder: false,
+        return_reminder_days: 30,
+        return_reminder_message: "",
       });
     }
     setActiveTab("info");
@@ -212,6 +221,45 @@ export function ServiceModal({ open, onOpenChange, service, onSubmit, isLoading 
                   checked={formData.is_active}
                   onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
                 />
+              </div>
+
+              {/* Return Reminder */}
+              <div className="rounded-lg border p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label htmlFor="send_return_reminder" className="font-medium">Lembrete de Retorno</Label>
+                    <p className="text-xs text-muted-foreground">Enviar e-mail lembrando o cliente de retornar</p>
+                  </div>
+                  <Switch
+                    id="send_return_reminder"
+                    checked={formData.send_return_reminder}
+                    onCheckedChange={(checked) => setFormData({ ...formData, send_return_reminder: checked })}
+                  />
+                </div>
+                {formData.send_return_reminder && (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="return_reminder_days">Dias após o serviço</Label>
+                      <Input
+                        id="return_reminder_days"
+                        type="number"
+                        min={1}
+                        value={formData.return_reminder_days}
+                        onChange={(e) => setFormData({ ...formData, return_reminder_days: parseInt(e.target.value) || 30 })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="return_reminder_message">Mensagem personalizada (opcional)</Label>
+                      <Textarea
+                        id="return_reminder_message"
+                        value={formData.return_reminder_message}
+                        onChange={(e) => setFormData({ ...formData, return_reminder_message: e.target.value })}
+                        rows={2}
+                        placeholder="Ex: Seu cabelo vai adorar! Agende já seu retorno."
+                      />
+                    </div>
+                  </>
+                )}
               </div>
 
               {/* Product Cost Summary */}

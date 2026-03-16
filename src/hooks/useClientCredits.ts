@@ -1,7 +1,9 @@
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { addDays } from "date-fns";
+import { addDays, format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { sendEmail } from "@/lib/sendEmail";
 
 const LOYALTY_PERCENT = 0.07; // 7%
 const LOYALTY_VALIDITY_DAYS = 15;
@@ -28,10 +30,27 @@ export function useGenerateLoyaltyCredit() {
           min_purchase_amount: MIN_PURCHASE_AMOUNT,
           expires_at: expiresAt,
         })
-        .select()
+        .select("*, clients(name, email)")
         .single();
 
       if (error) throw error;
+
+      // Send cashback email
+      const client = (data as any)?.clients;
+      if (client?.email && salonId) {
+        sendEmail({
+          type: "cashback",
+          salon_id: salonId,
+          to_email: client.email,
+          to_name: client.name,
+          client_id: clientId,
+          variables: {
+            credit_amount: creditAmount.toFixed(2),
+            expires_at: format(new Date(expiresAt), "dd/MM/yyyy", { locale: ptBR }),
+          },
+        }).catch(() => {});
+      }
+
       return data;
     },
     onSuccess: () => {

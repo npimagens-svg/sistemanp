@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { sendEmail } from "@/lib/sendEmail";
 
 export interface Client {
   id: string;
@@ -96,9 +97,19 @@ export function useClients() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["clients", salonId] });
       toast({ title: "Cliente criado com sucesso!" });
+      // Send welcome email
+      if (data?.email && salonId) {
+        sendEmail({
+          type: "welcome",
+          salon_id: salonId,
+          to_email: data.email,
+          to_name: data.name,
+          client_id: data.id,
+        }).catch(() => {}); // fire-and-forget
+      }
     },
     onError: (error: Error) => {
       toast({ title: "Erro ao criar cliente", description: error.message, variant: "destructive" });

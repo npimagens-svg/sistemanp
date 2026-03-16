@@ -1011,6 +1011,64 @@ export type Database = {
           },
         ]
       }
+      email_logs: {
+        Row: {
+          campaign_id: string | null
+          client_id: string | null
+          created_at: string
+          email_type: string
+          error_message: string | null
+          id: string
+          salon_id: string
+          status: string
+          subject: string
+        }
+        Insert: {
+          campaign_id?: string | null
+          client_id?: string | null
+          created_at?: string
+          email_type: string
+          error_message?: string | null
+          id?: string
+          salon_id: string
+          status?: string
+          subject: string
+        }
+        Update: {
+          campaign_id?: string | null
+          client_id?: string | null
+          created_at?: string
+          email_type?: string
+          error_message?: string | null
+          id?: string
+          salon_id?: string
+          status?: string
+          subject?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_logs_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "email_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_logs_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_logs_salon_id_fkey"
+            columns: ["salon_id"]
+            isOneToOne: false
+            referencedRelation: "salons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       financial_transactions: {
         Row: {
           amount: number
@@ -1847,7 +1905,10 @@ export type Database = {
           is_active: boolean | null
           name: string
           price: number
+          return_reminder_days: number | null
+          return_reminder_message: string | null
           salon_id: string
+          send_return_reminder: boolean
           updated_at: string
         }
         Insert: {
@@ -1860,7 +1921,10 @@ export type Database = {
           is_active?: boolean | null
           name: string
           price?: number
+          return_reminder_days?: number | null
+          return_reminder_message?: string | null
           salon_id: string
+          send_return_reminder?: boolean
           updated_at?: string
         }
         Update: {
@@ -1873,7 +1937,10 @@ export type Database = {
           is_active?: boolean | null
           name?: string
           price?: number
+          return_reminder_days?: number | null
+          return_reminder_message?: string | null
           salon_id?: string
+          send_return_reminder?: boolean
           updated_at?: string
         }
         Relationships: [

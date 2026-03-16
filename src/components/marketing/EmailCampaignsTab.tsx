@@ -2,12 +2,13 @@ import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Pencil, Trash2, Mail, Send } from "lucide-react";
+import { Plus, Pencil, Trash2, Mail, Send, Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { EmailCampaignModal } from "@/components/marketing/EmailCampaignModal";
+import { sendEmail } from "@/lib/sendEmail";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -50,6 +51,63 @@ export function EmailCampaignsTab() {
     },
   });
 
+  const sendCampaignMutation = useMutation({
+    mutationFn: async (campaign: any) => {
+      if (!salonId) throw new Error("Salão não encontrado");
+      // Get clients based on target_type
+      let query = supabase
+        .from("clients")
+        .select("id, name, email, tags, allow_email_campaigns")
+        .eq("salon_id", salonId)
+        .eq("allow_email_campaigns", true)
+        .not("email", "is", null);
+
+      if (campaign.target_type === "tag" && campaign.target_tag) {
+        query = query.contains("tags", [campaign.target_tag]);
+      }
+
+      const { data: clients, error } = await query;
+      if (error) throw error;
+      if (!clients || clients.length === 0) throw new Error("Nenhum cliente elegível encontrado");
+
+      let sent = 0;
+      for (const client of clients) {
+        if (!client.email) continue;
+        try {
+          await sendEmail({
+            type: "campaign",
+            salon_id: salonId,
+            to_email: client.email,
+            to_name: client.name,
+            client_id: client.id,
+            campaign_id: campaign.id,
+            subject: campaign.subject,
+            body: campaign.body,
+          });
+          sent++;
+        } catch (e) {
+          console.error("Failed to send to", client.email, e);
+        }
+      }
+
+      // Update campaign status
+      await supabase.from("email_campaigns").update({
+        status: "sent",
+        sent_at: new Date().toISOString(),
+        recipients_count: sent,
+      }).eq("id", campaign.id);
+
+      return sent;
+    },
+    onSuccess: (sent) => {
+      queryClient.invalidateQueries({ queryKey: ["email_campaigns", salonId] });
+      toast({ title: `Campanha enviada para ${sent} clientes!` });
+    },
+    onError: (e: Error) => {
+      toast({ title: "Erro ao enviar campanha", description: e.message, variant: "destructive" });
+    },
+  });
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
@@ -85,6 +143,17 @@ export function EmailCampaignsTab() {
                     </p>
                   </div>
                   <div className="flex gap-2">
+                    {campaign.status === "draft" && (
+                      <Button 
+                        size="sm" 
+                        variant="default"
+                        onClick={() => sendCampaignMutation.mutate(campaign)}
+                        disabled={sendCampaignMutation.isPending}
+                      >
+                        {sendCampaignMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4 mr-1" />}
+                        Enviar
+                      </Button>
+                    )}
                     <Button size="icon" variant="ghost" onClick={() => { setEditing(campaign); setModalOpen(true); }}>
                       <Pencil className="h-4 w-4" />
                     </Button>
