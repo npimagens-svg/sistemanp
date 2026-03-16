@@ -77,6 +77,44 @@ export default function Agenda() {
   const { clients, createClient } = useClients();
   const { services } = useServices();
   const { settings: schedulingSettings } = useSchedulingSettings();
+  const { scheduleMap } = useAllProfessionalSchedules();
+
+  // Salon working days array [sun, mon, tue, wed, thu, fri, sat]
+  const salonWorkDays = useMemo(() => [
+    schedulingSettings.sunday,
+    schedulingSettings.monday,
+    schedulingSettings.tuesday,
+    schedulingSettings.wednesday,
+    schedulingSettings.thursday,
+    schedulingSettings.friday,
+    schedulingSettings.saturday,
+  ], [schedulingSettings]);
+
+  // Check if a date is a salon working day
+  const isSalonWorkDay = useCallback((date: Date) => {
+    return salonWorkDays[date.getDay()];
+  }, [salonWorkDays]);
+
+  // Check if a professional works on a given day and time
+  const isProfessionalAvailable = useCallback((professionalId: string, dayOfWeek: number, timeSlot: string) => {
+    const profSchedules = scheduleMap[professionalId];
+    // If no schedule configured, assume available during salon hours
+    if (!profSchedules || profSchedules.length === 0) return true;
+
+    return profSchedules.some((schedule) => {
+      // Check if this day is enabled
+      if (!schedule.days[dayOfWeek]) return false;
+
+      // Check if time is within range
+      const slotMinutes = parseInt(timeSlot.split(":")[0]) * 60 + parseInt(timeSlot.split(":")[1]);
+      const startParts = schedule.start_time.split(":");
+      const endParts = schedule.end_time.split(":");
+      const startMinutes = parseInt(startParts[0]) * 60 + parseInt(startParts[1]);
+      const endMinutes = parseInt(endParts[0]) * 60 + parseInt(endParts[1]);
+
+      return slotMinutes >= startMinutes && slotMinutes < endMinutes;
+    });
+  }, [scheduleMap]);
 
   const timeSlots = useMemo(() => generateTimeSlots(
     schedulingSettings.opening_time,
