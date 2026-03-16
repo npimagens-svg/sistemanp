@@ -1027,12 +1027,31 @@ export function ComandaModal({ comanda, open, onClose, professionals, services, 
                 <Card>
                   <CardContent className="p-4">
                     <Label className="text-xs text-muted-foreground">Diferença:</Label>
-                    <p className={`text-xl font-semibold ${difference < 0 ? 'text-destructive' : difference > 0 ? 'text-orange-500' : 'text-green-600'}`}>
-                      {formatCurrency(-difference)}
+                    <p className={`text-xl font-semibold ${difference > 0 ? 'text-destructive' : difference < 0 ? 'text-green-600' : 'text-foreground'}`}>
+                      {formatCurrency(Math.abs(difference))}
+                      {difference < 0 && ' (troco)'}
+                      {difference > 0 && ' (falta)'}
                     </p>
                   </CardContent>
                 </Card>
               </div>
+
+              {/* Save overpayment as credit option */}
+              {difference < -0.01 && comanda?.client_id && (
+                <Card className="border-green-200 bg-green-50/50">
+                  <CardContent className="p-4 flex items-center gap-3">
+                    <Checkbox 
+                      id="save-credit"
+                      checked={saveOverpaymentAsCredit}
+                      onCheckedChange={(checked) => setSaveOverpaymentAsCredit(!!checked)}
+                    />
+                    <label htmlFor="save-credit" className="flex items-center gap-2 cursor-pointer text-sm font-medium">
+                      <Gift className="h-4 w-4 text-green-600" />
+                      Salvar {formatCurrency(Math.abs(difference))} como crédito para o cliente
+                    </label>
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Total to Pay */}
               <Card className="bg-muted/50">
