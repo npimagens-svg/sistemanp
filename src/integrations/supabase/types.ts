@@ -425,6 +425,74 @@ export type Database = {
           },
         ]
       }
+      client_debts: {
+        Row: {
+          client_id: string
+          comanda_id: string | null
+          created_at: string
+          debt_amount: number
+          id: string
+          is_paid: boolean
+          notes: string | null
+          paid_at: string | null
+          paid_in_comanda_id: string | null
+          salon_id: string
+        }
+        Insert: {
+          client_id: string
+          comanda_id?: string | null
+          created_at?: string
+          debt_amount?: number
+          id?: string
+          is_paid?: boolean
+          notes?: string | null
+          paid_at?: string | null
+          paid_in_comanda_id?: string | null
+          salon_id: string
+        }
+        Update: {
+          client_id?: string
+          comanda_id?: string | null
+          created_at?: string
+          debt_amount?: number
+          id?: string
+          is_paid?: boolean
+          notes?: string | null
+          paid_at?: string | null
+          paid_in_comanda_id?: string | null
+          salon_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_debts_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_debts_comanda_id_fkey"
+            columns: ["comanda_id"]
+            isOneToOne: false
+            referencedRelation: "comandas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_debts_paid_in_comanda_id_fkey"
+            columns: ["paid_in_comanda_id"]
+            isOneToOne: false
+            referencedRelation: "comandas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_debts_salon_id_fkey"
+            columns: ["salon_id"]
+            isOneToOne: false
+            referencedRelation: "salons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_history: {
         Row: {
           action_type: string
