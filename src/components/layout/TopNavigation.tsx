@@ -5,6 +5,7 @@ import {
   DollarSign,
   Package,
   Users,
+  Megaphone,
   BarChart3,
   Settings,
 } from "lucide-react";
