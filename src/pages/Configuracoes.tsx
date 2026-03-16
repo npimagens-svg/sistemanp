@@ -561,7 +561,9 @@ function SchedulingSettingsSection() {
 
 // ===== MAIN COMPONENT =====
 export default function Configuracoes() {
-  const { isMaster, user } = useAuth();
+  const { isMaster, user, userRole } = useAuth();
+  const canManageAccess = isMaster || userRole === "admin";
+  console.log("[Configuracoes] isMaster:", isMaster, "userRole:", userRole, "email:", user?.email, "canManageAccess:", canManageAccess);
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
