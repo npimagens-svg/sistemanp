@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Database, ArrowRight, Loader2, CheckCircle2, XCircle, Download, Copy, AlertTriangle } from "lucide-react";
+import { Database, ArrowRight, Loader2, CheckCircle2, XCircle, AlertTriangle, Wand2 } from "lucide-react";
 import type { SetupData } from "@/pages/SetupWizard";
 import { SETUP_SCHEMA_SQL } from "@/lib/setupSchemaSQL";
 
@@ -18,12 +18,12 @@ interface Props {
 export default function SetupSupabaseStep({ data, updateData, onNext }: Props) {
   const { toast } = useToast();
   const [testing, setTesting] = useState(false);
+  const [creatingSchema, setCreatingSchema] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<"idle" | "success" | "error" | "no_schema">("idle");
-  const [showSchema, setShowSchema] = useState(false);
 
   const handleTest = async () => {
     if (!data.supabaseUrl.trim() || !data.supabaseAnonKey.trim() || !data.supabaseServiceRoleKey.trim()) {
-      toast({ title: "Preencha todos os campos", variant: "destructive" });
+      toast({ title: "Preencha todos os campos obrigatórios", variant: "destructive" });
       return;
     }
 
@@ -31,22 +31,18 @@ export default function SetupSupabaseStep({ data, updateData, onNext }: Props) {
     setConnectionStatus("idle");
 
     try {
-      // Use service role to bypass RLS for schema check
       const testClient = createClient(data.supabaseUrl.trim(), data.supabaseServiceRoleKey.trim(), {
         auth: { persistSession: false },
       });
 
-      // Test connection by checking if salons table exists
       const { error } = await testClient.from("salons").select("id", { count: "exact", head: true });
 
       if (error) {
-        // Check if it's a "table not found" error
         if (error.message?.includes("schema cache") || error.message?.includes("relation") || error.code === "PGRST204") {
           setConnectionStatus("no_schema");
-          setShowSchema(true);
           toast({
-            title: "⚠️ Conexão OK, mas o schema não foi encontrado",
-            description: "Você precisa executar o SQL do schema no SQL Editor do Supabase antes de continuar.",
+            title: "⚠️ Conexão OK, mas as tabelas não existem",
+            description: "Informe a senha do banco e clique em 'Criar Schema Automaticamente'",
             variant: "destructive",
           });
           return;
@@ -70,23 +66,50 @@ export default function SetupSupabaseStep({ data, updateData, onNext }: Props) {
     }
   };
 
-  const handleDownloadSQL = () => {
-    const blob = new Blob([SETUP_SCHEMA_SQL], { type: "text/sql" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "np-hair-studio-schema.sql";
-    a.click();
-    URL.revokeObjectURL(url);
-    toast({ title: "📥 Arquivo SQL baixado!" });
-  };
+  const handleAutoCreateSchema = async () => {
+    if (!data.supabaseDbPassword.trim()) {
+      toast({ title: "Informe a senha do banco de dados", variant: "destructive" });
+      return;
+    }
 
-  const handleCopySQL = async () => {
+    setCreatingSchema(true);
+
     try {
-      await navigator.clipboard.writeText(SETUP_SCHEMA_SQL);
-      toast({ title: "📋 SQL copiado para a área de transferência!" });
-    } catch {
-      toast({ title: "Erro ao copiar", variant: "destructive" });
+      // Call our edge function to create the schema on the external Supabase
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/setup-schema`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({
+            supabaseUrl: data.supabaseUrl.trim(),
+            dbPassword: data.supabaseDbPassword.trim(),
+            schemaSql: SETUP_SCHEMA_SQL,
+          }),
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "Erro ao criar o schema");
+      }
+
+      toast({ title: "✅ Schema criado com sucesso!" });
+
+      // Now re-test the connection
+      await handleTest();
+    } catch (err: any) {
+      toast({
+        title: "Erro ao criar o schema",
+        description: err.message || "Verifique a senha do banco e tente novamente",
+        variant: "destructive",
+      });
+    } finally {
+      setCreatingSchema(false);
     }
   };
 
@@ -127,8 +150,17 @@ export default function SetupSupabaseStep({ data, updateData, onNext }: Props) {
             onChange={(e) => updateData({ supabaseServiceRoleKey: e.target.value })}
             placeholder="eyJhbGciOiJIUz..."
           />
+        </div>
+        <div className="space-y-2">
+          <Label>Senha do Banco de Dados *</Label>
+          <Input
+            type="password"
+            value={data.supabaseDbPassword}
+            onChange={(e) => updateData({ supabaseDbPassword: e.target.value })}
+            placeholder="A senha definida na criação do projeto Supabase"
+          />
           <p className="text-xs text-muted-foreground">
-            ⚠️ Essa chave será usada apenas durante a instalação e não será armazenada no frontend.
+            📍 Encontre em: Supabase → Settings → Database → Database password
           </p>
         </div>
 
@@ -139,7 +171,7 @@ export default function SetupSupabaseStep({ data, updateData, onNext }: Props) {
         )}
         {connectionStatus === "error" && (
           <div className="flex items-center gap-2 text-destructive text-sm font-medium">
-            <XCircle className="h-4 w-4" /> Falha na conexão
+            <XCircle className="h-4 w-4" /> Falha na conexão — verifique as credenciais
           </div>
         )}
         {connectionStatus === "no_schema" && (
@@ -147,44 +179,32 @@ export default function SetupSupabaseStep({ data, updateData, onNext }: Props) {
             <div className="flex items-start gap-2">
               <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
               <div>
-                <p className="font-semibold text-amber-800 dark:text-amber-200">Schema não encontrado</p>
+                <p className="font-semibold text-amber-800 dark:text-amber-200">Tabelas não encontradas</p>
                 <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
-                  A conexão com o Supabase está funcionando, mas as tabelas do sistema ainda não foram criadas.
-                  Você precisa executar o SQL abaixo no <strong>SQL Editor</strong> do seu projeto Supabase.
+                  A conexão está funcionando, mas as tabelas do sistema ainda não foram criadas.
+                  Informe a senha do banco acima e clique no botão abaixo para criar automaticamente.
                 </p>
               </div>
             </div>
 
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={handleDownloadSQL} className="gap-2">
-                <Download className="h-4 w-4" /> Baixar SQL
-              </Button>
-              <Button variant="outline" size="sm" onClick={handleCopySQL} className="gap-2">
-                <Copy className="h-4 w-4" /> Copiar SQL
-              </Button>
-            </div>
-
-            <div className="text-xs text-amber-700 dark:text-amber-300 space-y-1">
-              <p className="font-medium">📋 Como fazer:</p>
-              <ol className="list-decimal list-inside space-y-0.5">
-                <li>Acesse o painel do Supabase → seu projeto</li>
-                <li>Vá em <strong>SQL Editor</strong> (menu lateral)</li>
-                <li>Cole o SQL baixado/copiado e clique em <strong>Run</strong></li>
-                <li>Aguarde a execução (pode levar ~30 segundos)</li>
-                <li>Volte aqui e clique em <strong>Testar Conexão</strong> novamente</li>
-              </ol>
-            </div>
-
-            {showSchema && (
-              <details className="mt-2">
-                <summary className="text-xs cursor-pointer text-amber-600 dark:text-amber-400 hover:underline">
-                  Ver SQL completo ({Math.round(SETUP_SCHEMA_SQL.length / 1024)}KB)
-                </summary>
-                <pre className="mt-2 max-h-60 overflow-auto rounded bg-background border p-2 text-[10px] leading-tight font-mono whitespace-pre-wrap">
-                  {SETUP_SCHEMA_SQL}
-                </pre>
-              </details>
-            )}
+            <Button
+              onClick={handleAutoCreateSchema}
+              disabled={creatingSchema || !data.supabaseDbPassword.trim()}
+              className="gap-2 w-full"
+              variant="default"
+            >
+              {creatingSchema ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Criando schema... (pode levar até 30s)
+                </>
+              ) : (
+                <>
+                  <Wand2 className="h-4 w-4" />
+                  Criar Schema Automaticamente
+                </>
+              )}
+            </Button>
           </div>
         )}
 
@@ -192,20 +212,14 @@ export default function SetupSupabaseStep({ data, updateData, onNext }: Props) {
           <p className="font-medium text-foreground">📋 Onde encontrar as credenciais:</p>
           <p>1. Acesse o painel do Supabase → Seu projeto → <strong>Settings</strong> → <strong>API</strong></p>
           <p>2. Copie a <strong>Project URL</strong>, <strong>anon public</strong> key e <strong>service_role</strong> key</p>
+          <p>3. A senha do banco está em <strong>Settings</strong> → <strong>Database</strong> → <strong>Database password</strong></p>
         </div>
 
         <div className="flex justify-between">
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={handleTest} disabled={testing} className="gap-2">
-              {testing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Database className="h-4 w-4" />}
-              Testar Conexão
-            </Button>
-            {connectionStatus === "idle" && (
-              <Button variant="ghost" size="sm" onClick={handleDownloadSQL} className="gap-2 text-xs">
-                <Download className="h-3 w-3" /> Baixar Schema SQL
-              </Button>
-            )}
-          </div>
+          <Button variant="outline" onClick={handleTest} disabled={testing} className="gap-2">
+            {testing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Database className="h-4 w-4" />}
+            Testar Conexão
+          </Button>
           <Button onClick={onNext} disabled={connectionStatus !== "success"} className="gap-2">
             Próximo <ArrowRight className="h-4 w-4" />
           </Button>

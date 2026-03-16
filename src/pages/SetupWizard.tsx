@@ -25,6 +25,7 @@ export interface SetupData {
   supabaseUrl: string;
   supabaseAnonKey: string;
   supabaseServiceRoleKey: string;
+  supabaseDbPassword: string;
   // Salon
   salonName: string;
   tradeName: string;
@@ -49,6 +50,7 @@ export default function SetupWizard() {
     supabaseUrl: "",
     supabaseAnonKey: "",
     supabaseServiceRoleKey: "",
+    supabaseDbPassword: "",
     salonName: "",
     tradeName: "",
     salonPhone: "",

@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.api-gateway]
 verify_jwt = false
+
+[functions.setup-schema]
+verify_jwt = false
