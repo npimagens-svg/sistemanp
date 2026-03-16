@@ -950,6 +950,19 @@ export function Profissionais() {
   const [showInactive, setShowInactive] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [transferModalOpen, setTransferModalOpen] = useState(false);
+  const [masterEmail, setMasterEmail] = useState<string | null>(null);
+
+  // Fetch master email from system_config
+  useEffect(() => {
+    supabase
+      .from("system_config")
+      .select("value")
+      .eq("key", "master_user_email")
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.value) setMasterEmail(data.value);
+      });
+  }, []);
 
   const activeProfessionals = professionals.filter((p) => p.is_active);
   const inactiveProfessionals = professionals.filter((p) => !p.is_active);
