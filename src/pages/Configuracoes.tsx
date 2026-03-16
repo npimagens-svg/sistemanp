@@ -1130,6 +1130,15 @@ export default function Configuracoes() {
             </div>
           </>
         )}
+
+        {/* ===== WEBHOOK / AGENTE IA ===== */}
+        {subPage === "webhook" && (
+          <>
+            <SettingsBreadcrumb label="Webhook / Agente IA" />
+            <h1 className="text-2xl font-bold tracking-tight">Webhook / Agente IA</h1>
+            <WebhookSettingsSection />
+          </>
+        )}
       </div>
 
       {/* Modals */}
