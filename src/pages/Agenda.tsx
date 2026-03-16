@@ -298,6 +298,7 @@ export default function Agenda() {
               mode="single"
               selected={currentDate}
               onSelect={(date) => date && setCurrentDate(date)}
+              disabled={(date) => !salonWorkDays[date.getDay()]}
               locale={ptBR}
               month={currentDate}
               onMonthChange={setCurrentDate}
