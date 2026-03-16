@@ -10,7 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { 
   Loader2, Receipt, CheckCircle, Calendar, Eye, Pencil, Trash2, 
-  Printer, Clock, Plus, Minus, CreditCard, Banknote, Smartphone, X, Wallet, RefreshCw, Package, Gift
+  Printer, Clock, Plus, Minus, CreditCard, Banknote, Smartphone, X, Wallet, RefreshCw, Package, Gift, AlertTriangle
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { format, isSameDay } from "date-fns";
@@ -99,6 +99,7 @@ export function ComandaModal({ comanda, open, onClose, professionals, services, 
   const [caixaSelectModalOpen, setCaixaSelectModalOpen] = useState(false);
   const [serviceProductUsages, setServiceProductUsages] = useState<Record<string, ProductUsage[]>>({});
   const [saveOverpaymentAsCredit, setSaveOverpaymentAsCredit] = useState(false);
+  const [saveUnderpaymentAsDebt, setSaveUnderpaymentAsDebt] = useState(false);
 
   // Determine if comanda is from today
   const comandaDate = comanda ? new Date(comanda.created_at) : new Date();
@@ -562,10 +563,10 @@ export function ComandaModal({ comanda, open, onClose, professionals, services, 
     }
 
     // Validate payments
-    if (difference > 0.01) {
+    if (difference > 0.01 && !saveUnderpaymentAsDebt) {
       toast({ 
         title: "Pagamento incompleto", 
-        description: `Falta pagar ${formatCurrency(difference)}`,
+        description: `Falta pagar ${formatCurrency(difference)}. Marque a opção de salvar como dívida ou ajuste o valor.`,
         variant: "destructive" 
       });
       setActiveTab("pagamento");
@@ -717,6 +718,21 @@ export function ComandaModal({ comanda, open, onClose, professionals, services, 
           });
         } catch (creditError) {
           console.error("Erro ao salvar crédito de troco:", creditError);
+        }
+      }
+
+      // Save underpayment as client debt
+      if (saveUnderpaymentAsDebt && difference > 0.01 && comanda.client_id) {
+        try {
+          await supabase.from("client_debts" as any).insert({
+            salon_id: salonId,
+            client_id: comanda.client_id,
+            comanda_id: comanda.id,
+            debt_amount: Math.round(difference * 100) / 100,
+            notes: `Dívida da comanda ${comanda.id.slice(0, 4).toUpperCase()}`,
+          });
+        } catch (debtError) {
+          console.error("Erro ao salvar dívida:", debtError);
         }
       }
 
@@ -1072,7 +1088,23 @@ export function ComandaModal({ comanda, open, onClose, professionals, services, 
                 </Card>
               )}
 
-              {/* Total to Pay */}
+              {/* Save underpayment as debt option */}
+              {difference > 0.01 && comanda?.client_id && (
+                <Card className="border-destructive/30 bg-destructive/5">
+                  <CardContent className="p-4 flex items-center gap-3">
+                    <Checkbox 
+                      id="save-debt"
+                      checked={saveUnderpaymentAsDebt}
+                      onCheckedChange={(checked) => setSaveUnderpaymentAsDebt(!!checked)}
+                    />
+                    <label htmlFor="save-debt" className="flex items-center gap-2 cursor-pointer text-sm font-medium">
+                      <AlertTriangle className="h-4 w-4 text-destructive" />
+                      Salvar {formatCurrency(difference)} como dívida do cliente
+                    </label>
+                  </CardContent>
+                </Card>
+              )}
+
               <Card className="bg-muted/50">
                 <CardContent className="p-4 flex items-center justify-between">
                   <div className="flex items-center gap-2">
