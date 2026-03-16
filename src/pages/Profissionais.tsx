@@ -452,16 +452,6 @@ function ProfessionalForm({ professional }: { professional: Professional }) {
               <Input value={form.rg} onChange={(e) => setForm({ ...form, rg: e.target.value })} />
             </div>
           </div>
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="can_be_assistant"
-              checked={form.can_be_assistant}
-              onCheckedChange={(c) => setForm({ ...form, can_be_assistant: c as boolean })}
-            />
-            <Label htmlFor="can_be_assistant" className="text-sm cursor-pointer">
-              Esse profissional pode ser um assistente
-            </Label>
-          </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label className="text-xs">Cargo: <span className="text-muted-foreground">(Obrigatório)</span></Label>
@@ -508,6 +498,16 @@ function ProfessionalForm({ professional }: { professional: Professional }) {
             />
             <Label htmlFor="has_schedule" className="text-sm cursor-pointer font-medium">
               Este profissional possui agenda
+            </Label>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="can_be_assistant"
+              checked={form.can_be_assistant}
+              onCheckedChange={(c) => setForm({ ...form, can_be_assistant: c as boolean })}
+            />
+            <Label htmlFor="can_be_assistant" className="text-sm cursor-pointer font-medium">
+              Pode ser assistente
             </Label>
           </div>
           <div className="space-y-1.5">
