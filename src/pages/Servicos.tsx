@@ -4,10 +4,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Plus, Clock, DollarSign, MoreHorizontal, Loader2 } from "lucide-react";
+import { Plus, Clock, DollarSign, MoreHorizontal, Loader2, Upload } from "lucide-react";
 import { useServices, Service, ServiceInput } from "@/hooks/useServices";
 import { ServiceModal } from "@/components/modals/ServiceModal";
 import { DeleteConfirmModal } from "@/components/modals/DeleteConfirmModal";
+import { ImportModal, ImportField } from "@/components/modals/ImportModal";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function Servicos() {
   const [modalOpen, setModalOpen] = useState(false);
