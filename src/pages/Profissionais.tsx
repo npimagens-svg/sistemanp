@@ -297,6 +297,39 @@ function ProfessionalForm({ professional }: { professional: Professional }) {
     }
   };
 
+  const handleCreateAccess = async () => {
+    const email = newAccessEmail || form.email;
+    if (!email || !newAccessPassword || !salonId) {
+      toast({ title: "Preencha o e-mail e a senha", variant: "destructive" });
+      return;
+    }
+    if (newAccessPassword.length < 6) {
+      toast({ title: "A senha deve ter pelo menos 6 caracteres", variant: "destructive" });
+      return;
+    }
+    setIsCreatingAccess(true);
+    try {
+      const { error } = await supabase.functions.invoke("create-professional-access", {
+        body: {
+          email,
+          password: newAccessPassword,
+          fullName: professional.name,
+          salonId,
+          professionalId: professional.id,
+          accessLevel: "professional",
+        },
+      });
+      if (error) throw error;
+      toast({ title: "Acesso criado com sucesso!", description: "O profissional pode fazer login com o email e senha definidos." });
+      setNewAccessPassword("");
+      setNewAccessEmail("");
+    } catch (error: any) {
+      toast({ title: "Erro ao criar acesso", description: error.message, variant: "destructive" });
+    } finally {
+      setIsCreatingAccess(false);
+    }
+  };
+
   const handleDeleteAccess = async () => {
     if (!professional.user_id || !salonId) return;
     if (!confirm("Tem certeza que deseja excluir o acesso deste profissional ao sistema?")) return;
