@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Webhook, Copy, RefreshCw, Eye, EyeOff, Check, ExternalLink, Loader2, Bot } from "lucide-react";
+import { Webhook, Copy, RefreshCw, Eye, EyeOff, Check, ExternalLink, Loader2, Bot, Download } from "lucide-react";
 
 export function WebhookSettingsSection() {
   const { toast } = useToast();
