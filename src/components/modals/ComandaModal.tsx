@@ -563,10 +563,10 @@ export function ComandaModal({ comanda, open, onClose, professionals, services, 
     }
 
     // Validate payments
-    if (difference > 0.01) {
+    if (difference > 0.01 && !saveUnderpaymentAsDebt) {
       toast({ 
         title: "Pagamento incompleto", 
-        description: `Falta pagar ${formatCurrency(difference)}`,
+        description: `Falta pagar ${formatCurrency(difference)}. Marque a opção de salvar como dívida ou ajuste o valor.`,
         variant: "destructive" 
       });
       setActiveTab("pagamento");
