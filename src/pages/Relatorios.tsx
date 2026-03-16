@@ -170,8 +170,24 @@ export default function Relatorios() {
   return (
     <AppLayoutNew>
       <div className="space-y-6">
-        {/* Header with filters */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        {/* Header */}
+        <div>
+          <h1 className="text-2xl font-bold">Relatórios</h1>
+          <p className="text-muted-foreground">Análise detalhada do desempenho do salão</p>
+        </div>
+
+        <Tabs defaultValue="geral" className="space-y-6">
+          <TabsList>
+            <TabsTrigger value="geral" className="gap-2"><BarChart3 className="h-4 w-4" />Geral</TabsTrigger>
+            <TabsTrigger value="emails" className="gap-2"><Mail className="h-4 w-4" />E-mails</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="emails">
+            <EmailReportsTab />
+          </TabsContent>
+
+          <TabsContent value="geral" className="space-y-6">
+        {/* Date filters */}
           <div>
             <h1 className="text-2xl font-bold">Relatórios</h1>
             <p className="text-muted-foreground">Análise detalhada do desempenho do salão</p>
