@@ -498,20 +498,51 @@ function ProfessionalForm({ professional }: { professional: Professional }) {
             </div>
           </AccordionTrigger>
           <AccordionContent className="space-y-4 pb-4">
-            {professional.create_access ? (
-              <div className="space-y-3">
+            {professional.create_access || professional.user_id ? (
+              <div className="space-y-4">
                 <div className="space-y-1.5">
                   <Label className="text-xs">E-mail de acesso:</Label>
                   <div className="flex items-center gap-2">
                     <Input value={form.email} readOnly className="bg-muted" />
-                    <Button variant="outline" size="sm" className="gap-1 shrink-0">
-                      <KeyRound className="h-3.5 w-3.5" /> Trocar Senha
-                    </Button>
+                    {isMaster && (
+                      <>
+                        <Button variant="outline" size="sm" className="gap-1 shrink-0">
+                          <KeyRound className="h-3.5 w-3.5" /> Trocar Senha
+                        </Button>
+                        <Button variant="destructive" size="sm" className="gap-1 shrink-0" onClick={handleDeleteAccess}>
+                          <Trash2 className="h-3.5 w-3.5" /> Excluir Acesso
+                        </Button>
+                      </>
+                    )}
                   </div>
                 </div>
-                <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg">
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Nível de acesso:</Label>
+                  <Select
+                    value={selectedAccessLevelId || ""}
+                    onValueChange={handleAccessLevelChange}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o nível de acesso" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {accessLevels.map((level) => (
+                        <SelectItem key={level.id} value={level.id}>
+                          {level.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Não encontrou o acesso ideal? Configure os níveis de acesso em{" "}
+                    <a href="/configuracoes?tab=usuarios" className="text-primary underline">Configurações → Usuários e Acessos</a>.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 p-3 bg-accent/50 border border-border rounded-lg">
                   <div className="h-2 w-2 rounded-full bg-green-500" />
-                  <span className="text-sm text-green-700 dark:text-green-300">Este profissional possui acesso ao sistema</span>
+                  <span className="text-sm">Este profissional possui acesso ao sistema</span>
                 </div>
               </div>
             ) : (
