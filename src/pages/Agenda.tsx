@@ -581,12 +581,19 @@ export default function Agenda() {
                         {/* Professional Columns */}
                         {filteredProfessionals.map((professional) => {
                           const slotAppointments = getAppointmentsAtSlot(professional.id, time);
+                          const dayOfWeek = currentDate.getDay();
+                          const available = isProfessionalAvailable(professional.id, dayOfWeek, time);
 
                           return (
                             <div
                               key={`${professional.id}-${time}`}
-                              className="relative border-r border-border/30 last:border-r-0 h-[36px] hover:bg-primary/5 transition-colors cursor-pointer"
-                              onClick={() => handleSlotClick(professional.id, time)}
+                              className={cn(
+                                "relative border-r border-border/30 last:border-r-0 h-[36px] transition-colors",
+                                available
+                                  ? "hover:bg-primary/5 cursor-pointer"
+                                  : "bg-muted/40 cursor-not-allowed"
+                              )}
+                              onClick={() => available && handleSlotClick(professional.id, time)}
                             >
                               {slotAppointments.length > 0 && (
                                 <div className="absolute inset-0 flex gap-px p-px z-10">
