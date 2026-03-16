@@ -604,7 +604,8 @@ export default function Configuracoes() {
   const [transferMasterModalOpen, setTransferMasterModalOpen] = useState(false);
   const [isTransferring, setIsTransferring] = useState(false);
   const [accessLevelConfigModalOpen, setAccessLevelConfigModalOpen] = useState(false);
-  const [selectedAccessLevel, setSelectedAccessLevel] = useState<AccessLevelWithPermissions | null>(null);
+  const [selectedAccessLevelId, setSelectedAccessLevelId] = useState<string | null>(null);
+  const selectedAccessLevel = accessLevels.find(l => l.id === selectedAccessLevelId) ?? null;
   const [createAccessLevelModalOpen, setCreateAccessLevelModalOpen] = useState(false);
   const [deleteAccessLevelModalOpen, setDeleteAccessLevelModalOpen] = useState(false);
   const [accessLevelToDelete, setAccessLevelToDelete] = useState<AccessLevelWithPermissions | null>(null);
@@ -1064,7 +1065,7 @@ export default function Configuracoes() {
                                         variant="outline"
                                         size="icon"
                                         className="h-8 w-8"
-                                        onClick={() => { setSelectedAccessLevel(level); setAccessLevelConfigModalOpen(true); }}
+                                        onClick={() => { setSelectedAccessLevelId(level.id); setAccessLevelConfigModalOpen(true); }}
                                       >
                                         <Pencil className="h-4 w-4" />
                                       </Button>
