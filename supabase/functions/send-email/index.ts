@@ -15,9 +15,31 @@ interface EmailRequest {
   client_id?: string;
   variables?: Record<string, string>;
   campaign_id?: string;
-  // For campaign type
   subject?: string;
   body?: string;
+}
+
+const WHATSAPP_NUMBER = "5511940681490";
+
+function whatsappUrl(subject: string): string {
+  const msg = encodeURIComponent(`Olá! Vi o e-mail "${subject}" e gostaria de agendar um horário 💇‍♀️`);
+  return `https://wa.me/${WHATSAPP_NUMBER}?text=${msg}`;
+}
+
+function whatsappButton(subject: string, primaryColor: string): string {
+  return `
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin:28px 0 8px 0;">
+      <tr><td align="center">
+        <a href="${whatsappUrl(subject)}" target="_blank" style="display:inline-block;background:#25D366;color:#ffffff;font-size:16px;font-weight:bold;text-decoration:none;padding:14px 32px;border-radius:50px;letter-spacing:0.5px;">
+          📲 Agendar pelo WhatsApp
+        </a>
+      </td></tr>
+    </table>
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin:4px 0 0 0;">
+      <tr><td align="center">
+        <p style="color:#a1a1aa;font-size:12px;margin:0;">Clique acima para falar conosco direto no WhatsApp</p>
+      </td></tr>
+    </table>`;
 }
 
 function generateHtml(
@@ -25,39 +47,89 @@ function generateHtml(
   salonName: string,
   title: string,
   bodyContent: string,
-  primaryColor: string = "#6366f1"
+  subject: string,
+  primaryColor: string = "#6366f1",
+  showWhatsapp: boolean = true
 ): string {
   const logoBlock = logoUrl
-    ? `<img src="${logoUrl}" alt="${salonName}" style="max-height:60px;margin-bottom:16px;" />`
+    ? `<img src="${logoUrl}" alt="${salonName}" style="max-height:70px;margin-bottom:12px;border-radius:12px;" />`
     : "";
+
+  const whatsBlock = showWhatsapp ? whatsappButton(subject, primaryColor) : "";
 
   return `<!DOCTYPE html>
 <html>
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#f4f4f5;font-family:Arial,Helvetica,sans-serif;">
-<table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f5;padding:32px 16px;">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+    body { font-family: 'Inter', Arial, Helvetica, sans-serif; }
+  </style>
+</head>
+<body style="margin:0;padding:0;background:linear-gradient(135deg,#f0f0f5 0%,#e8e6f0 100%);font-family:'Inter',Arial,Helvetica,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="padding:40px 16px;">
 <tr><td align="center">
-<table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
-  <tr><td style="background:${primaryColor};padding:24px;text-align:center;">
+
+<!-- Card -->
+<table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:20px;overflow:hidden;box-shadow:0 8px 40px rgba(99,102,241,0.12);">
+  
+  <!-- Header -->
+  <tr><td style="background:linear-gradient(135deg,${primaryColor} 0%,#818cf8 50%,#a78bfa 100%);padding:36px 24px 28px;text-align:center;">
     ${logoBlock}
-    <h1 style="color:#ffffff;margin:0;font-size:22px;">${salonName}</h1>
+    <h1 style="color:#ffffff;margin:0;font-size:24px;font-weight:700;letter-spacing:-0.5px;text-shadow:0 2px 8px rgba(0,0,0,0.15);">${salonName}</h1>
   </td></tr>
-  <tr><td style="padding:32px 24px;">
-    <h2 style="color:#18181b;margin:0 0 16px 0;font-size:20px;">${title}</h2>
-    <div style="color:#3f3f46;font-size:15px;line-height:1.7;">
+
+  <!-- Title bar -->
+  <tr><td style="padding:0;">
+    <table width="100%" cellpadding="0" cellspacing="0">
+      <tr><td style="padding:28px 32px 0;">
+        <div style="background:linear-gradient(135deg,${primaryColor}10 0%,#a78bfa10 100%);border-radius:14px;padding:20px 24px;border-left:4px solid ${primaryColor};">
+          <h2 style="color:#18181b;margin:0;font-size:20px;font-weight:700;">${title}</h2>
+        </div>
+      </td></tr>
+    </table>
+  </td></tr>
+
+  <!-- Body -->
+  <tr><td style="padding:24px 32px 8px;">
+    <div style="color:#3f3f46;font-size:15px;line-height:1.8;">
       ${bodyContent}
     </div>
+    ${whatsBlock}
   </td></tr>
-  <tr><td style="padding:16px 24px;background:#fafafa;text-align:center;border-top:1px solid #e4e4e7;">
-    <p style="color:#a1a1aa;font-size:12px;margin:0;">
-      Você recebeu este e-mail porque é cliente do ${salonName}.
+
+  <!-- Divider -->
+  <tr><td style="padding:8px 32px 0;">
+    <div style="height:1px;background:linear-gradient(90deg,transparent,#e4e4e7,transparent);"></div>
+  </td></tr>
+
+  <!-- Footer -->
+  <tr><td style="padding:20px 32px 28px;text-align:center;">
+    <p style="color:#a1a1aa;font-size:12px;margin:0 0 8px;">
+      Você recebeu este e-mail porque é cliente do <strong>${salonName}</strong>.
+    </p>
+    <p style="color:#c4c4cc;font-size:11px;margin:0;">
+      Feito com 💜 para você
     </p>
   </td></tr>
+
 </table>
+<!-- /Card -->
+
 </td></tr>
 </table>
 </body>
 </html>`;
+}
+
+function highlightBox(content: string, emoji: string, color: string = "#6366f1"): string {
+  return `
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin:16px 0;">
+      <tr><td style="background:${color}08;border:1px solid ${color}20;border-radius:12px;padding:16px 20px;">
+        <p style="margin:0;font-size:15px;color:#18181b;">${emoji} ${content}</p>
+      </td></tr>
+    </table>`;
 }
 
 function buildEmailContent(
@@ -74,64 +146,72 @@ function buildEmailContent(
     case "cashback": {
       const subject = `🎉 Você ganhou R$ ${vars.credit_amount} de cashback no ${salonName}!`;
       const body = `
-        <p>Olá <strong>${name}</strong>!</p>
-        <p>Obrigado por sua visita! Você ganhou <strong>R$ ${vars.credit_amount}</strong> de cashback.</p>
-        <p>📅 <strong>Válido até:</strong> ${vars.expires_at}</p>
-        <p>💰 <strong>Valor mínimo de compra:</strong> R$ 100,00</p>
-        <p>Aproveite esse desconto na sua próxima visita!</p>
-        <p>Com carinho, <strong>${salonName}</strong></p>`;
-      return { subject, html: generateHtml(logoUrl, salonName, "Cashback Gerado! 🎉", body) };
+        <p>Olá <strong>${name}</strong>! 👋</p>
+        <p>Obrigado por sua visita! Temos uma surpresa incrível pra você:</p>
+        ${highlightBox(`<strong>R$ ${vars.credit_amount}</strong> de cashback gerado!`, "💰", "#10b981")}
+        ${highlightBox(`Válido até <strong>${vars.expires_at}</strong>`, "📅")}
+        ${highlightBox(`Valor mínimo de compra: <strong>R$ 100,00</strong>`, "🛒")}
+        <p>Use esse crédito na sua próxima visita e aproveite! 🥰</p>
+        <p style="margin-top:24px;">Com carinho,<br/><strong>${salonName}</strong> 💜</p>`;
+      return { subject, html: generateHtml(logoUrl, salonName, "Cashback Gerado! 🎉", body, subject) };
     }
 
     case "expiring": {
       const subject = `⏰ Seu cashback de R$ ${vars.credit_amount} expira em ${vars.days_left} dias!`;
       const body = `
-        <p>Olá <strong>${name}</strong>!</p>
-        <p>Seu crédito de <strong>R$ ${vars.credit_amount}</strong> está prestes a expirar em <strong>${vars.expires_at}</strong>.</p>
-        <p>Não deixe esse desconto escapar! Agende seu horário e aproveite.</p>
-        <p><strong>${salonName}</strong></p>`;
-      return { subject, html: generateHtml(logoUrl, salonName, "Cashback Expirando ⏰", body) };
+        <p>Olá <strong>${name}</strong>! 👋</p>
+        <p>Seu crédito está prestes a expirar — não deixe escapar!</p>
+        ${highlightBox(`<strong>R$ ${vars.credit_amount}</strong> disponível`, "💰", "#f59e0b")}
+        ${highlightBox(`Expira em <strong>${vars.expires_at}</strong> (${vars.days_left} dias!)`, "⏰", "#ef4444")}
+        <p>Agende agora e aproveite esse desconto especial! 🏃‍♀️</p>
+        <p style="margin-top:24px;">Te esperamos!<br/><strong>${salonName}</strong> 💜</p>`;
+      return { subject, html: generateHtml(logoUrl, salonName, "Cashback Expirando! ⏰", body, subject) };
     }
 
     case "birthday": {
       const subject = `🎂 Feliz Aniversário, ${name}! Temos um presente pra você`;
       const body = `
-        <p>Olá <strong>${name}</strong>!</p>
-        <p>Hoje é um dia especial e queremos celebrar com você! 🎉</p>
-        <p>Passe no <strong>${salonName}</strong> e aproveite nosso carinho especial de aniversário.</p>
-        <p>Parabéns! 🥳</p>`;
-      return { subject, html: generateHtml(logoUrl, salonName, "Feliz Aniversário! 🎂", body) };
+        <p>Olá <strong>${name}</strong>! 🥳</p>
+        ${highlightBox(`<strong>Hoje é seu dia especial!</strong> Parabéns pelo seu aniversário! 🎂🎈`, "🎉", "#ec4899")}
+        <p>Queremos celebrar com você! Passe no <strong>${salonName}</strong> e receba nosso carinho especial de aniversário.</p>
+        <p style="font-size:28px;text-align:center;margin:20px 0;">🎁🎂🥂✨</p>
+        <p>Que esse novo ciclo seja repleto de beleza e alegria!</p>
+        <p style="margin-top:24px;">Com muito amor,<br/><strong>${salonName}</strong> 💜</p>`;
+      return { subject, html: generateHtml(logoUrl, salonName, "Feliz Aniversário! 🎂", body, subject) };
     }
 
     case "welcome": {
       const subject = `Bem-vindo(a) ao ${salonName}! 💇‍♀️`;
       const body = `
-        <p>Olá <strong>${name}</strong>!</p>
-        <p>Que bom ter você como nosso cliente! Estamos prontos para cuidar de você.</p>
-        <p>Nosso programa de fidelidade te dá <strong>7% de cashback</strong> em cada visita!</p>
-        <p>Até breve! <strong>${salonName}</strong></p>`;
-      return { subject, html: generateHtml(logoUrl, salonName, "Bem-vindo(a)! 💇‍♀️", body) };
+        <p>Olá <strong>${name}</strong>! 👋</p>
+        ${highlightBox(`Seja muito bem-vindo(a) à família <strong>${salonName}</strong>!`, "🌟", "#6366f1")}
+        <p>Estamos prontos para cuidar de você com todo carinho e dedicação. ✨</p>
+        ${highlightBox(`Programa de Fidelidade: ganhe <strong>7% de cashback</strong> em cada visita!`, "🎁", "#10b981")}
+        <p>Agende sua primeira visita e descubra tudo que preparamos pra você!</p>
+        <p style="margin-top:24px;">Até breve!<br/><strong>${salonName}</strong> 💜</p>`;
+      return { subject, html: generateHtml(logoUrl, salonName, "Bem-vindo(a)! 💇‍♀️", body, subject) };
     }
 
     case "return_reminder": {
       const subject = `💇 Hora de cuidar do seu ${vars.service_name}, ${name}!`;
-      const customMsg = vars.custom_message || `Que tal agendar seu retorno? Estamos te esperando!`;
+      const customMsg = vars.custom_message || `Que tal agendar seu retorno? Estamos te esperando com saudade!`;
       const body = `
-        <p>Olá <strong>${name}</strong>!</p>
-        <p>Já faz <strong>${vars.days} dias</strong> desde o seu último <strong>${vars.service_name}</strong>.</p>
+        <p>Olá <strong>${name}</strong>! 👋</p>
+        ${highlightBox(`Já faz <strong>${vars.days} dias</strong> desde o seu último <strong>${vars.service_name}</strong>`, "📅", "#f59e0b")}
         <p>${customMsg}</p>
-        <p>Esperamos você! <strong>${salonName}</strong></p>`;
-      return { subject, html: generateHtml(logoUrl, salonName, "Hora de Retornar! 💇", body) };
+        <p>Nossos profissionais estão prontos para deixar você incrível novamente! 💅✨</p>
+        <p style="margin-top:24px;">Esperamos você!<br/><strong>${salonName}</strong> 💜</p>`;
+      return { subject, html: generateHtml(logoUrl, salonName, "Hora de Retornar! 💇", body, subject) };
     }
 
     case "campaign": {
       const subject = customSubject || "Novidades do " + salonName;
-      const body = `<div style="white-space:pre-wrap;">${customBody || ""}</div>`;
-      return { subject, html: generateHtml(logoUrl, salonName, subject, body) };
+      const body = `<div style="white-space:pre-wrap;line-height:1.8;">${customBody || ""}</div>`;
+      return { subject, html: generateHtml(logoUrl, salonName, subject, body, subject) };
     }
 
     default:
-      return { subject: "Mensagem do " + salonName, html: generateHtml(logoUrl, salonName, "Mensagem", "<p>Olá!</p>") };
+      return { subject: "Mensagem do " + salonName, html: generateHtml(logoUrl, salonName, "Mensagem", "<p>Olá!</p>", "Mensagem") };
   }
 }
 
@@ -157,7 +237,6 @@ serve(async (req) => {
       throw new Error("Campos obrigatórios: type, salon_id, to_email");
     }
 
-    // Get salon info
     const { data: salon } = await supabase
       .from("salons")
       .select("name, trade_name, logo_url, email")
@@ -168,7 +247,6 @@ serve(async (req) => {
     const logoUrl = salon?.logo_url || null;
     const fromEmail = salon?.email || "noreply@resend.dev";
 
-    // Build email
     const { subject, html } = buildEmailContent(
       type,
       { ...variables, client_name: to_name },
@@ -178,7 +256,6 @@ serve(async (req) => {
       customBody
     );
 
-    // Send via Resend
     const resendRes = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
@@ -197,7 +274,6 @@ serve(async (req) => {
     const status = resendRes.ok ? "sent" : "failed";
     const errorMessage = resendRes.ok ? null : JSON.stringify(resendData);
 
-    // Log email
     await supabase.from("email_logs").insert({
       salon_id,
       client_id: client_id || null,
