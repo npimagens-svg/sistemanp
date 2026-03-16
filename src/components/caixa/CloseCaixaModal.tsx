@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertTriangle, Loader2 } from "lucide-react";
+import { AlertTriangle, Loader2, Gift } from "lucide-react";
 import { Caixa } from "@/hooks/useCaixas";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -24,12 +24,14 @@ export function CloseCaixaModal({ open, onClose, onConfirm, caixa, isLoading }: 
   const [notes, setNotes] = useState("");
   const [openComandasCount, setOpenComandasCount] = useState(0);
   const [checkingComandas, setCheckingComandas] = useState(false);
+  const [totalCredits, setTotalCredits] = useState(0);
+  const [totalDebts, setTotalDebts] = useState(0);
   const { salonId } = useAuth();
 
-  // Check for open comandas linked to this caixa
   useEffect(() => {
     if (open && caixa?.id && salonId) {
       checkOpenComandas();
+      fetchCreditsAndDebts();
     }
   }, [open, caixa?.id, salonId]);
 
@@ -55,12 +57,45 @@ export function CloseCaixaModal({ open, onClose, onConfirm, caixa, isLoading }: 
     }
   };
 
+  const fetchCreditsAndDebts = async () => {
+    if (!caixa?.id) return;
+    try {
+      const { data: comandas } = await supabase
+        .from("comandas")
+        .select("id")
+        .eq("caixa_id", caixa.id);
+
+      const comandaIds = comandas?.map(c => c.id) || [];
+      if (comandaIds.length === 0) {
+        setTotalCredits(0);
+        setTotalDebts(0);
+        return;
+      }
+
+      const [creditsRes, debtsRes] = await Promise.all([
+        supabase
+          .from("client_credits")
+          .select("credit_amount")
+          .in("comanda_id", comandaIds),
+        supabase
+          .from("client_debts" as any)
+          .select("debt_amount")
+          .in("comanda_id", comandaIds),
+      ]);
+
+      setTotalCredits((creditsRes.data || []).reduce((sum: number, c: any) => sum + Number(c.credit_amount || 0), 0));
+      setTotalDebts((debtsRes.data || []).reduce((sum: number, d: any) => sum + Number(d.debt_amount || 0), 0));
+    } catch (error) {
+      console.error("Error fetching credits/debts:", error);
+    }
+  };
+
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
   };
 
   const handleConfirm = () => {
-    if (openComandasCount > 0) return; // Block if there are open comandas
+    if (openComandasCount > 0) return;
     
     const balance = parseFloat(closingBalance.replace(",", ".")) || 0;
     onConfirm(balance, notes || undefined);
@@ -133,6 +168,30 @@ export function CloseCaixaModal({ open, onClose, onConfirm, caixa, isLoading }: 
                 <span className="font-medium text-primary">Dinheiro Esperado:</span>
                 <span className="text-right font-medium text-primary">{formatCurrency(expectedCash)}</span>
               </div>
+
+              {/* Credits and Debts */}
+              {(totalCredits > 0 || totalDebts > 0) && (
+                <div className="border-t pt-3 space-y-2">
+                  {totalCredits > 0 && (
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="flex items-center gap-1.5 text-green-600">
+                        <Gift className="h-3.5 w-3.5" />
+                        Créditos gerados para clientes:
+                      </span>
+                      <span className="text-green-600 font-medium">{formatCurrency(totalCredits)}</span>
+                    </div>
+                  )}
+                  {totalDebts > 0 && (
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="flex items-center gap-1.5 text-destructive">
+                        <AlertTriangle className="h-3.5 w-3.5" />
+                        Dívidas registradas de clientes:
+                      </span>
+                      <span className="text-destructive font-medium">{formatCurrency(totalDebts)}</span>
+                    </div>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
 
