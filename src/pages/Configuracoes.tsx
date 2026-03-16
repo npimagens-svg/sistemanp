@@ -897,7 +897,7 @@ export default function Configuracoes() {
                         Os acessos são criados ao cadastrar um profissional com "Criar acesso ao sistema" habilitado. 
                         Aqui você pode alterar o nível de permissão de cada usuário.
                       </p>
-                      {!isMaster && (
+                      {!isMaster && !isAdmin && (
                         <p className="text-sm text-orange-600 dark:text-orange-400 mt-2 font-medium">
                           ⚠️ Apenas o usuário master pode alterar permissões.
                         </p>
