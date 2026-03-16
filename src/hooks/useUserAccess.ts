@@ -133,7 +133,7 @@ export function useUserAccess() {
   const deleteAccessMutation = useMutation({
     mutationFn: async (userId: string) => {
       if (!salonId) throw new Error("Salão não encontrado");
-      if (!isMaster) throw new Error("Apenas o usuário master pode remover acessos");
+      if (!canManageAccess) throw new Error("Você não tem permissão para remover acessos");
 
       const { error } = await supabase.functions.invoke("delete-user-access", {
         body: { userId, salonId },
