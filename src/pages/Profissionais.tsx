@@ -500,6 +500,15 @@ function ProfessionalForm({ professional }: { professional: Professional }) {
               Este profissional possui agenda
             </Label>
           </div>
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="can_be_assistant"
+              checked={form.can_be_assistant}
+              onCheckedChange={(c) => setForm({ ...form, can_be_assistant: c as boolean })}
+            />
+            <Label htmlFor="can_be_assistant" className="text-sm cursor-pointer font-medium">
+              Pode ser assistente
+            </Label>
           <div className="space-y-1.5">
             <Label className="text-xs">Qual <strong>ordem</strong> na Agenda?</Label>
             <Input type="number" min={0} value={form.agenda_order} onChange={(e) => setForm({ ...form, agenda_order: Number(e.target.value) })} className="w-20" />
