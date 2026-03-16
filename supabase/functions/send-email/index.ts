@@ -282,6 +282,8 @@ serve(async (req) => {
       status,
       error_message: errorMessage,
       campaign_id: campaign_id || null,
+      resend_id: resendRes.ok ? resendData.id : null,
+      to_email,
     });
 
     if (!resendRes.ok) {
