@@ -17,7 +17,8 @@ export interface UserWithAccess {
 }
 
 export function useUserAccess() {
-  const { salonId, isMaster } = useAuth();
+  const { salonId, isMaster, userRole } = useAuth();
+  const canManageAccess = isMaster || userRole === "admin";
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
