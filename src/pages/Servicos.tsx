@@ -76,7 +76,15 @@ export default function Servicos() {
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <p className="text-muted-foreground">Gerencie os serviços oferecidos pelo salão</p>
-          <Button className="gap-2" onClick={() => { setSelectedService(null); setModalOpen(true); }}><Plus className="h-4 w-4" />Novo Serviço</Button>
+          <div className="flex items-center gap-2">
+            {isMaster && (
+              <Button variant="outline" className="gap-2" onClick={() => setImportOpen(true)}>
+                <Upload className="h-4 w-4" />
+                Importar
+              </Button>
+            )}
+            <Button className="gap-2" onClick={() => { setSelectedService(null); setModalOpen(true); }}><Plus className="h-4 w-4" />Novo Serviço</Button>
+          </div>
         </div>
         {services.length === 0 ? (
           <Card className="flex items-center justify-center py-12">
