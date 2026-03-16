@@ -75,6 +75,13 @@ export default function Agenda() {
   const { professionals, isLoading: professionalsLoading } = useProfessionals();
   const { clients, createClient } = useClients();
   const { services } = useServices();
+  const { settings: schedulingSettings } = useSchedulingSettings();
+
+  const timeSlots = useMemo(() => generateTimeSlots(
+    schedulingSettings.opening_time,
+    schedulingSettings.closing_time,
+    schedulingSettings.slot_interval_minutes
+  ), [schedulingSettings.opening_time, schedulingSettings.closing_time, schedulingSettings.slot_interval_minutes]);
 
   useEffect(() => {
     if (professionals.length > 0 && selectedProfessionalIds.length === 0) {
