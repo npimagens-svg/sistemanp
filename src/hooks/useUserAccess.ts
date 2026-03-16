@@ -117,11 +117,22 @@ export function useUserAccess() {
 
       if (error) throw error;
     },
+    onMutate: async ({ userId, canOpenCaixa }) => {
+      await queryClient.cancelQueries({ queryKey: ["user-access", salonId] });
+      const previous = queryClient.getQueryData<UserWithAccess[]>(["user-access", salonId]);
+      queryClient.setQueryData<UserWithAccess[]>(["user-access", salonId], (old) => {
+        if (!old) return old;
+        return old.map(u => u.user_id === userId ? { ...u, can_open_caixa: canOpenCaixa } : u);
+      });
+      return { previous };
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["user-access", salonId] });
       toast({ title: "Permissão de caixa atualizada!" });
     },
-    onError: (error: Error) => {
+    onError: (error: Error, _vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(["user-access", salonId], context.previous);
+      }
       toast({
         title: "Erro ao atualizar permissão",
         description: error.message,
