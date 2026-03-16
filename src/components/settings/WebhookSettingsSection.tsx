@@ -56,6 +56,249 @@ export function WebhookSettingsSection() {
     setTimeout(() => setCopied(null), 2000);
   };
 
+  const generateDocumentation = () => {
+    const doc = `# Documentação da API Webhook - Sistema NP (Salão de Beleza)
+
+## Visão Geral
+Esta API permite que agentes de IA (como GPT Maker) interajam com o sistema de gestão do salão via webhook HTTP.
+
+## Configuração
+
+- **Método:** POST
+- **URL:** ${webhookUrl}
+- **Headers obrigatórios:**
+  - Content-Type: application/json
+  - x-webhook-key: ${webhookKey || "<SUA_CHAVE_AQUI>"}
+
+## Ações Disponíveis
+
+Todas as requisições devem ser enviadas como JSON no body com o campo "action" indicando a ação desejada.
+
+---
+
+### 1. list_services
+Lista todos os serviços ativos do salão.
+
+**Request:**
+\`\`\`json
+{ "action": "list_services" }
+\`\`\`
+
+**Response:**
+\`\`\`json
+{
+  "services": [
+    { "id": "uuid", "name": "Corte Feminino", "duration_minutes": 60, "price": 80.00, "category": "Cabelo", "is_active": true }
+  ]
+}
+\`\`\`
+
+---
+
+### 2. list_professionals
+Lista todos os profissionais ativos do salão.
+
+**Request:**
+\`\`\`json
+{ "action": "list_professionals" }
+\`\`\`
+
+**Response:**
+\`\`\`json
+{
+  "professionals": [
+    { "id": "uuid", "name": "Maria Silva", "nickname": "Mari", "specialty": "Colorista", "is_active": true, "has_schedule": true }
+  ]
+}
+\`\`\`
+
+---
+
+### 3. search_client
+Busca cliente por telefone, nome ou email. Envie apenas UM dos campos de busca.
+
+**Request (por telefone):**
+\`\`\`json
+{ "action": "search_client", "phone": "11999999999" }
+\`\`\`
+
+**Request (por nome):**
+\`\`\`json
+{ "action": "search_client", "name": "Maria" }
+\`\`\`
+
+**Request (por email):**
+\`\`\`json
+{ "action": "search_client", "email": "maria@email.com" }
+\`\`\`
+
+**Response:**
+\`\`\`json
+{
+  "clients": [
+    { "id": "uuid", "name": "Maria Silva", "phone": "11999999999", "email": "maria@email.com" }
+  ]
+}
+\`\`\`
+
+---
+
+### 4. create_client
+Cadastra um novo cliente no sistema.
+
+**Campos obrigatórios:** name
+**Campos opcionais:** phone, email, notes, tags
+
+**Request:**
+\`\`\`json
+{
+  "action": "create_client",
+  "name": "Maria Silva",
+  "phone": "11999999999",
+  "email": "maria@email.com",
+  "notes": "Cliente VIP",
+  "tags": ["vip", "indicação"]
+}
+\`\`\`
+
+**Response:**
+\`\`\`json
+{
+  "client": { "id": "uuid", "name": "Maria Silva", "phone": "11999999999", "email": "maria@email.com" }
+}
+\`\`\`
+
+---
+
+### 5. create_appointment
+Cria um agendamento na agenda do salão.
+
+**Campos obrigatórios:** professional_id, scheduled_at (formato ISO 8601)
+**Campos opcionais:** client_id, service_id, duration_minutes, notes, price
+
+Se service_id for informado, duration_minutes e price serão preenchidos automaticamente com os valores do serviço (caso não sejam enviados manualmente).
+
+**Request:**
+\`\`\`json
+{
+  "action": "create_appointment",
+  "client_id": "uuid-do-cliente",
+  "professional_id": "uuid-do-profissional",
+  "service_id": "uuid-do-servico",
+  "scheduled_at": "2026-03-20T14:00:00Z",
+  "notes": "Cliente pediu para não usar secador"
+}
+\`\`\`
+
+**Response:**
+\`\`\`json
+{
+  "appointment": {
+    "id": "uuid",
+    "scheduled_at": "2026-03-20T14:00:00Z",
+    "duration_minutes": 60,
+    "status": "scheduled",
+    "notes": "Cliente pediu para não usar secador",
+    "price": 80.00
+  }
+}
+\`\`\`
+
+---
+
+### 6. add_credit
+Adiciona crédito para um cliente (ex: cashback, cortesia).
+
+**Campos obrigatórios:** client_id, credit_amount (valor > 0)
+**Campos opcionais:** min_purchase_amount (padrão: 0), expires_in_days (padrão: 90)
+
+**Request:**
+\`\`\`json
+{
+  "action": "add_credit",
+  "client_id": "uuid-do-cliente",
+  "credit_amount": 50.00,
+  "expires_in_days": 90
+}
+\`\`\`
+
+**Response:**
+\`\`\`json
+{
+  "credit": { "id": "uuid", "credit_amount": 50.00, "expires_at": "2026-06-18T..." }
+}
+\`\`\`
+
+---
+
+### 7. list_available_slots
+Lista horários disponíveis de um profissional em uma data específica.
+
+**Campos obrigatórios:** professional_id, date (formato YYYY-MM-DD)
+
+**Request:**
+\`\`\`json
+{
+  "action": "list_available_slots",
+  "professional_id": "uuid-do-profissional",
+  "date": "2026-03-20"
+}
+\`\`\`
+
+**Response:**
+\`\`\`json
+{
+  "date": "2026-03-20",
+  "professional_id": "uuid",
+  "available_slots": ["08:00", "08:30", "09:00", "09:30", "10:00", "14:00", "14:30", "15:00"]
+}
+\`\`\`
+
+---
+
+## Fluxo Recomendado para Agendamento via WhatsApp
+
+1. Cliente envia mensagem → Agente cumprimenta
+2. Agente chama \`search_client\` com o telefone do cliente
+3. Se não encontrar, chama \`create_client\` para cadastrar
+4. Agente chama \`list_services\` e apresenta as opções
+5. Cliente escolhe o serviço
+6. Agente chama \`list_professionals\` e apresenta os profissionais
+7. Cliente escolhe o profissional
+8. Agente chama \`list_available_slots\` com o profissional e data desejada
+9. Cliente escolhe o horário
+10. Agente chama \`create_appointment\` com todos os dados, incluindo observações se houver
+11. Confirmação enviada ao cliente
+
+## Códigos de Erro
+
+| Status | Significado |
+|--------|------------|
+| 401 | Header x-webhook-key ausente |
+| 403 | Chave de webhook inválida |
+| 400 | Parâmetros faltando ou ação desconhecida |
+| 404 | Salão não encontrado |
+| 500 | Erro interno do servidor |
+
+## Dicas para Configuração no GPT Maker
+
+1. Crie uma "API Action" com método POST
+2. Use a URL: ${webhookUrl}
+3. Adicione o header: x-webhook-key: ${webhookKey || "<SUA_CHAVE>"}
+4. Configure o Content-Type: application/json
+5. O agente deve enviar o JSON no body da requisição
+`;
+
+    const blob = new Blob([doc], { type: "text/markdown;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "webhook-api-documentacao.md";
+    a.click();
+    URL.revokeObjectURL(url);
+    toast({ title: "Documentação baixada com sucesso!" });
+  };
+
   const actions = [
     {
       name: "list_services",
