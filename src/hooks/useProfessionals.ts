@@ -148,6 +148,9 @@ export function useProfessionals() {
     mutationFn: async ({ id, ...input }: ProfessionalInput & { id: string }) => {
       const { password, access_level, access_level_id, ...professionalData } = input;
 
+      // Sanitize empty strings to null for date columns
+      if (professionalData.birth_date === "") professionalData.birth_date = null as any;
+
       const { data, error } = await supabase
         .from("professionals")
         .update(professionalData)
