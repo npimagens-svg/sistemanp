@@ -25,6 +25,7 @@ export interface SetupData {
   supabaseUrl: string;
   supabaseAnonKey: string;
   supabaseServiceRoleKey: string;
+  supabaseDbPassword: string;
   // Salon
   salonName: string;
   tradeName: string;
