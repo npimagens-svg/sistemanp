@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Search, Loader2, Package, AlertTriangle, Edit, Trash2, Truck, Globe, Phone, ArrowDownToLine, ArrowUpFromLine } from "lucide-react";
+import { Plus, Search, Loader2, Package, AlertTriangle, Edit, Trash2, Truck, Globe, Phone, ArrowDownToLine, ArrowUpFromLine, Upload } from "lucide-react";
 import { useProducts } from "@/hooks/useProducts";
 import { useSuppliers, Supplier, SupplierInput } from "@/hooks/useSuppliers";
 import { ProductModal } from "@/components/modals/ProductModal";
@@ -14,6 +14,11 @@ import { SupplierModal } from "@/components/modals/SupplierModal";
 import { DeleteConfirmModal } from "@/components/modals/DeleteConfirmModal";
 import { StockEntryModal } from "@/components/modals/StockEntryModal";
 import { StockExitModal } from "@/components/modals/StockExitModal";
+import { ImportModal, ImportField } from "@/components/modals/ImportModal";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function Estoque() {
   const location = useLocation();
