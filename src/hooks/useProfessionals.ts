@@ -98,6 +98,8 @@ export function useProfessionals() {
 
       const { password, access_level, access_level_id, ...professionalData } = input;
 
+      if (professionalData.birth_date === "") professionalData.birth_date = null as any;
+
       const { data, error } = await supabase
         .from("professionals")
         .insert({ ...professionalData, salon_id: salonId, create_access: false })
