@@ -617,7 +617,7 @@ export default function Configuracoes() {
   };
 
   const handleToggleCanOpenCaixa = (userId: string, currentValue: boolean) => {
-    if (!isMaster) { toast({ title: "Acesso negado", variant: "destructive" }); return; }
+    if (!canManageAccess) { toast({ title: "Acesso negado", variant: "destructive" }); return; }
     updateCanOpenCaixa({ userId, canOpenCaixa: !currentValue });
   };
 
