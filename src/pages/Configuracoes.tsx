@@ -310,6 +310,255 @@ function SettingsBreadcrumb({ label }: { label: string }) {
   );
 }
 
+// ===== SCHEDULING SETTINGS SECTION =====
+function SchedulingSettingsSection() {
+  const { settings, isLoading: isLoadingSchedule, saveSettings, isSaving } = useSchedulingSettings();
+  const navigate = useNavigate();
+
+  const [form, setForm] = useState({
+    opening_time: "08:00",
+    closing_time: "20:00",
+    slot_interval_minutes: 30,
+    default_columns: 6,
+    monday: true,
+    tuesday: true,
+    wednesday: true,
+    thursday: true,
+    friday: true,
+    saturday: true,
+    sunday: false,
+    min_advance_hours: 0,
+    max_advance_days: 90,
+    allow_simultaneous: true,
+    auto_confirm: false,
+  });
+
+  useEffect(() => {
+    if (settings && settings.id !== "") {
+      setForm({
+        opening_time: settings.opening_time?.slice(0, 5) || "08:00",
+        closing_time: settings.closing_time?.slice(0, 5) || "20:00",
+        slot_interval_minutes: settings.slot_interval_minutes,
+        default_columns: settings.default_columns,
+        monday: settings.monday,
+        tuesday: settings.tuesday,
+        wednesday: settings.wednesday,
+        thursday: settings.thursday,
+        friday: settings.friday,
+        saturday: settings.saturday,
+        sunday: settings.sunday,
+        min_advance_hours: settings.min_advance_hours,
+        max_advance_days: settings.max_advance_days,
+        allow_simultaneous: settings.allow_simultaneous,
+        auto_confirm: settings.auto_confirm,
+      });
+    }
+  }, [settings]);
+
+  const handleSave = () => {
+    saveSettings(form);
+  };
+
+  const dayKeys = [
+    { key: "monday" as const, label: "Segunda" },
+    { key: "tuesday" as const, label: "Terça" },
+    { key: "wednesday" as const, label: "Quarta" },
+    { key: "thursday" as const, label: "Quinta" },
+    { key: "friday" as const, label: "Sexta" },
+    { key: "saturday" as const, label: "Sábado" },
+    { key: "sunday" as const, label: "Domingo" },
+  ];
+
+  if (isLoadingSchedule) {
+    return (
+      <>
+        <SettingsBreadcrumb label="Agendamento" />
+        <div className="flex items-center justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <SettingsBreadcrumb label="Agendamento" />
+      <h1 className="text-2xl font-bold tracking-tight">Agendamento</h1>
+      <div className="space-y-4">
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Clock className="h-5 w-5 text-primary" />
+              <CardTitle className="text-lg">Horário de Funcionamento</CardTitle>
+            </div>
+            <CardDescription>Defina os horários de abertura e fechamento do salão.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Horário de Abertura</Label>
+                <Input
+                  type="time"
+                  value={form.opening_time}
+                  onChange={(e) => setForm({ ...form, opening_time: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Horário de Fechamento</Label>
+                <Input
+                  type="time"
+                  value={form.closing_time}
+                  onChange={(e) => setForm({ ...form, closing_time: e.target.value })}
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Calendar className="h-5 w-5 text-primary" />
+              <CardTitle className="text-lg">Intervalo de Horários</CardTitle>
+            </div>
+            <CardDescription>Defina o intervalo de tempo entre os horários na agenda.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Intervalo entre horários</Label>
+                <Select
+                  value={String(form.slot_interval_minutes)}
+                  onValueChange={(v) => setForm({ ...form, slot_interval_minutes: Number(v) })}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="15">15 minutos</SelectItem>
+                    <SelectItem value="30">30 minutos</SelectItem>
+                    <SelectItem value="45">45 minutos</SelectItem>
+                    <SelectItem value="60">1 hora</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Colunas padrão na agenda</Label>
+                <Select
+                  value={String(form.default_columns)}
+                  onValueChange={(v) => setForm({ ...form, default_columns: Number(v) })}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="3">3 colunas</SelectItem>
+                    <SelectItem value="4">4 colunas</SelectItem>
+                    <SelectItem value="5">5 colunas</SelectItem>
+                    <SelectItem value="6">6 colunas</SelectItem>
+                    <SelectItem value="8">8 colunas</SelectItem>
+                    <SelectItem value="10">10 colunas</SelectItem>
+                    <SelectItem value="12">12 colunas</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <ToggleLeft className="h-5 w-5 text-primary" />
+              <CardTitle className="text-lg">Dias de Funcionamento</CardTitle>
+            </div>
+            <CardDescription>Selecione os dias em que o salão funciona.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {dayKeys.map(({ key, label }) => (
+                <div key={key} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={key}
+                    checked={form[key]}
+                    onCheckedChange={(checked) => setForm({ ...form, [key]: checked as boolean })}
+                  />
+                  <Label htmlFor={key} className="cursor-pointer">{label}</Label>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Settings className="h-5 w-5 text-primary" />
+              <CardTitle className="text-lg">Regras de Agendamento</CardTitle>
+            </div>
+            <CardDescription>Configure restrições e preferências para os agendamentos.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Antecedência mínima para agendar</Label>
+                <Select
+                  value={String(form.min_advance_hours)}
+                  onValueChange={(v) => setForm({ ...form, min_advance_hours: Number(v) })}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="0">Sem restrição</SelectItem>
+                    <SelectItem value="1">1 hora antes</SelectItem>
+                    <SelectItem value="2">2 horas antes</SelectItem>
+                    <SelectItem value="24">1 dia antes</SelectItem>
+                    <SelectItem value="48">2 dias antes</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Antecedência máxima para agendar</Label>
+                <Select
+                  value={String(form.max_advance_days)}
+                  onValueChange={(v) => setForm({ ...form, max_advance_days: Number(v) })}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="7">7 dias</SelectItem>
+                    <SelectItem value="15">15 dias</SelectItem>
+                    <SelectItem value="30">30 dias</SelectItem>
+                    <SelectItem value="60">60 dias</SelectItem>
+                    <SelectItem value="90">90 dias</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="space-y-3 pt-2">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="allow_simultaneous"
+                  checked={form.allow_simultaneous}
+                  onCheckedChange={(checked) => setForm({ ...form, allow_simultaneous: checked as boolean })}
+                />
+                <Label htmlFor="allow_simultaneous" className="cursor-pointer">Permitir agendamentos simultâneos no mesmo horário</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="auto_confirm"
+                  checked={form.auto_confirm}
+                  onCheckedChange={(checked) => setForm({ ...form, auto_confirm: checked as boolean })}
+                />
+                <Label htmlFor="auto_confirm" className="cursor-pointer">Confirmar agendamentos automaticamente</Label>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="flex justify-end">
+          <Button className="gap-2" onClick={handleSave} disabled={isSaving}>
+            {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            {isSaving ? "Salvando..." : "Salvar Configurações"}
+          </Button>
+        </div>
+      </div>
+    </>
+  );
+}
+
 // ===== MAIN COMPONENT =====
 export default function Configuracoes() {
   const { isMaster, user } = useAuth();
