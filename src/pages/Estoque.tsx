@@ -34,6 +34,55 @@ export default function Estoque() {
   const [supplierToDelete, setSupplierToDelete] = useState<Supplier | null>(null);
   const [stockEntryModalOpen, setStockEntryModalOpen] = useState(false);
   const [stockExitModalOpen, setStockExitModalOpen] = useState(false);
+  const [importProductsOpen, setImportProductsOpen] = useState(false);
+
+  const { isMaster, salonId } = useAuth();
+  const { toast } = useToast();
+  const qc = useQueryClient();
+
+  const productImportFields: ImportField[] = [
+    { key: "name", label: "Nome", required: true },
+    { key: "description", label: "Descrição" },
+    { key: "sku", label: "SKU / Código" },
+    { key: "category", label: "Categoria" },
+    { key: "brand", label: "Marca" },
+    { key: "product_line", label: "Linha" },
+    { key: "cost_price", label: "Preço de custo" },
+    { key: "sale_price", label: "Preço de venda" },
+    { key: "current_stock", label: "Estoque atual" },
+    { key: "min_stock", label: "Estoque mínimo" },
+    { key: "unit_of_measure", label: "Unidade de medida" },
+    { key: "commission_percent", label: "Comissão (%)" },
+  ];
+
+  const handleImportProducts = async (records: Record<string, any>[]) => {
+    if (!salonId) throw new Error("Salão não encontrado");
+    const rows = records.map(r => ({
+      salon_id: salonId,
+      name: String(r.name),
+      description: r.description ? String(r.description) : null,
+      sku: r.sku ? String(r.sku) : null,
+      category: r.category ? String(r.category) : null,
+      brand: r.brand ? String(r.brand) : null,
+      product_line: r.product_line ? String(r.product_line) : null,
+      cost_price: r.cost_price ? parseFloat(String(r.cost_price).replace(",", ".")) : 0,
+      sale_price: r.sale_price ? parseFloat(String(r.sale_price).replace(",", ".")) : 0,
+      current_stock: r.current_stock ? parseInt(String(r.current_stock)) : 0,
+      min_stock: r.min_stock ? parseInt(String(r.min_stock)) : 0,
+      unit_of_measure: r.unit_of_measure ? String(r.unit_of_measure) : "unidade",
+      commission_percent: r.commission_percent ? parseFloat(String(r.commission_percent).replace(",", ".")) : 0,
+      is_active: true,
+    }));
+
+    for (let i = 0; i < rows.length; i += 50) {
+      const batch = rows.slice(i, i + 50);
+      const { error } = await supabase.from("products").insert(batch);
+      if (error) throw error;
+    }
+
+    qc.invalidateQueries({ queryKey: ["products"] });
+    toast({ title: `${rows.length} produtos importados com sucesso!` });
+  };
 
   const { products, isLoading: isLoadingProducts, createProduct, updateProduct, deleteProduct, isCreating, isUpdating } = useProducts();
   const { 
