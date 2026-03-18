@@ -1,31 +1,24 @@
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import SetupProgress from "@/components/setup/SetupProgress";
-import SetupSupabaseStep from "@/components/setup/SetupSupabaseStep";
 import SetupSalonStep from "@/components/setup/SetupSalonStep";
 import SetupMasterStep from "@/components/setup/SetupMasterStep";
 import SetupIntegrationsStep from "@/components/setup/SetupIntegrationsStep";
-import SetupVercelStep from "@/components/setup/SetupVercelStep";
+import SetupDeployStep from "@/components/setup/SetupDeployStep";
 import SetupDoneStep from "@/components/setup/SetupDoneStep";
-import { Building2, User, Key, CheckCircle2, Database, Rocket } from "lucide-react";
+import { Building2, User, Key, CheckCircle2, Rocket } from "lucide-react";
 
-export type SetupStep = "supabase" | "salon" | "master" | "integrations" | "vercel" | "done";
+export type SetupStep = "salon" | "master" | "integrations" | "deploy" | "done";
 
 export const SETUP_STEPS: { key: SetupStep; label: string; icon: any }[] = [
-  { key: "supabase", label: "Banco de Dados", icon: Database },
   { key: "salon", label: "Salão", icon: Building2 },
   { key: "master", label: "Usuário Master", icon: User },
   { key: "integrations", label: "Integrações", icon: Key },
-  { key: "vercel", label: "Deploy", icon: Rocket },
+  { key: "deploy", label: "Deploy", icon: Rocket },
   { key: "done", label: "Pronto!", icon: CheckCircle2 },
 ];
 
 export interface SetupData {
-  // Supabase
-  supabaseUrl: string;
-  supabaseAnonKey: string;
-  supabaseServiceRoleKey: string;
-  supabaseDbPassword: string;
   // Salon
   salonName: string;
   tradeName: string;
@@ -38,6 +31,11 @@ export interface SetupData {
   masterPassword: string;
   // Integrations
   resendKey: string;
+  // External Supabase (for production deploy)
+  supabaseUrl: string;
+  supabaseAnonKey: string;
+  supabaseServiceRoleKey: string;
+  supabaseDbPassword: string;
   // Vercel
   vercelToken: string;
   vercelProjectId: string;
@@ -45,12 +43,8 @@ export interface SetupData {
 
 export default function SetupWizard() {
   const { toast } = useToast();
-  const [currentStep, setCurrentStep] = useState<SetupStep>("supabase");
+  const [currentStep, setCurrentStep] = useState<SetupStep>("salon");
   const [data, setData] = useState<SetupData>({
-    supabaseUrl: "",
-    supabaseAnonKey: "",
-    supabaseServiceRoleKey: "",
-    supabaseDbPassword: "",
     salonName: "",
     tradeName: "",
     salonPhone: "",
@@ -60,6 +54,10 @@ export default function SetupWizard() {
     masterEmail: "",
     masterPassword: "",
     resendKey: "",
+    supabaseUrl: "",
+    supabaseAnonKey: "",
+    supabaseServiceRoleKey: "",
+    supabaseDbPassword: "",
     vercelToken: "",
     vercelProjectId: "",
   });
@@ -75,20 +73,17 @@ export default function SetupWizard() {
       <div className="w-full max-w-2xl space-y-6">
         <SetupProgress steps={SETUP_STEPS} currentIndex={stepIndex} />
 
-        {currentStep === "supabase" && (
-          <SetupSupabaseStep data={data} updateData={updateData} onNext={() => setCurrentStep("salon")} />
-        )}
         {currentStep === "salon" && (
-          <SetupSalonStep data={data} updateData={updateData} onNext={() => setCurrentStep("master")} onBack={() => setCurrentStep("supabase")} />
+          <SetupSalonStep data={data} updateData={updateData} onNext={() => setCurrentStep("master")} />
         )}
         {currentStep === "master" && (
           <SetupMasterStep data={data} updateData={updateData} onNext={() => setCurrentStep("integrations")} onBack={() => setCurrentStep("salon")} />
         )}
         {currentStep === "integrations" && (
-          <SetupIntegrationsStep data={data} updateData={updateData} onNext={() => setCurrentStep("vercel")} onBack={() => setCurrentStep("master")} />
+          <SetupIntegrationsStep data={data} updateData={updateData} onNext={() => setCurrentStep("deploy")} onBack={() => setCurrentStep("master")} />
         )}
-        {currentStep === "vercel" && (
-          <SetupVercelStep data={data} updateData={updateData} onDone={() => setCurrentStep("done")} onBack={() => setCurrentStep("integrations")} toast={toast} />
+        {currentStep === "deploy" && (
+          <SetupDeployStep data={data} updateData={updateData} onDone={() => setCurrentStep("done")} onBack={() => setCurrentStep("integrations")} toast={toast} />
         )}
         {currentStep === "done" && <SetupDoneStep />}
       </div>
