@@ -25,13 +25,6 @@ function extractProjectRef(url: string): string {
   }
 }
 
-const DEFAULT_ACCESS_LEVELS = [
-  { name: "Administrador", system_key: "admin", is_system: true, color: "#22c55e", description: "Acesso total ao sistema" },
-  { name: "Gerente", system_key: "manager", is_system: true, color: "#3b82f6", description: "Gestão operacional" },
-  { name: "Recepcionista", system_key: "receptionist", is_system: true, color: "#f59e0b", description: "Atendimento e agenda" },
-  { name: "Financeiro", system_key: "financial", is_system: true, color: "#8b5cf6", description: "Acesso financeiro" },
-  { name: "Profissional", system_key: "professional", is_system: true, color: "#ec4899", description: "Apenas sua agenda" },
-];
 
 export default function SetupDeployStep({ data, updateData, onDone, onBack, toast }: Props) {
   const [loading, setLoading] = useState(false);
