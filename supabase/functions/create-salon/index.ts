@@ -5,7 +5,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 const seedDefaultAccessLevels = async (adminClient: any, salonId: string) => {
@@ -28,8 +28,24 @@ const seedDefaultAccessLevels = async (adminClient: any, salonId: string) => {
   }
 
   const uniqueTemplateLevels = Array.from(templateLevelMap.values());
+  
+  // If no templates exist, create default levels directly
   if (uniqueTemplateLevels.length === 0) {
-    return { adminAccessLevelId: null as string | null };
+    const defaultLevels = [
+      { name: "Administrador", system_key: "admin", is_system: true, color: "#22c55e", description: "Acesso total ao sistema", salon_id: salonId },
+      { name: "Gerente", system_key: "manager", is_system: true, color: "#3b82f6", description: "Gestão operacional", salon_id: salonId },
+      { name: "Recepcionista", system_key: "receptionist", is_system: true, color: "#f59e0b", description: "Atendimento e agenda", salon_id: salonId },
+      { name: "Financeiro", system_key: "financial", is_system: true, color: "#8b5cf6", description: "Acesso financeiro", salon_id: salonId },
+      { name: "Profissional", system_key: "professional", is_system: true, color: "#ec4899", description: "Apenas sua agenda", salon_id: salonId },
+    ];
+    
+    const { data: insertedLevels } = await adminClient
+      .from("access_levels")
+      .insert(defaultLevels)
+      .select("id, system_key");
+    
+    const adminAccessLevelId = insertedLevels?.find((l: any) => l.system_key === "admin")?.id ?? null;
+    return { adminAccessLevelId };
   }
 
   const templateIds = uniqueTemplateLevels.map((level) => level.id);
@@ -129,6 +145,10 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const fullName = String(body?.fullName ?? "").trim();
     const salonName = String(body?.salonName ?? "").trim();
+    const tradeName = String(body?.tradeName ?? "").trim() || salonName;
+    const salonPhone = String(body?.salonPhone ?? "").trim() || null;
+    const salonEmail = String(body?.salonEmail ?? "").trim() || null;
+    const salonCnpj = String(body?.salonCnpj ?? "").trim() || null;
 
     if (fullName.length < 2 || salonName.length < 2) {
       return new Response(JSON.stringify({ error: "Invalid payload" }), {
@@ -141,6 +161,7 @@ Deno.serve(async (req) => {
       auth: { persistSession: false },
     });
 
+    // Check if user already has a profile/salon
     const { data: existingProfile, error: existingProfileError } = await adminClient
       .from("profiles")
       .select("salon_id")
@@ -162,9 +183,16 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Create salon
     const { data: salon, error: salonError } = await adminClient
       .from("salons")
-      .insert({ name: salonName })
+      .insert({
+        name: salonName,
+        trade_name: tradeName,
+        phone: salonPhone,
+        email: salonEmail,
+        cnpj: salonCnpj,
+      })
       .select("id")
       .single();
 
@@ -176,6 +204,7 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Create profile
     const { error: profileError } = await adminClient.from("profiles").insert({
       user_id: user.id,
       salon_id: salon.id,
@@ -190,6 +219,7 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Seed access levels
     let adminAccessLevelId: string | null = null;
     try {
       const seeded = await seedDefaultAccessLevels(adminClient, salon.id);
@@ -198,6 +228,7 @@ Deno.serve(async (req) => {
       console.error("create-salon: failed seeding default access levels", seedError);
     }
 
+    // Create admin role
     const rolePayload: Record<string, unknown> = {
       user_id: user.id,
       salon_id: salon.id,
@@ -216,6 +247,32 @@ Deno.serve(async (req) => {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    // Save system config (master email)
+    await adminClient.from("system_config").upsert(
+      { key: "master_user_email", value: user.email },
+      { onConflict: "key" }
+    );
+
+    // Create default scheduling settings
+    const { data: existingSched } = await adminClient
+      .from("scheduling_settings")
+      .select("id")
+      .eq("salon_id", salon.id)
+      .maybeSingle();
+    if (!existingSched) {
+      await adminClient.from("scheduling_settings").insert({ salon_id: salon.id });
+    }
+
+    // Create default commission settings
+    const { data: existingComm } = await adminClient
+      .from("commission_settings")
+      .select("id")
+      .eq("salon_id", salon.id)
+      .maybeSingle();
+    if (!existingComm) {
+      await adminClient.from("commission_settings").insert({ salon_id: salon.id });
     }
 
     return new Response(JSON.stringify({ salonId: salon.id }), {

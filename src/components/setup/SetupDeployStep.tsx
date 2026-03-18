@@ -25,13 +25,6 @@ function extractProjectRef(url: string): string {
   }
 }
 
-const DEFAULT_ACCESS_LEVELS = [
-  { name: "Administrador", system_key: "admin", is_system: true, color: "#22c55e", description: "Acesso total ao sistema" },
-  { name: "Gerente", system_key: "manager", is_system: true, color: "#3b82f6", description: "Gestão operacional" },
-  { name: "Recepcionista", system_key: "receptionist", is_system: true, color: "#f59e0b", description: "Atendimento e agenda" },
-  { name: "Financeiro", system_key: "financial", is_system: true, color: "#8b5cf6", description: "Acesso financeiro" },
-  { name: "Profissional", system_key: "professional", is_system: true, color: "#ec4899", description: "Apenas sua agenda" },
-];
 
 export default function SetupDeployStep({ data, updateData, onDone, onBack, toast }: Props) {
   const [loading, setLoading] = useState(false);
@@ -52,11 +45,11 @@ export default function SetupDeployStep({ data, updateData, onDone, onBack, toas
     setStatusMsg("");
 
     try {
-      // ── PHASE 1: Save to Lovable Cloud (local DB) ──
-      setStatusMsg("💾 Salvando dados localmente...");
+      // ── PHASE 1: Save to Lovable Cloud (local DB) via edge function ──
+      setStatusMsg("💾 Criando usuário master...");
 
-      // 1a. Create master user on Lovable Cloud
-      let localUserId: string;
+      // 1a. Create or sign in master user on Lovable Cloud
+      let localSession: any;
       const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email: data.masterEmail,
         password: data.masterPassword,
@@ -70,95 +63,39 @@ export default function SetupDeployStep({ data, updateData, onDone, onBack, toas
             password: data.masterPassword,
           });
           if (signInError) throw new Error(`Usuário já existe mas não foi possível logar: ${signInError.message}`);
-          localUserId = signInData.user.id;
+          localSession = signInData.session;
         } else {
           throw signUpError;
         }
       } else {
         if (!signUpData.user) throw new Error("Erro ao criar usuário");
-        localUserId = signUpData.user.id;
-      }
-
-      // 1b. Create salon on Lovable Cloud
-      setStatusMsg("💾 Criando salão localmente...");
-      let localSalonId: string;
-      const { data: existingSalon } = await supabase
-        .from("salons")
-        .select("id")
-        .eq("name", data.salonName)
-        .maybeSingle();
-
-      if (existingSalon?.id) {
-        localSalonId = existingSalon.id;
-      } else {
-        const { data: newSalon, error: salonError } = await supabase
-          .from("salons")
-          .insert({
-            name: data.salonName,
-            trade_name: data.tradeName || data.salonName,
-            phone: data.salonPhone || null,
-            email: data.salonEmail || null,
-            cnpj: data.salonCnpj || null,
-          })
-          .select("id")
-          .single();
-        if (salonError || !newSalon?.id) throw salonError || new Error("Erro ao criar salão");
-        localSalonId = newSalon.id;
-      }
-
-      // 1c. Create profile on Lovable Cloud
-      setStatusMsg("💾 Configurando perfil...");
-      const { data: existingProfile } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("user_id", localUserId)
-        .eq("salon_id", localSalonId)
-        .maybeSingle();
-
-      if (!existingProfile) {
-        const { error: profileError } = await supabase.from("profiles").insert({
-          user_id: localUserId,
-          salon_id: localSalonId,
-          full_name: data.masterName,
-        });
-        if (profileError && !profileError.message?.includes("duplicate")) throw profileError;
-      }
-
-      // 1d. Create admin role on Lovable Cloud
-      const { data: existingRole } = await supabase
-        .from("user_roles")
-        .select("id")
-        .eq("user_id", localUserId)
-        .eq("salon_id", localSalonId)
-        .maybeSingle();
-
-      if (!existingRole) {
-        const { error: roleError } = await supabase.from("user_roles").insert({
-          user_id: localUserId,
-          salon_id: localSalonId,
-          role: "admin",
-        });
-        if (roleError && !roleError.message?.includes("duplicate")) throw roleError;
-      }
-
-      // 1e. Save system config
-      await supabase.from("system_config").upsert(
-        { key: "master_user_email", value: data.masterEmail },
-        { onConflict: "key" }
-      );
-
-      // 1f. Create access levels on Lovable Cloud
-      setStatusMsg("💾 Criando níveis de acesso...");
-      for (const level of DEFAULT_ACCESS_LEVELS) {
-        const { data: existing } = await supabase
-          .from("access_levels")
-          .select("id")
-          .eq("salon_id", localSalonId)
-          .eq("system_key", level.system_key)
-          .maybeSingle();
-        if (!existing) {
-          await supabase.from("access_levels").insert({ ...level, salon_id: localSalonId });
+        localSession = signUpData.session;
+        // If no session (email confirmation required), sign in
+        if (!localSession) {
+          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+            email: data.masterEmail,
+            password: data.masterPassword,
+          });
+          if (signInError) throw new Error(`Usuário criado mas não foi possível logar: ${signInError.message}`);
+          localSession = signInData.session;
         }
+      }
+
+      // 1b. Create salon, profile, role via edge function (bypasses RLS)
+      setStatusMsg("💾 Criando salão e configurações...");
+      const { data: salonResult, error: salonFnError } = await supabase.functions.invoke("create-salon", {
+        body: {
+          fullName: data.masterName,
+          salonName: data.salonName,
+          tradeName: data.tradeName || data.salonName,
+          salonPhone: data.salonPhone || "",
+          salonEmail: data.salonEmail || "",
+          salonCnpj: data.salonCnpj || "",
+        },
+      });
+
+      if (salonFnError || !salonResult?.salonId) {
+        throw new Error(salonResult?.error || salonFnError?.message || "Erro ao criar salão");
       }
 
       toast({ title: "✅ Dados salvos localmente com sucesso!" });
@@ -269,7 +206,14 @@ export default function SetupDeployStep({ data, updateData, onDone, onBack, toas
 
       // 3f. Access levels on external
       setStatusMsg("📤 Migrando níveis de acesso...");
-      for (const level of DEFAULT_ACCESS_LEVELS) {
+      const defaultAccessLevels = [
+        { name: "Administrador", system_key: "admin", is_system: true, color: "#22c55e", description: "Acesso total ao sistema" },
+        { name: "Gerente", system_key: "manager", is_system: true, color: "#3b82f6", description: "Gestão operacional" },
+        { name: "Recepcionista", system_key: "receptionist", is_system: true, color: "#f59e0b", description: "Atendimento e agenda" },
+        { name: "Financeiro", system_key: "financial", is_system: true, color: "#8b5cf6", description: "Acesso financeiro" },
+        { name: "Profissional", system_key: "professional", is_system: true, color: "#ec4899", description: "Apenas sua agenda" },
+      ];
+      for (const level of defaultAccessLevels) {
         const { data: extExisting } = await extServiceClient
           .from("access_levels")
           .select("id")
