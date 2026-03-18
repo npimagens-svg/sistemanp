@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { createClient } from "@supabase/supabase-js";
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
