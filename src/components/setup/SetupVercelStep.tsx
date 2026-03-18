@@ -15,8 +15,31 @@ interface Props {
   toast: any;
 }
 
+function extractProjectRef(url: string): string {
+  try {
+    return new URL(url).hostname.split(".")[0];
+  } catch {
+    return "";
+  }
+}
+
+/** Create admin-level Supabase client (service role) */
+function makeServiceClient(url: string, serviceRoleKey: string) {
+  return createClient(url.trim(), serviceRoleKey.trim(), {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+}
+
+/** Create anon-level Supabase client */
+function makeAnonClient(url: string, anonKey: string) {
+  return createClient(url.trim(), anonKey.trim(), {
+    auth: { persistSession: false },
+  });
+}
+
 export default function SetupVercelStep({ data, updateData, onDone, onBack, toast }: Props) {
   const [loading, setLoading] = useState(false);
+  const [statusMsg, setStatusMsg] = useState("");
 
   const handleFinish = async () => {
     if (!data.vercelToken.trim() || !data.vercelProjectId.trim()) {
@@ -25,175 +48,158 @@ export default function SetupVercelStep({ data, updateData, onDone, onBack, toas
     }
 
     setLoading(true);
+    setStatusMsg("");
+
     try {
-      // 1. Create dynamic Supabase client with provided credentials
-      const dynamicClient = createClient(data.supabaseUrl.trim(), data.supabaseAnonKey.trim(), {
-        auth: { persistSession: false },
-      });
+      const serviceClient = makeServiceClient(data.supabaseUrl, data.supabaseServiceRoleKey);
+      const anonClient = makeAnonClient(data.supabaseUrl, data.supabaseAnonKey);
 
-      const serviceClient = createClient(data.supabaseUrl.trim(), data.supabaseServiceRoleKey.trim(), {
-        auth: { persistSession: false },
-      });
+      // ── 1. Create or find master user (idempotent) ──
+      setStatusMsg("Criando usuário master...");
+      let userId: string;
 
-      // 2. Sign up master user
-      const { data: signUpData, error: signUpError } = await dynamicClient.auth.signUp({
+      const { data: signUpData, error: signUpError } = await anonClient.auth.signUp({
         email: data.masterEmail,
         password: data.masterPassword,
         options: { data: { full_name: data.masterName } },
       });
-      if (signUpError) throw signUpError;
-      if (!signUpData.user) throw new Error("Erro ao criar usuário");
 
-      // 3. Create salon using service role client (bypasses RLS)
-      const { data: salon, error: salonError } = await serviceClient
-        .from("salons")
-        .insert({
-          name: data.salonName,
-          trade_name: data.tradeName || data.salonName,
-          phone: data.salonPhone || null,
-          email: data.salonEmail || null,
-          cnpj: data.salonCnpj || null,
-        })
-        .select("id")
-        .single();
-
-      if (salonError || !salon?.id) throw salonError || new Error("Erro ao criar salão");
-
-      // 4. Create profile
-      const { error: profileError } = await serviceClient.from("profiles").insert({
-        user_id: signUpData.user.id,
-        salon_id: salon.id,
-        full_name: data.masterName,
-      });
-      if (profileError) throw profileError;
-
-      // 5. Create admin role
-      const { error: roleError } = await serviceClient.from("user_roles").insert({
-        user_id: signUpData.user.id,
-        salon_id: salon.id,
-        role: "admin",
-      });
-      if (roleError) throw roleError;
-
-      // 6. Seed default access levels (call edge function with service role)
-      try {
-        // Sign in to get a valid token for the edge function
-        const { data: signInData, error: signInError } = await dynamicClient.auth.signInWithPassword({
-          email: data.masterEmail,
-          password: data.masterPassword,
-        });
-        if (!signInError && signInData?.session) {
-          const authedClient = createClient(data.supabaseUrl.trim(), data.supabaseAnonKey.trim(), {
-            global: { headers: { Authorization: `Bearer ${signInData.session.access_token}` } },
-            auth: { persistSession: false },
+      if (signUpError) {
+        // If user already exists, try to sign in
+        if (signUpError.message?.includes("already") || signUpError.message?.includes("User already registered")) {
+          const { data: signInData, error: signInError } = await anonClient.auth.signInWithPassword({
+            email: data.masterEmail,
+            password: data.masterPassword,
           });
-          // Try to seed access levels via the create-salon function
-          // (it will detect existing profile and just return salonId)
-          await authedClient.functions.invoke("create-salon", {
-            body: { fullName: data.masterName, salonName: data.salonName },
-          });
+          if (signInError) throw new Error(`Usuário já existe mas não foi possível logar: ${signInError.message}`);
+          userId = signInData.user.id;
+        } else {
+          throw signUpError;
         }
-      } catch {
-        // Non-critical - access levels can be created later
-        console.warn("Could not seed access levels via edge function");
+      } else {
+        if (!signUpData.user) throw new Error("Erro ao criar usuário");
+        userId = signUpData.user.id;
       }
 
-      // 7. Set RESEND_API_KEY as Supabase secret via Vercel env vars approach
-      // (The Resend key needs to be a Supabase secret, we'll note it for manual setup)
+      // ── 2. Create or find salon (idempotent) ──
+      setStatusMsg("Criando salão...");
+      let salonId: string;
 
-      // 8. Set Vercel env vars and trigger redeploy
-      const envVars = [
-        { key: "VITE_SUPABASE_URL", value: data.supabaseUrl.trim(), target: ["production", "preview"] },
-        { key: "VITE_SUPABASE_PUBLISHABLE_KEY", value: data.supabaseAnonKey.trim(), target: ["production", "preview"] },
-        { key: "VITE_SUPABASE_PROJECT_ID", value: extractProjectId(data.supabaseUrl.trim()), target: ["production", "preview"] },
+      const { data: existingSalon } = await serviceClient
+        .from("salons")
+        .select("id")
+        .eq("name", data.salonName)
+        .maybeSingle();
+
+      if (existingSalon?.id) {
+        salonId = existingSalon.id;
+      } else {
+        const { data: newSalon, error: salonError } = await serviceClient
+          .from("salons")
+          .insert({
+            name: data.salonName,
+            trade_name: data.tradeName || data.salonName,
+            phone: data.salonPhone || null,
+            email: data.salonEmail || null,
+            cnpj: data.salonCnpj || null,
+          })
+          .select("id")
+          .single();
+        if (salonError || !newSalon?.id) throw salonError || new Error("Erro ao criar salão");
+        salonId = newSalon.id;
+      }
+
+      // ── 3. Create profile (idempotent) ──
+      setStatusMsg("Configurando perfil...");
+      const { data: existingProfile } = await serviceClient
+        .from("profiles")
+        .select("id")
+        .eq("user_id", userId)
+        .eq("salon_id", salonId)
+        .maybeSingle();
+
+      if (!existingProfile) {
+        const { error: profileError } = await serviceClient.from("profiles").insert({
+          user_id: userId,
+          salon_id: salonId,
+          full_name: data.masterName,
+        });
+        if (profileError && !profileError.message?.includes("duplicate")) throw profileError;
+      }
+
+      // ── 4. Create admin role (idempotent) ──
+      setStatusMsg("Configurando permissões...");
+      const { data: existingRole } = await serviceClient
+        .from("user_roles")
+        .select("id")
+        .eq("user_id", userId)
+        .eq("salon_id", salonId)
+        .maybeSingle();
+
+      if (!existingRole) {
+        const { error: roleError } = await serviceClient.from("user_roles").insert({
+          user_id: userId,
+          salon_id: salonId,
+          role: "admin",
+        });
+        if (roleError && !roleError.message?.includes("duplicate")) throw roleError;
+      }
+
+      // ── 5. Seed system_config with master email ──
+      setStatusMsg("Salvando configurações...");
+      await serviceClient.from("system_config").upsert(
+        { key: "master_user_email", value: data.masterEmail },
+        { onConflict: "key" }
+      );
+
+      // ── 6. Seed default access levels ──
+      setStatusMsg("Criando níveis de acesso...");
+      const defaultLevels = [
+        { name: "Administrador", system_key: "admin", is_system: true, color: "#22c55e", description: "Acesso total ao sistema", salon_id: salonId },
+        { name: "Gerente", system_key: "manager", is_system: true, color: "#3b82f6", description: "Gestão operacional", salon_id: salonId },
+        { name: "Recepcionista", system_key: "receptionist", is_system: true, color: "#f59e0b", description: "Atendimento e agenda", salon_id: salonId },
+        { name: "Financeiro", system_key: "financial", is_system: true, color: "#8b5cf6", description: "Acesso financeiro", salon_id: salonId },
+        { name: "Profissional", system_key: "professional", is_system: true, color: "#ec4899", description: "Apenas sua agenda", salon_id: salonId },
       ];
 
-      // Set env vars on Vercel
+      for (const level of defaultLevels) {
+        const { data: existing } = await serviceClient
+          .from("access_levels")
+          .select("id")
+          .eq("salon_id", salonId)
+          .eq("system_key", level.system_key)
+          .maybeSingle();
+
+        if (!existing) {
+          await serviceClient.from("access_levels").insert(level);
+        }
+      }
+
+      // ── 7. Set Vercel env vars ──
+      setStatusMsg("Configurando variáveis na Vercel...");
+      const projectRef = extractProjectRef(data.supabaseUrl);
+      const envVars = [
+        { key: "VITE_SUPABASE_URL", value: data.supabaseUrl.trim() },
+        { key: "VITE_SUPABASE_PUBLISHABLE_KEY", value: data.supabaseAnonKey.trim() },
+        { key: "VITE_SUPABASE_PROJECT_ID", value: projectRef },
+      ];
+
       for (const env of envVars) {
-        // Try to create, if exists, patch it
-        const createRes = await fetch(`https://api.vercel.com/v10/projects/${data.vercelProjectId}/env`, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${data.vercelToken}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ key: env.key, value: env.value, target: env.target, type: "plain" }),
-        });
-
-        if (!createRes.ok) {
-          const errBody = await createRes.json().catch(() => ({}));
-          // If already exists, try to update
-          if (errBody?.error?.code === "ENV_ALREADY_EXISTS") {
-            // Get existing env var ID
-            const listRes = await fetch(`https://api.vercel.com/v9/projects/${data.vercelProjectId}/env`, {
-              headers: { Authorization: `Bearer ${data.vercelToken}` },
-            });
-            const listData = await listRes.json();
-            const existing = listData?.envs?.find((e: any) => e.key === env.key);
-            if (existing) {
-              await fetch(`https://api.vercel.com/v9/projects/${data.vercelProjectId}/env/${existing.id}`, {
-                method: "PATCH",
-                headers: {
-                  Authorization: `Bearer ${data.vercelToken}`,
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({ value: env.value, target: env.target, type: "plain" }),
-              });
-            }
-          } else {
-            console.error("Vercel env error:", errBody);
-          }
-        }
+        await upsertVercelEnv(data.vercelToken, data.vercelProjectId, env.key, env.value);
       }
 
-      // 9. Trigger Vercel redeploy
-      const deployRes = await fetch(`https://api.vercel.com/v13/deployments`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${data.vercelToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name: data.vercelProjectId,
-          project: data.vercelProjectId,
-          target: "production",
-          gitSource: undefined,
-        }),
-      });
+      // ── 8. Trigger Vercel redeploy ──
+      setStatusMsg("Fazendo redeploy na Vercel...");
+      await triggerVercelRedeploy(data.vercelToken, data.vercelProjectId);
 
-      if (!deployRes.ok) {
-        // Try alternative: create deployment from latest
-        const redeployRes = await fetch(
-          `https://api.vercel.com/v13/deployments?forceNew=1&projectId=${data.vercelProjectId}`,
-          {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${data.vercelToken}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ name: data.vercelProjectId, target: "production" }),
-          }
-        );
-        if (!redeployRes.ok) {
-          const err = await redeployRes.json().catch(() => ({}));
-          console.warn("Redeploy warning:", err);
-          // Don't throw - setup is complete, just redeploy failed
-          toast({
-            title: "⚠️ Setup concluído, mas o redeploy automático falhou",
-            description: "Faça o redeploy manualmente na Vercel. O banco de dados já está configurado.",
-          });
-          onDone();
-          return;
-        }
-      }
-
-      toast({ title: "🎉 Setup concluído! Redeploy em andamento na Vercel." });
+      toast({ title: "🎉 Setup concluído! Redeploy em andamento." });
       onDone();
     } catch (err: any) {
       console.error("Setup error:", err);
       toast({ title: "Erro no setup", description: err.message, variant: "destructive" });
     } finally {
       setLoading(false);
+      setStatusMsg("");
     }
   };
 
@@ -242,20 +248,26 @@ export default function SetupVercelStep({ data, updateData, onDone, onBack, toas
         {data.resendKey && (
           <div className="rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800 p-3 text-xs text-amber-800 dark:text-amber-200 space-y-1">
             <p className="font-medium">⚠️ Lembrete sobre Resend:</p>
-            <p>Após o deploy, configure a variável <strong>RESEND_API_KEY</strong> nos Secrets do Supabase (Settings → Edge Functions → Secrets).</p>
+            <p>Após o deploy, configure a variável <strong>RESEND_API_KEY</strong> nos Secrets do Supabase.</p>
           </div>
         )}
 
         <div className="rounded-lg border bg-primary/5 p-3 text-sm text-foreground">
           <p className="font-medium mb-1">🚀 O que vai acontecer:</p>
           <ol className="list-decimal list-inside space-y-1 text-xs text-muted-foreground">
-            <li>Criar o usuário master no banco de dados</li>
-            <li>Criar o salão com as informações fornecidas</li>
-            <li>Configurar as variáveis de ambiente na Vercel</li>
+            <li>Criar (ou reutilizar) o usuário master</li>
+            <li>Criar o salão e permissões</li>
+            <li>Configurar variáveis de ambiente na Vercel</li>
             <li>Fazer o redeploy automático</li>
-            <li>Após o deploy, o sistema estará pronto para login</li>
           </ol>
         </div>
+
+        {statusMsg && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            {statusMsg}
+          </div>
+        )}
 
         <div className="flex justify-between">
           <Button variant="outline" onClick={onBack} className="gap-2">
@@ -271,11 +283,81 @@ export default function SetupVercelStep({ data, updateData, onDone, onBack, toas
   );
 }
 
-function extractProjectId(url: string): string {
-  try {
-    const hostname = new URL(url).hostname;
-    return hostname.split(".")[0];
-  } catch {
-    return "";
+// ─── Vercel helpers ───
+
+async function upsertVercelEnv(token: string, projectId: string, key: string, value: string) {
+  const headers = {
+    Authorization: `Bearer ${token}`,
+    "Content-Type": "application/json",
+  };
+  const target = ["production", "preview", "development"];
+
+  // Try create
+  const res = await fetch(`https://api.vercel.com/v10/projects/${projectId}/env`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ key, value, target, type: "plain" }),
+  });
+
+  if (res.ok) return;
+
+  const body = await res.json().catch(() => ({}));
+
+  // If already exists, find and patch
+  if (body?.error?.code === "ENV_ALREADY_EXISTS") {
+    const listRes = await fetch(`https://api.vercel.com/v9/projects/${projectId}/env`, { headers });
+    const listData = await listRes.json();
+    const existing = listData?.envs?.find((e: any) => e.key === key);
+    if (existing) {
+      await fetch(`https://api.vercel.com/v9/projects/${projectId}/env/${existing.id}`, {
+        method: "PATCH",
+        headers,
+        body: JSON.stringify({ value, target, type: "plain" }),
+      });
+    }
+  }
+}
+
+async function triggerVercelRedeploy(token: string, projectId: string) {
+  const headers = {
+    Authorization: `Bearer ${token}`,
+    "Content-Type": "application/json",
+  };
+
+  // 1. Get latest deployment for this project
+  const listRes = await fetch(
+    `https://api.vercel.com/v6/deployments?projectId=${projectId}&limit=1&state=READY`,
+    { headers }
+  );
+
+  if (!listRes.ok) {
+    throw new Error("Não foi possível listar deployments da Vercel. Verifique o Token e Project ID.");
+  }
+
+  const listData = await listRes.json();
+  const latestDeployment = listData?.deployments?.[0];
+
+  if (!latestDeployment) {
+    throw new Error("Nenhum deployment encontrado. Faça um deploy inicial na Vercel primeiro.");
+  }
+
+  // 2. Redeploy using the latest deployment
+  const redeployRes = await fetch(`https://api.vercel.com/v13/deployments`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      name: latestDeployment.name,
+      deploymentId: latestDeployment.uid,
+      meta: { redeployedBy: "setup-wizard" },
+      target: "production",
+    }),
+  });
+
+  if (!redeployRes.ok) {
+    const err = await redeployRes.json().catch(() => ({}));
+    console.error("Redeploy error:", err);
+    throw new Error(
+      `Redeploy falhou (${redeployRes.status}): ${err?.error?.message || "Erro desconhecido"}. Faça o redeploy manualmente na Vercel.`
+    );
   }
 }
