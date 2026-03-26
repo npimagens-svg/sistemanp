@@ -7,12 +7,30 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Database, ArrowRight, Loader2, CheckCircle2, ExternalLink, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { SETUP_SCHEMA_SQL } from "@/lib/setupSchemaSQL";
 import type { SetupData } from "@/pages/SetupWizard";
 
 interface Props {
   data: SetupData;
   updateData: (d: Partial<SetupData>) => void;
   onNext: () => void;
+}
+
+function extractProjectRef(url: string): string {
+  try { return new URL(url).hostname.split(".")[0]; } catch { return ""; }
+}
+
+async function createSchemaViaPat(projectRef: string, pat: string): Promise<void> {
+  const res = await fetch(`https://api.supabase.com/v1/projects/${projectRef}/database/query`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${pat}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ query: SETUP_SCHEMA_SQL }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    const msg = err?.message || err?.error || `HTTP ${res.status}`;
+    if (!msg.includes("already exists") && !msg.includes("duplicate")) throw new Error(msg);
+  }
 }
 
 export default function SetupSupabaseStep({ data, updateData, onNext }: Props) {
@@ -23,52 +41,43 @@ export default function SetupSupabaseStep({ data, updateData, onNext }: Props) {
 
   const handleTestConnection = async () => {
     if (!data.supabaseUrl.trim() || !data.supabaseAnonKey.trim() || !data.supabaseServiceRoleKey.trim()) {
-      toast({ title: "Preencha todas as credenciais", variant: "destructive" });
+      toast({ title: "Preencha URL, Anon Key e Service Role Key", variant: "destructive" });
       return;
     }
-
     setTesting(true);
+    setConnected(false);
     setStatusMsg("🔌 Testando conexão...");
-
     try {
       const client = createClient(data.supabaseUrl.trim(), data.supabaseServiceRoleKey.trim(), {
         auth: { persistSession: false, autoRefreshToken: false },
       });
+      const { error: authError } = await client.auth.admin.listUsers({ page: 1, perPage: 1 });
+      if (authError) throw new Error("Credenciais inválidas: " + authError.message);
 
-      // Test connection by trying to list users
-      const { error } = await client.auth.admin.listUsers({ page: 1, perPage: 1 });
-      if (error) throw new Error("Falha na conexão: " + error.message);
-
-      // Check if schema exists
       setStatusMsg("🔍 Verificando schema...");
       const { error: schemaError } = await client.from("salons").select("id", { count: "exact", head: true });
+      const schemaMissing = schemaError && (
+        schemaError.code === "PGRST204" ||
+        schemaError.message?.includes("relation") ||
+        schemaError.message?.includes("Could not find")
+      );
 
-      if (schemaError && (schemaError.code === "PGRST204" || schemaError.message?.includes("relation") || schemaError.message?.includes("Could not find"))) {
-        toast({
-          title: "⚠️ Schema não encontrado",
-          description: "O banco de dados não possui as tabelas necessárias. Copie o SQL do schema e execute no SQL Editor do Supabase antes de continuar.",
-          variant: "destructive",
-        });
-        setStatusMsg("⚠️ Execute o schema SQL no Supabase SQL Editor primeiro");
-        setConnected(false);
-        setTesting(false);
-        return;
-      }
-
-      // Check if salon already exists
-      const { count } = await client.from("salons").select("id", { count: "exact", head: true });
-      if (count && count > 0) {
-        toast({
-          title: "⚠️ Banco já configurado",
-          description: "Este banco de dados já possui um salão. O sistema vai conectar ao salão existente.",
-        });
+      if (schemaMissing) {
+        if (!data.supabasePat.trim()) {
+          toast({ title: "Banco novo detectado", description: "Adicione o Personal Access Token para criar as tabelas automaticamente.", variant: "destructive" });
+          setStatusMsg("⚠️ Banco novo — adicione o PAT para criar as tabelas");
+          setTesting(false);
+          return;
+        }
+        setStatusMsg("🔧 Criando tabelas no banco de dados...");
+        await createSchemaViaPat(extractProjectRef(data.supabaseUrl.trim()), data.supabasePat.trim());
+        toast({ title: "✅ Tabelas criadas com sucesso!" });
       }
 
       setConnected(true);
-      setStatusMsg("✅ Conexão bem-sucedida!");
-      toast({ title: "✅ Conexão com o banco de dados estabelecida!" });
+      setStatusMsg("✅ Banco de dados pronto!");
+      toast({ title: "✅ Banco de dados configurado!" });
     } catch (err: any) {
-      console.error("Connection test error:", err);
       toast({ title: "Erro na conexão", description: err.message, variant: "destructive" });
       setStatusMsg("");
       setConnected(false);
@@ -77,80 +86,52 @@ export default function SetupSupabaseStep({ data, updateData, onNext }: Props) {
     }
   };
 
-  const handleNext = () => {
-    if (!connected) {
-      toast({ title: "Teste a conexão primeiro", variant: "destructive" });
-      return;
-    }
-    onNext();
-  };
-
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Database className="h-5 w-5" />
-          Configurar Banco de Dados
-        </CardTitle>
-        <CardDescription>
-          Conecte ao seu projeto Supabase para armazenar os dados do sistema
-        </CardDescription>
+        <CardTitle className="flex items-center gap-2"><Database className="h-5 w-5" />Configurar Banco de Dados</CardTitle>
+        <CardDescription>Conecte ao Supabase. As tabelas são criadas automaticamente se o banco for novo.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2 sm:col-span-2">
             <Label>Supabase URL *</Label>
-            <Input
-              value={data.supabaseUrl}
-              onChange={(e) => { updateData({ supabaseUrl: e.target.value }); setConnected(false); }}
-              placeholder="https://xxxxx.supabase.co"
-            />
+            <Input value={data.supabaseUrl} onChange={(e) => { updateData({ supabaseUrl: e.target.value }); setConnected(false); }} placeholder="https://xxxxx.supabase.co" />
           </div>
           <div className="space-y-2">
-            <Label>Anon Key (public) *</Label>
-            <Input
-              type="password"
-              value={data.supabaseAnonKey}
-              onChange={(e) => { updateData({ supabaseAnonKey: e.target.value }); setConnected(false); }}
-              placeholder="eyJhbGciOiJIUz..."
-            />
+            <Label>Anon Key *</Label>
+            <Input type="password" value={data.supabaseAnonKey} onChange={(e) => { updateData({ supabaseAnonKey: e.target.value }); setConnected(false); }} placeholder="eyJhbGciOiJIUz..." />
           </div>
           <div className="space-y-2">
             <Label>Service Role Key *</Label>
-            <Input
-              type="password"
-              value={data.supabaseServiceRoleKey}
-              onChange={(e) => { updateData({ supabaseServiceRoleKey: e.target.value }); setConnected(false); }}
-              placeholder="eyJhbGciOiJIUz..."
-            />
+            <Input type="password" value={data.supabaseServiceRoleKey} onChange={(e) => { updateData({ supabaseServiceRoleKey: e.target.value }); setConnected(false); }} placeholder="eyJhbGciOiJIUz..." />
+          </div>
+          <div className="space-y-2 sm:col-span-2">
+            <Label>Personal Access Token — cria tabelas automaticamente em bancos novos</Label>
+            <Input type="password" value={data.supabasePat} onChange={(e) => { updateData({ supabasePat: e.target.value }); setConnected(false); }} placeholder="sbp_xxxxxxxxxxxxxxxxxxxx" />
+            <p className="text-xs text-muted-foreground">
+              Só necessário se o banco for novo.{" "}
+              <a href="https://supabase.com/dashboard/account/tokens" target="_blank" rel="noopener" className="text-primary underline inline-flex items-center gap-1">Gerar token <ExternalLink className="h-3 w-3" /></a>
+            </p>
           </div>
         </div>
-
         <div className="rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground space-y-1">
           <p className="font-medium text-foreground">📋 Onde encontrar:</p>
-          <p>
-            1. Acesse{" "}
-            <a href="https://supabase.com/dashboard" target="_blank" rel="noopener" className="text-primary underline inline-flex items-center gap-1">
-              supabase.com/dashboard <ExternalLink className="h-3 w-3" />
-            </a>
-          </p>
-          <p>2. Selecione seu projeto → <strong>Settings</strong> → <strong>API</strong></p>
-          <p>3. Copie a <strong>Project URL</strong>, <strong>anon public</strong> key e <strong>service_role</strong> key</p>
+          <p>Acesse <a href="https://supabase.com/dashboard" target="_blank" rel="noopener" className="text-primary underline inline-flex items-center gap-1">supabase.com/dashboard <ExternalLink className="h-3 w-3" /></a> → Seu projeto → <strong>Settings → API</strong></p>
+          <p>Copie <strong>Project URL</strong>, <strong>anon public</strong> e <strong>service_role</strong></p>
         </div>
-
         {statusMsg && (
-          <div className={`flex items-center gap-2 text-sm ${connected ? 'text-green-600' : 'text-muted-foreground'}`}>
+          <div className={`flex items-center gap-2 text-sm ${connected ? "text-green-600" : "text-muted-foreground"}`}>
             {testing ? <Loader2 className="h-4 w-4 animate-spin" /> : connected ? <CheckCircle2 className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
             {statusMsg}
           </div>
         )}
-
         <div className="flex justify-between">
           <Button variant="outline" onClick={handleTestConnection} disabled={testing} className="gap-2">
             {testing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Database className="h-4 w-4" />}
-            Testar Conexão
+            {testing ? "Verificando..." : "Testar Conexão"}
           </Button>
-          <Button onClick={handleNext} disabled={!connected} className="gap-2">
+          <Button onClick={() => { if (!connected) { toast({ title: "Teste a conexão antes de continuar", variant: "destructive" }); return; } onNext(); }} disabled={!connected} className="gap-2">
             Próximo <ArrowRight className="h-4 w-4" />
           </Button>
         </div>

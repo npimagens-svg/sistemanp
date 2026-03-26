@@ -12,16 +12,17 @@ export type SetupStep = "supabase" | "salon" | "master" | "done";
 export const SETUP_STEPS: { key: SetupStep; label: string; icon: any }[] = [
   { key: "supabase", label: "Banco de Dados", icon: Database },
   { key: "salon", label: "Salão", icon: Building2 },
-  { key: "master", label: "Usuário Master", icon: User },
+  { key: "master", label: "Instalação", icon: User },
   { key: "done", label: "Pronto!", icon: CheckCircle2 },
 ];
 
 export interface SetupData {
-  // Supabase External
+  // Supabase
   supabaseUrl: string;
   supabaseAnonKey: string;
   supabaseServiceRoleKey: string;
   supabaseDbPassword: string;
+  supabasePat: string;
   // Salon
   salonName: string;
   tradeName: string;
@@ -32,6 +33,9 @@ export interface SetupData {
   masterName: string;
   masterEmail: string;
   masterPassword: string;
+  // Vercel
+  vercelToken: string;
+  vercelProjectId: string;
   // Integrations
   resendKey: string;
 }
@@ -44,6 +48,7 @@ export default function SetupWizard() {
     supabaseAnonKey: "",
     supabaseServiceRoleKey: "",
     supabaseDbPassword: "",
+    supabasePat: "",
     salonName: "",
     tradeName: "",
     salonPhone: "",
@@ -52,6 +57,8 @@ export default function SetupWizard() {
     masterName: "",
     masterEmail: "",
     masterPassword: "",
+    vercelToken: "",
+    vercelProjectId: "",
     resendKey: "",
   });
 

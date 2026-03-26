@@ -42,6 +42,9 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 function AppRoutes() {
   const { user, loading } = useAuth();
 
+  // If wizard was permanently disabled after setup (baked into build via Vercel env var)
+  const installerDisabled = import.meta.env.VITE_INSTALLER_ENABLED === "false";
+
   // Determine if this is a production deployment (Vercel) or Lovable dev
   const isLovableDev = window.location.hostname.includes('lovable.app') || window.location.hostname === 'localhost';
   
@@ -61,8 +64,43 @@ function AppRoutes() {
       return data === true;
     },
     staleTime: 60000,
-    enabled: supabaseConfigured,
+    enabled: supabaseConfigured && !installerDisabled,
   });
+
+  // If installer was permanently disabled after first setup, skip all checks
+  if (installerDisabled) {
+    if (loading) return <div className="flex items-center justify-center min-h-screen"><div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" /></div>;
+    return (
+      <Routes>
+        <Route path="/setup" element={<Navigate to="/auth" replace />} />
+        <Route path="/auth" element={user ? <Navigate to="/" replace /> : <AuthNew />} />
+        <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+        <Route path="/agenda" element={<ProtectedRoute><Agenda /></ProtectedRoute>} />
+        <Route path="/agenda/*" element={<ProtectedRoute><Agenda /></ProtectedRoute>} />
+        <Route path="/clientes" element={<ProtectedRoute><Clientes /></ProtectedRoute>} />
+        <Route path="/clientes/avisos" element={<ProtectedRoute><ClientAlerts /></ProtectedRoute>} />
+        <Route path="/clientes/fidelidade" element={<ProtectedRoute><ClientLoyalty /></ProtectedRoute>} />
+        <Route path="/clientes/*" element={<ProtectedRoute><Clientes /></ProtectedRoute>} />
+        <Route path="/servicos" element={<ProtectedRoute><Servicos /></ProtectedRoute>} />
+        <Route path="/profissionais" element={<ProtectedRoute><Profissionais /></ProtectedRoute>} />
+        <Route path="/comandas" element={<ProtectedRoute><Comandas /></ProtectedRoute>} />
+        <Route path="/comandas/*" element={<ProtectedRoute><Comandas /></ProtectedRoute>} />
+        <Route path="/financeiro" element={<ProtectedRoute><Financeiro /></ProtectedRoute>} />
+        <Route path="/financeiro/*" element={<ProtectedRoute><Financeiro /></ProtectedRoute>} />
+        <Route path="/comissoes" element={<ProtectedRoute><Comissoes /></ProtectedRoute>} />
+        <Route path="/financeiro/comissoes" element={<ProtectedRoute><Comissoes /></ProtectedRoute>} />
+        <Route path="/estoque" element={<ProtectedRoute><Estoque /></ProtectedRoute>} />
+        <Route path="/estoque/*" element={<ProtectedRoute><Estoque /></ProtectedRoute>} />
+        <Route path="/marketing" element={<ProtectedRoute><Marketing /></ProtectedRoute>} />
+        <Route path="/marketing/*" element={<ProtectedRoute><Marketing /></ProtectedRoute>} />
+        <Route path="/relatorios" element={<ProtectedRoute><Relatorios /></ProtectedRoute>} />
+        <Route path="/relatorios/*" element={<ProtectedRoute><Relatorios /></ProtectedRoute>} />
+        <Route path="/configuracoes" element={<ProtectedRoute><Configuracoes /></ProtectedRoute>} />
+        <Route path="/configuracoes/*" element={<ProtectedRoute><Configuracoes /></ProtectedRoute>} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    );
+  }
 
   // If Supabase is not configured (Lovable dev only), go to setup
   if (isLovableDev && !supabaseConfigured) {
