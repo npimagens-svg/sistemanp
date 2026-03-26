@@ -21,7 +21,7 @@ import { AppointmentHoverCard } from "@/components/agenda/AppointmentHoverCard";
 import { ClientModal } from "@/components/modals/ClientModal";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/dynamicSupabaseClient";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQueryClient } from "@tanstack/react-query";
 

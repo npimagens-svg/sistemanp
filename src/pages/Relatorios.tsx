@@ -13,7 +13,7 @@ import { ptBR } from "date-fns/locale";
 import { CalendarIcon, DollarSign, Users, TrendingUp, ShoppingBag, Loader2, BarChart3, PieChart, Mail } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/dynamicSupabaseClient";
 import { useQuery } from "@tanstack/react-query";
 import { EmailReportsTab } from "@/components/reports/EmailReportsTab";
 import {

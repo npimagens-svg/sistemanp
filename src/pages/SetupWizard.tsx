@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/dynamicSupabaseClient";
 import SetupProgress from "@/components/setup/SetupProgress";
 import SetupSalonStep from "@/components/setup/SetupSalonStep";
 import SetupMasterStep from "@/components/setup/SetupMasterStep";

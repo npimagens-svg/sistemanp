@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { User, Session } from "@supabase/supabase-js";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/dynamicSupabaseClient";
 
 export type AppRole = "admin" | "manager" | "receptionist" | "financial" | "professional";
 

@@ -7,7 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Database, ArrowRight, Loader2, CheckCircle2, XCircle, AlertTriangle, Wand2 } from "lucide-react";
 import type { SetupData } from "@/pages/SetupWizard";
 import { SETUP_SCHEMA_SQL } from "@/lib/setupSchemaSQL";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/dynamicSupabaseClient";
 import { checkExternalSchema, waitForExternalSchema } from "@/components/setup/setupSupabaseHelpers";
 
 interface Props {
