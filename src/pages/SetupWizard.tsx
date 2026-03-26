@@ -1,25 +1,27 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
 import SetupProgress from "@/components/setup/SetupProgress";
 import SetupSalonStep from "@/components/setup/SetupSalonStep";
 import SetupMasterStep from "@/components/setup/SetupMasterStep";
-import SetupIntegrationsStep from "@/components/setup/SetupIntegrationsStep";
-import SetupDeployStep from "@/components/setup/SetupDeployStep";
+import SetupSupabaseStep from "@/components/setup/SetupSupabaseStep";
 import SetupDoneStep from "@/components/setup/SetupDoneStep";
-import { Building2, User, Key, CheckCircle2, Rocket } from "lucide-react";
+import { Building2, User, Database, CheckCircle2 } from "lucide-react";
 
-export type SetupStep = "salon" | "master" | "integrations" | "deploy" | "done";
+export type SetupStep = "supabase" | "salon" | "master" | "done";
 
 export const SETUP_STEPS: { key: SetupStep; label: string; icon: any }[] = [
+  { key: "supabase", label: "Banco de Dados", icon: Database },
   { key: "salon", label: "Salão", icon: Building2 },
   { key: "master", label: "Usuário Master", icon: User },
-  { key: "integrations", label: "Integrações", icon: Key },
-  { key: "deploy", label: "Deploy", icon: Rocket },
   { key: "done", label: "Pronto!", icon: CheckCircle2 },
 ];
 
 export interface SetupData {
+  // Supabase External
+  supabaseUrl: string;
+  supabaseAnonKey: string;
+  supabaseServiceRoleKey: string;
+  supabaseDbPassword: string;
   // Salon
   salonName: string;
   tradeName: string;
@@ -32,21 +34,16 @@ export interface SetupData {
   masterPassword: string;
   // Integrations
   resendKey: string;
-  // External Supabase (for production deploy)
-  supabaseUrl: string;
-  supabaseAnonKey: string;
-  supabaseServiceRoleKey: string;
-  supabaseDbPassword: string;
-  // Vercel
-  vercelToken: string;
-  vercelProjectId: string;
 }
 
 export default function SetupWizard() {
   const { toast } = useToast();
-  const [currentStep, setCurrentStep] = useState<SetupStep>("salon");
-  const [loading, setLoading] = useState(true);
+  const [currentStep, setCurrentStep] = useState<SetupStep>("supabase");
   const [data, setData] = useState<SetupData>({
+    supabaseUrl: "",
+    supabaseAnonKey: "",
+    supabaseServiceRoleKey: "",
+    supabaseDbPassword: "",
     salonName: "",
     tradeName: "",
     salonPhone: "",
@@ -56,37 +53,7 @@ export default function SetupWizard() {
     masterEmail: "",
     masterPassword: "",
     resendKey: "",
-    supabaseUrl: "",
-    supabaseAnonKey: "",
-    supabaseServiceRoleKey: "",
-    supabaseDbPassword: "",
-    vercelToken: "",
-    vercelProjectId: "",
   });
-
-  // Check if salon already exists - if so, skip to deploy step (reconfigure mode)
-  useEffect(() => {
-    const checkExisting = async () => {
-      try {
-        const { count } = await supabase
-          .from("salons")
-          .select("id", { count: "exact", head: true });
-        
-        if (count && count > 0) {
-          setCurrentStep("deploy");
-          toast({
-            title: "Modo reconfiguração",
-            description: "Salão já existe. Preencha as credenciais do Supabase externo e Vercel para fazer o deploy.",
-          });
-        }
-      } catch {
-        // ignore
-      } finally {
-        setLoading(false);
-      }
-    };
-    checkExisting();
-  }, []);
 
   const updateData = (partial: Partial<SetupData>) => {
     setData(prev => ({ ...prev, ...partial }));
@@ -94,30 +61,24 @@ export default function SetupWizard() {
 
   const stepIndex = SETUP_STEPS.findIndex(s => s.key === currentStep);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 flex items-center justify-center p-4">
       <div className="w-full max-w-2xl space-y-6">
+        <div className="text-center mb-4">
+          <h1 className="text-2xl font-bold">Instalação do Sistema</h1>
+          <p className="text-muted-foreground text-sm">Configure seu sistema de gestão para salão de beleza</p>
+        </div>
+
         <SetupProgress steps={SETUP_STEPS} currentIndex={stepIndex} />
 
+        {currentStep === "supabase" && (
+          <SetupSupabaseStep data={data} updateData={updateData} onNext={() => setCurrentStep("salon")} />
+        )}
         {currentStep === "salon" && (
-          <SetupSalonStep data={data} updateData={updateData} onNext={() => setCurrentStep("master")} />
+          <SetupSalonStep data={data} updateData={updateData} onNext={() => setCurrentStep("master")} onBack={() => setCurrentStep("supabase")} />
         )}
         {currentStep === "master" && (
-          <SetupMasterStep data={data} updateData={updateData} onNext={() => setCurrentStep("integrations")} onBack={() => setCurrentStep("salon")} />
-        )}
-        {currentStep === "integrations" && (
-          <SetupIntegrationsStep data={data} updateData={updateData} onNext={() => setCurrentStep("deploy")} onBack={() => setCurrentStep("master")} />
-        )}
-        {currentStep === "deploy" && (
-          <SetupDeployStep data={data} updateData={updateData} onDone={() => setCurrentStep("done")} onBack={() => setCurrentStep("integrations")} toast={toast} />
+          <SetupMasterStep data={data} updateData={updateData} onNext={() => setCurrentStep("done")} onBack={() => setCurrentStep("salon")} isInstaller />
         )}
         {currentStep === "done" && <SetupDoneStep />}
       </div>

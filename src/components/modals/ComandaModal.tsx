@@ -17,7 +17,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { format, isSameDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useComandaItems, ComandaItem, Comanda } from "@/hooks/useComandas";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/dynamicSupabaseClient";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQueryClient } from "@tanstack/react-query";

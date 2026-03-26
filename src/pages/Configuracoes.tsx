@@ -53,7 +53,7 @@ import { CreateAccessLevelModal } from "@/components/settings/CreateAccessLevelM
 import { AvatarUpload } from "@/components/shared/AvatarUpload";
 import { SalonInfoForm } from "@/components/settings/SalonInfoForm";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/dynamicSupabaseClient";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSchedulingSettings, SchedulingSettings } from "@/hooks/useSchedulingSettings";
 import { WebhookSettingsSection } from "@/components/settings/WebhookSettingsSection";

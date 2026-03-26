@@ -29,7 +29,7 @@ import { AvatarUpload } from "@/components/shared/AvatarUpload";
 import { useCepLookup } from "@/hooks/useCepLookup";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/dynamicSupabaseClient";
 import { ProfessionalModal } from "@/components/modals/ProfessionalModal";
 import { TransferAppointmentsModal } from "@/components/modals/TransferAppointmentsModal";
 

@@ -21,7 +21,7 @@ import { useProfessionals } from "@/hooks/useProfessionals";
 import { useServices } from "@/hooks/useServices";
 import { useCaixas } from "@/hooks/useCaixas";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/dynamicSupabaseClient";
 import { format, isSameDay, startOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";

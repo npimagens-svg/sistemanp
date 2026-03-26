@@ -5,7 +5,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/dynamicSupabaseClient";
+import { isSetupCompleted, isUsingExternalSupabase } from "@/lib/dynamicSupabaseClient";
 import { useQuery } from "@tanstack/react-query";
 import Dashboard from "./pages/Dashboard";
 import Agenda from "./pages/Agenda";
@@ -42,18 +43,33 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 function AppRoutes() {
   const { user, loading } = useAuth();
 
-  // Check if Supabase is properly configured (env vars present and valid)
-  const supabaseConfigured = Boolean(
+  // Determine if this is a production deployment (Vercel) or Lovable dev
+  const isLovableDev = window.location.hostname.includes('lovable.app') || window.location.hostname === 'localhost';
+  
+  // For external deployments: check localStorage for setup completion
+  const setupDone = isSetupCompleted();
+  
+  // If we're on a production deployment and setup hasn't been done, force setup wizard
+  if (!isLovableDev && !setupDone) {
+    return (
+      <Routes>
+        <Route path="/setup" element={<SetupWizard />} />
+        <Route path="*" element={<Navigate to="/setup" replace />} />
+      </Routes>
+    );
+  }
+
+  // For Lovable dev: check if Supabase is configured and salon exists
+  const supabaseConfigured = isLovableDev ? Boolean(
     import.meta.env.VITE_SUPABASE_URL &&
     import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY &&
     import.meta.env.VITE_SUPABASE_URL !== "https://placeholder.supabase.co"
-  );
+  ) : true; // External deployments with setup done are always configured
 
-  // Check if any salon exists in the database (only if Supabase is configured)
+  // Check if any salon exists in the database
   const { data: hasSalon, isLoading: checkingSalon } = useQuery({
     queryKey: ["setup-check"],
     queryFn: async () => {
-      if (!supabaseConfigured) return false;
       const { count, error } = await supabase
         .from("salons")
         .select("id", { count: "exact", head: true });
@@ -64,8 +80,8 @@ function AppRoutes() {
     enabled: supabaseConfigured,
   });
 
-  // If Supabase is not configured, go straight to setup wizard
-  if (!supabaseConfigured) {
+  // If Supabase is not configured (Lovable dev only), go to setup
+  if (isLovableDev && !supabaseConfigured) {
     return (
       <Routes>
         <Route path="/setup" element={<SetupWizard />} />

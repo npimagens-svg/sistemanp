@@ -1,4 +1,4 @@
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/dynamicSupabaseClient";
 
 interface SendEmailParams {
   type: "cashback" | "expiring" | "birthday" | "welcome" | "campaign" | "return_reminder";

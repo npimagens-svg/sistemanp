@@ -12,7 +12,7 @@ import { ClientModal } from "@/components/modals/ClientModal";
 import { DeleteConfirmModal } from "@/components/modals/DeleteConfirmModal";
 import { ImportModal, ImportField } from "@/components/modals/ImportModal";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/dynamicSupabaseClient";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";

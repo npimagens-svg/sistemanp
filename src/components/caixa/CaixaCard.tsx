@@ -7,7 +7,7 @@ import { ptBR } from "date-fns/locale";
 import { X, Eye, Pencil, RotateCcw, Gift, AlertTriangle } from "lucide-react";
 import { Caixa } from "@/hooks/useCaixas";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/dynamicSupabaseClient";
 
 interface CaixaCardProps {
   caixa: Caixa;

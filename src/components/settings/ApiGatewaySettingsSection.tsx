@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/dynamicSupabaseClient";
 import { Copy, RefreshCw, Eye, EyeOff, Check, Loader2, Globe, Download, ShieldCheck } from "lucide-react";
 
 export function ApiGatewaySettingsSection() {

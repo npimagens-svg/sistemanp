@@ -16,7 +16,7 @@ import { StockEntryModal } from "@/components/modals/StockEntryModal";
 import { StockExitModal } from "@/components/modals/StockExitModal";
 import { ImportModal, ImportField } from "@/components/modals/ImportModal";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/dynamicSupabaseClient";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 

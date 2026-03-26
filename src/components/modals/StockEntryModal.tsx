@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/select";
 import { Product } from "@/hooks/useProducts";
 import { Supplier } from "@/hooks/useSuppliers";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/dynamicSupabaseClient";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
