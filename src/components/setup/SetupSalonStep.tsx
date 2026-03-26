@@ -3,16 +3,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Building2, ArrowRight } from "lucide-react";
+import { Building2, ArrowRight, ArrowLeft } from "lucide-react";
 import type { SetupData } from "@/pages/SetupWizard";
 
 interface Props {
   data: SetupData;
   updateData: (d: Partial<SetupData>) => void;
   onNext: () => void;
+  onBack?: () => void;
 }
 
-export default function SetupSalonStep({ data, updateData, onNext }: Props) {
+export default function SetupSalonStep({ data, updateData, onNext, onBack }: Props) {
   const { toast } = useToast();
 
   const handleNext = () => {
@@ -55,7 +56,12 @@ export default function SetupSalonStep({ data, updateData, onNext }: Props) {
             <Input value={data.salonEmail} onChange={(e) => updateData({ salonEmail: e.target.value })} placeholder="contato@seusalao.com.br" />
           </div>
         </div>
-        <div className="flex justify-end">
+        <div className="flex justify-between">
+          {onBack ? (
+            <Button variant="outline" onClick={onBack} className="gap-2">
+              <ArrowLeft className="h-4 w-4" /> Voltar
+            </Button>
+          ) : <div />}
           <Button onClick={handleNext} className="gap-2">
             Próximo <ArrowRight className="h-4 w-4" />
           </Button>
