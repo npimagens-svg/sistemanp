@@ -52,15 +52,13 @@ function AppRoutes() {
     import.meta.env.VITE_SUPABASE_URL !== "https://placeholder.supabase.co"
   ) : true; // External deployments with setup done are always configured
 
-  // Check if any salon exists in the database
+  // Check if setup has been done via SECURITY DEFINER function (bypasses RLS)
   const { data: hasSalon, isLoading: checkingSalon } = useQuery({
     queryKey: ["setup-check"],
     queryFn: async () => {
-      const { count, error } = await supabase
-        .from("salons")
-        .select("id", { count: "exact", head: true });
+      const { data, error } = await supabase.rpc("is_setup_done");
       if (error) return true; // assume setup done on error
-      return (count ?? 0) > 0;
+      return data === true;
     },
     staleTime: 60000,
     enabled: supabaseConfigured,
