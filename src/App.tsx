@@ -6,7 +6,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/dynamicSupabaseClient";
-import { isSetupCompleted, isUsingExternalSupabase } from "@/lib/dynamicSupabaseClient";
 import { useQuery } from "@tanstack/react-query";
 import Dashboard from "./pages/Dashboard";
 import Agenda from "./pages/Agenda";
@@ -46,19 +45,6 @@ function AppRoutes() {
   // Determine if this is a production deployment (Vercel) or Lovable dev
   const isLovableDev = window.location.hostname.includes('lovable.app') || window.location.hostname === 'localhost';
   
-  // For external deployments: check localStorage for setup completion
-  const setupDone = isSetupCompleted();
-  
-  // If we're on a production deployment and setup hasn't been done, force setup wizard
-  if (!isLovableDev && !setupDone) {
-    return (
-      <Routes>
-        <Route path="/setup" element={<SetupWizard />} />
-        <Route path="*" element={<Navigate to="/setup" replace />} />
-      </Routes>
-    );
-  }
-
   // For Lovable dev: check if Supabase is configured and salon exists
   const supabaseConfigured = isLovableDev ? Boolean(
     import.meta.env.VITE_SUPABASE_URL &&
