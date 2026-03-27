@@ -935,6 +935,19 @@ CREATE POLICY "Authenticated users can upload avatars" ON storage.objects FOR IN
 CREATE POLICY "Users can update avatars" ON storage.objects FOR UPDATE USING (bucket_id = 'avatars' AND auth.role() = 'authenticated');
 CREATE POLICY "Users can delete avatars" ON storage.objects FOR DELETE USING (bucket_id = 'avatars' AND auth.role() = 'authenticated');
 
+-- 11. FUNÇÃO DE VERIFICAÇÃO DE SETUP (necessária para o App.tsx)
+CREATE OR REPLACE FUNCTION public.is_setup_done()
+RETURNS boolean
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS(SELECT 1 FROM public.salons LIMIT 1);
+$$;
+
+GRANT EXECUTE ON FUNCTION public.is_setup_done() TO anon;
+GRANT EXECUTE ON FUNCTION public.is_setup_done() TO authenticated;
+
 -- ============================================================
 -- Schema criado com sucesso! Agora volte ao instalador.
 -- ============================================================
