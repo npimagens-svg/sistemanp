@@ -21,16 +21,44 @@ function extractProjectRef(url: string): string {
   try { return new URL(url).hostname.split(".")[0]; } catch { return ""; }
 }
 
-async function createSchemaViaPat(projectRef: string, pat: string): Promise<void> {
+async function runQueryViaPat(projectRef: string, pat: string, sql: string): Promise<string | null> {
   const res = await fetch(`https://api.supabase.com/v1/projects/${projectRef}/database/query`, {
     method: "POST",
     headers: { Authorization: `Bearer ${pat}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ query: SETUP_SCHEMA_SQL }),
+    body: JSON.stringify({ query: sql }),
   });
+  const body = await res.text();
   if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    const msg = err?.message || err?.error || `HTTP ${res.status}`;
-    if (!msg.includes("already exists") && !msg.includes("duplicate")) throw new Error(msg);
+    const msg = (() => { try { const j = JSON.parse(body); return j?.message || j?.error || body; } catch { return body; } })();
+    if (msg.includes("already exists") || msg.includes("duplicate")) return null;
+    return msg;
+  }
+  return null;
+}
+
+async function createSchemaViaPat(
+  projectRef: string,
+  pat: string,
+  onProgress?: (msg: string) => void,
+): Promise<void> {
+  // Split SQL into sections by "-- N." comments
+  const sections = SETUP_SCHEMA_SQL
+    .split(/(?=^-- \d+\.)/m)
+    .map(s => s.trim())
+    .filter(s => s.length > 10);
+
+  const errors: string[] = [];
+  for (let i = 0; i < sections.length; i++) {
+    const sectionName = sections[i].split("\n")[0].replace(/^--\s*/, "").trim();
+    onProgress?.(`🔧 Criando: ${sectionName} (${i + 1}/${sections.length})`);
+    const err = await runQueryViaPat(projectRef, pat, sections[i]);
+    if (err) {
+      console.error(`Schema section "${sectionName}" error:`, err);
+      errors.push(`${sectionName}: ${err}`);
+    }
+  }
+  if (errors.length > 0) {
+    throw new Error(`Erros ao criar schema:\n${errors.join("\n")}`);
   }
 }
 
@@ -71,7 +99,7 @@ export default function SetupSupabaseStep({ data, updateData, onNext }: Props) {
           return;
         }
         setStatusMsg("🔧 Criando tabelas no banco de dados...");
-        await createSchemaViaPat(extractProjectRef(data.supabaseUrl.trim()), data.supabasePat.trim());
+        await createSchemaViaPat(extractProjectRef(data.supabaseUrl.trim()), data.supabasePat.trim(), setStatusMsg);
         setStatusMsg("⏳ Aguardando tabelas ficarem disponíveis...");
         const schemaResult = await waitForExternalSchema(data.supabaseUrl.trim(), data.supabaseServiceRoleKey.trim(), 12, 2000);
         if (schemaResult.status !== "success") {
