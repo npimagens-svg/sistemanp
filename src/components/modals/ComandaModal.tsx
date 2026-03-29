@@ -23,6 +23,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useQueryClient } from "@tanstack/react-query";
 import { ServiceSearchSelect } from "@/components/shared/ServiceSearchSelect";
 import { CaixaSelectModal } from "@/components/caixa/CaixaSelectModal";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from "@/components/ui/command";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Caixa } from "@/hooks/useCaixas";
 import { useAllServiceProducts } from "@/hooks/useServiceProducts";
 import { useStockMovements } from "@/hooks/useStockMovements";
@@ -101,6 +104,61 @@ export function ComandaModal({ comanda, open, onClose, professionals, services, 
   const [serviceProductUsages, setServiceProductUsages] = useState<Record<string, ProductUsage[]>>({});
   const [saveOverpaymentAsCredit, setSaveOverpaymentAsCredit] = useState(false);
   const [saveUnderpaymentAsDebt, setSaveUnderpaymentAsDebt] = useState(false);
+  const [packagePopoverOpen, setPackagePopoverOpen] = useState(false);
+  const [availablePackages, setAvailablePackages] = useState<any[]>([]);
+  const [isLoadingPackages, setIsLoadingPackages] = useState(false);
+
+  // Load packages when popover opens
+  const loadPackages = async () => {
+    if (!salonId) return;
+    setIsLoadingPackages(true);
+    const { data } = await supabase
+      .from("packages")
+      .select("*, package_items(*, service:services(id, name, price))")
+      .eq("salon_id", salonId)
+      .eq("is_active", true)
+      .order("name");
+    setAvailablePackages(data || []);
+    setIsLoadingPackages(false);
+  };
+
+  const handleAddPackage = async (pkg: any) => {
+    if (!comanda?.id || !salonId) return;
+    setPackagePopoverOpen(false);
+
+    try {
+      // 1. Create client_package record
+      if (comanda.client_id) {
+        await supabase.from("client_packages").insert({
+          salon_id: salonId,
+          client_id: comanda.client_id,
+          package_id: pkg.id,
+          total_paid: Number(pkg.price),
+          status: "active",
+          notes: `Vendido via comanda #${comanda.id.slice(0, 8)}`,
+        });
+      }
+
+      // 2. Add package as item in comanda
+      await addItem({
+        comanda_id: comanda.id,
+        service_id: null,
+        product_id: null,
+        professional_id: null,
+        description: `📦 Pacote: ${pkg.name}`,
+        item_type: "package",
+        quantity: 1,
+        unit_price: Number(pkg.price),
+        total_price: Number(pkg.price),
+        product_cost: 0,
+      });
+
+      toast({ title: `Pacote "${pkg.name}" adicionado!` });
+      queryClient.invalidateQueries({ queryKey: ["client_packages"] });
+    } catch (e: any) {
+      toast({ title: "Erro ao adicionar pacote", description: e.message, variant: "destructive" });
+    }
+  };
 
   // Determine if comanda is from today
   const comandaDate = comanda ? new Date(comanda.created_at) : new Date();
@@ -1007,7 +1065,57 @@ export function ComandaModal({ comanda, open, onClose, professionals, services, 
                         <Receipt className="h-4 w-4" />
                         Produto
                       </Button>
-                      <Button variant="outline" size="sm">Pacote</Button>
+                      <Popover open={packagePopoverOpen} onOpenChange={(open) => { setPackagePopoverOpen(open); if (open) loadPackages(); }}>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" size="sm" className="gap-2">
+                            <Gift className="h-4 w-4" />
+                            Pacote
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-80 p-0" align="start">
+                          <Command shouldFilter={false}>
+                            <CommandList>
+                              {isLoadingPackages ? (
+                                <div className="flex items-center justify-center py-6">
+                                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                                </div>
+                              ) : availablePackages.length === 0 ? (
+                                <CommandEmpty>Nenhum pacote cadastrado</CommandEmpty>
+                              ) : (
+                                <CommandGroup heading="Pacotes disponíveis">
+                                  <ScrollArea className="max-h-60">
+                                    {availablePackages.map((pkg: any) => {
+                                      const itemCount = pkg.package_items?.length || 0;
+                                      const discount = Number(pkg.discount_percent) || 0;
+                                      return (
+                                        <CommandItem
+                                          key={pkg.id}
+                                          onSelect={() => handleAddPackage(pkg)}
+                                          className="flex flex-col items-start gap-1 cursor-pointer py-3"
+                                        >
+                                          <div className="flex items-center justify-between w-full">
+                                            <span className="font-medium">{pkg.name}</span>
+                                            <span className="font-bold text-primary">R$ {Number(pkg.price).toFixed(2)}</span>
+                                          </div>
+                                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                            <span>{itemCount} serviço{itemCount !== 1 ? "s" : ""}</span>
+                                            {discount > 0 && (
+                                              <Badge variant="secondary" className="text-[10px]">{discount.toFixed(0)}% desc.</Badge>
+                                            )}
+                                            {Number(pkg.original_price) > 0 && (
+                                              <span className="line-through">R$ {Number(pkg.original_price).toFixed(2)}</span>
+                                            )}
+                                          </div>
+                                        </CommandItem>
+                                      );
+                                    })}
+                                  </ScrollArea>
+                                </CommandGroup>
+                              )}
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
                       <Button variant="outline" size="sm">Caixinha</Button>
                     </div>
                   </CardContent>
