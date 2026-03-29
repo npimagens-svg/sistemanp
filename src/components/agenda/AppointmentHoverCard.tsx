@@ -12,6 +12,7 @@ import { Appointment } from "@/hooks/useAppointments";
 
 interface AppointmentHoverCardProps {
   appointment: Appointment;
+  allAppointments?: Appointment[];
   children: React.ReactNode;
 }
 
@@ -35,24 +36,45 @@ const statusBadgeColors: Record<string, string> = {
   cancelled: "bg-[#6b7280] hover:bg-[#6b7280]",
 };
 
-function buildWhatsAppUrl(appointment: Appointment): string | null {
+function buildWhatsAppUrl(appointment: Appointment, allAppointments?: Appointment[]): string | null {
   const phone = appointment.clients?.phone;
   if (!phone) return null;
   const cleanPhone = phone.replace(/\D/g, "");
   const phoneWithCountry = cleanPhone.startsWith("55") ? cleanPhone : `55${cleanPhone}`;
-  const scheduledDate = new Date(appointment.scheduled_at);
-  const dateStr = format(scheduledDate, "dd/MM/yyyy", { locale: ptBR });
-  const timeStr = format(scheduledDate, "HH:mm", { locale: ptBR });
   const clientName = appointment.clients?.name || "Cliente";
-  const serviceName = appointment.services?.name || "seu horário";
-  const professionalName = appointment.professionals?.name || "nossa equipe";
-  const message = `Olá ${clientName}! 😊 Confirmando seu horário no NP Hair Studio: ${serviceName} dia ${dateStr} às ${timeStr} com ${professionalName}. Te esperamos! 💇‍♀️`;
+
+  // Find grouped appointments (same group_id)
+  let grouped: Appointment[] = [appointment];
+  if (appointment.group_id && allAppointments) {
+    grouped = allAppointments
+      .filter(a => a.group_id === appointment.group_id)
+      .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime());
+  }
+
+  const firstDate = new Date(grouped[0].scheduled_at);
+  const dateStr = format(firstDate, "dd/MM/yyyy", { locale: ptBR });
+
+  let message: string;
+  if (grouped.length === 1) {
+    // Single service: include professional name
+    const timeStr = format(firstDate, "HH:mm");
+    const serviceName = appointment.services?.name || "seu horário";
+    const professionalName = appointment.professionals?.name || "nossa equipe";
+    message = `Olá ${clientName}! 😊 Confirmando seu horário no salão: ${serviceName} dia ${dateStr} às ${timeStr} com ${professionalName}. Te esperamos! 💇‍♀️`;
+  } else {
+    // Multiple services: list all, no professional name
+    const servicesList = grouped
+      .map(a => `${a.services?.name || "Serviço"} às ${format(new Date(a.scheduled_at), "HH:mm")}`)
+      .join(", ");
+    message = `Olá ${clientName}! 😊 Confirmando seus horários no salão dia ${dateStr}: ${servicesList}. Te esperamos! 💇‍♀️`;
+  }
+
   return `https://wa.me/${phoneWithCountry}?text=${encodeURIComponent(message)}`;
 }
 
-export function AppointmentHoverCard({ appointment, children }: AppointmentHoverCardProps) {
+export function AppointmentHoverCard({ appointment, allAppointments, children }: AppointmentHoverCardProps) {
   const scheduledDate = new Date(appointment.scheduled_at);
-  const whatsappUrl = buildWhatsAppUrl(appointment);
+  const whatsappUrl = buildWhatsAppUrl(appointment, allAppointments);
   
   return (
     <HoverCard openDelay={200} closeDelay={100}>

@@ -637,7 +637,7 @@ export default function Agenda() {
                                     const spans = Math.ceil(appointment.duration_minutes / 30);
 
                                     return (
-                                      <AppointmentHoverCard key={appointment.id} appointment={appointment}>
+                                      <AppointmentHoverCard key={appointment.id} appointment={appointment} allAppointments={appointments}>
                                         <div
                                           className={cn(
                                             "flex-1 rounded-sm px-1.5 py-0.5 cursor-pointer transition-shadow hover:shadow-lg overflow-hidden text-white",
