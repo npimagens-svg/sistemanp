@@ -93,19 +93,7 @@ export default function Comandas() {
     setIsProcessingAppointment(true);
     
     try {
-      // Check if user has open caixa
-      const userCaixa = await getCurrentUserOpenCaixa();
-      if (!userCaixa) {
-        toast({ 
-          title: "Caixa não aberto", 
-          description: "Você precisa abrir um caixa antes de criar comandas.",
-          variant: "destructive" 
-        });
-        navigate("/financeiro");
-        return;
-      }
-
-      // Fetch appointment data
+      // Fetch appointment data first
       const { data: appointment, error } = await supabase
         .from("appointments")
         .select(`
@@ -133,41 +121,81 @@ export default function Comandas() {
       }
 
       const appointmentData = appointment as unknown as AppointmentData;
-
-      // Verify appointment is for today
       const appointmentDate = new Date(appointmentData.scheduled_at);
       const today = new Date();
-      if (!isSameDay(appointmentDate, today)) {
-        toast({ 
-          title: "Não é possível abrir comanda", 
-          description: "Só é possível abrir comandas para agendamentos de hoje.",
-          variant: "destructive" 
+      const isToday = isSameDay(appointmentDate, today);
+      const isFutureDate = appointmentDate > today && !isToday;
+
+      // Cannot open comanda for future dates
+      if (isFutureDate) {
+        toast({
+          title: "Não é possível abrir comanda",
+          description: "Não é possível abrir comandas para agendamentos futuros.",
+          variant: "destructive"
         });
         searchParams.delete("appointment");
         setSearchParams(searchParams);
+        return;
+      }
+
+      // Find caixa for the appointment date
+      let userCaixa: any = null;
+
+      if (isToday) {
+        userCaixa = await getCurrentUserOpenCaixa();
+      } else {
+        // Past date: find an open caixa for that specific day
+        const dayStart = new Date(appointmentDate);
+        dayStart.setHours(0, 0, 0, 0);
+        const dayEnd = new Date(dayStart);
+        dayEnd.setDate(dayEnd.getDate() + 1);
+
+        const { data: pastCaixa } = await supabase
+          .from("caixas")
+          .select("*")
+          .eq("salon_id", salonId)
+          .is("closed_at", null)
+          .gte("opened_at", dayStart.toISOString())
+          .lt("opened_at", dayEnd.toISOString())
+          .limit(1)
+          .maybeSingle();
+
+        userCaixa = pastCaixa;
+      }
+
+      if (!userCaixa) {
+        toast({
+          title: "Caixa não aberto",
+          description: isToday
+            ? "Você precisa abrir um caixa antes de criar comandas."
+            : `Não existe caixa aberto para o dia ${appointmentDate.toLocaleDateString("pt-BR")}. Reabra o caixa desse dia para criar a comanda.`,
+          variant: "destructive"
+        });
+        if (isToday) navigate("/financeiro");
         return;
       }
 
       // Check if client exists
       if (!appointmentData.client_id) {
-        toast({ 
-          title: "Cliente não definido", 
+        toast({
+          title: "Cliente não definido",
           description: "O agendamento precisa ter um cliente para abrir uma comanda.",
-          variant: "destructive" 
+          variant: "destructive"
         });
         searchParams.delete("appointment");
         setSearchParams(searchParams);
         return;
       }
 
-      // Find or create comanda for this client today
+      // Find or create comanda for this client on the appointment date
       const comanda = await findOrCreateTodayComanda(
         appointmentData.client_id,
         appointmentData.professional_id,
-        appointmentData.id
+        appointmentData.id,
+        appointmentDate
       );
 
-      // Link comanda to user's caixa if not already linked
+      // Link comanda to the caixa if not already linked
       if (!comanda.caixa_id) {
         await supabase
           .from("comandas")

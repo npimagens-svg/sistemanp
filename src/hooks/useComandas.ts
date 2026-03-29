@@ -143,12 +143,12 @@ export function useComandas() {
     },
   });
 
-  // Find or create a comanda for a client on today's date
-  const findOrCreateTodayComanda = async (clientId: string, professionalId?: string | null, appointmentId?: string | null) => {
+  // Find or create a comanda for a client on a specific date (defaults to today)
+  const findOrCreateTodayComanda = async (clientId: string, professionalId?: string | null, appointmentId?: string | null, targetDate?: Date) => {
     if (!salonId) throw new Error("Salão não encontrado");
-    
-    // Get today's date range
-    const today = new Date();
+
+    // Use targetDate or default to today
+    const today = targetDate ? new Date(targetDate) : new Date();
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
