@@ -35,7 +35,7 @@ import {
 import {
   Shield, Users, Settings, MoreHorizontal, Trash2, Loader2, Building2,
   CreditCard, Plus, Pencil, Landmark, ArrowRightLeft, Lock, Cog, UserCog,
-  Save, Calendar, Clock, ToggleLeft, ChevronRight, Home, DollarSign, Percent, Package, Webhook, Globe
+  Save, Calendar, Clock, ToggleLeft, ChevronRight, Home, DollarSign, Percent, Package, Webhook, Globe, Mail
 } from "lucide-react";
 import { CommissionSettingsPage } from "@/components/settings/CommissionSettingsPage";
 import { useAuth, AppRole } from "@/contexts/AuthContext";
@@ -58,6 +58,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useSchedulingSettings, SchedulingSettings } from "@/hooks/useSchedulingSettings";
 import { WebhookSettingsSection } from "@/components/settings/WebhookSettingsSection";
 import { ApiGatewaySettingsSection } from "@/components/settings/ApiGatewaySettingsSection";
+import { ResendSettingsSection } from "@/components/settings/ResendSettingsSection";
 
 const SPECIALTIES = [
   { value: "cabeleireiro", label: "Cabeleireiro(a)" },
@@ -586,6 +587,7 @@ export default function Configuracoes() {
     if (path.startsWith("/configuracoes/sistema")) return "sistema";
     if (path.startsWith("/configuracoes/webhook")) return "webhook";
     if (path.startsWith("/configuracoes/api")) return "api";
+    if (path.startsWith("/configuracoes/email")) return "email";
     if (path.startsWith("/configuracoes/salao")) return "hub";
     return "hub";
   })();
@@ -724,6 +726,12 @@ export default function Configuracoes() {
                 title="API REST"
                 description="API completa para integração com ERPs, apps mobile e dashboards"
                 onClick={() => navigate("/configuracoes/api")}
+              />
+              <SettingsCard
+                icon={Mail}
+                title="E-mails Automáticos"
+                description="Configure o Resend para envio de e-mails automáticos aos clientes"
+                onClick={() => navigate("/configuracoes/email")}
               />
             </div>
           </>
@@ -1155,6 +1163,15 @@ export default function Configuracoes() {
             <SettingsBreadcrumb label="API REST" />
             <h1 className="text-2xl font-bold tracking-tight">API REST Gateway</h1>
             <ApiGatewaySettingsSection />
+          </>
+        )}
+
+        {/* ===== E-MAILS AUTOMÁTICOS ===== */}
+        {subPage === "email" && (
+          <>
+            <SettingsBreadcrumb label="E-mails Automáticos" />
+            <h1 className="text-2xl font-bold tracking-tight">E-mails Automáticos</h1>
+            <ResendSettingsSection />
           </>
         )}
       </div>

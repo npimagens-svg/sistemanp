@@ -13,17 +13,26 @@ serve(async (req) => {
   }
 
   try {
-    const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
-    if (!RESEND_API_KEY) {
-      return new Response(JSON.stringify({ error: "RESEND_API_KEY not configured" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Try env var first, then fall back to system_config table
+    let RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+    if (!RESEND_API_KEY) {
+      const { data: configRow } = await supabase
+        .from("system_config")
+        .select("value")
+        .eq("key", "resend_api_key")
+        .maybeSingle();
+      RESEND_API_KEY = configRow?.value || null;
+    }
+    if (!RESEND_API_KEY) {
+      // Gracefully skip — email not configured
+      return new Response(JSON.stringify({ skipped: true, message: "RESEND_API_KEY not configured, skipping email cron" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     const results: { type: string; sent: number; errors: number }[] = [];
 

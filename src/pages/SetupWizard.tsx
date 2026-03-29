@@ -36,7 +36,7 @@ export interface SetupData {
   // Vercel
   vercelToken: string;
   vercelProjectId: string;
-  // Integrations
+  // Integrations (moved to Settings > Email)
   resendKey: string;
 }
 
