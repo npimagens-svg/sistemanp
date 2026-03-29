@@ -8,6 +8,7 @@ import {
   Megaphone,
   BarChart3,
   Settings,
+  Scissors,
 } from "lucide-react";
 
 interface NavItem {
@@ -43,9 +44,14 @@ const navItems: NavItem[] = [
       { title: "Fornecedores", url: "/estoque/fornecedores" },
     ]
   },
-  { 
-    title: "Clientes", 
-    url: "/clientes", 
+  {
+    title: "Serviços",
+    url: "/servicos",
+    icon: Scissors,
+  },
+  {
+    title: "Clientes",
+    url: "/clientes",
     icon: Users,
     subItems: [
       { title: "Lista de Clientes", url: "/clientes" },
