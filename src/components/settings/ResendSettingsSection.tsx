@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/dynamicSupabaseClient";
+import { createClient } from "@supabase/supabase-js";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   Mail, Eye, EyeOff, Save, Loader2, CheckCircle2, XCircle,
@@ -70,35 +71,39 @@ export function ResendSettingsSection() {
     }
 
     setSaving(true);
-    let { error } = await supabase
-      .from("system_config")
-      .upsert({ key: "resend_api_key", value: trimmed }, { onConflict: "key" });
 
-    // If RLS error, try to fix policies automatically via run-sql proxy
-    if (error && error.message.includes("row-level security")) {
+    // Use service_role key to bypass RLS
+    const url = localStorage.getItem("supabase_url") || import.meta.env.VITE_SUPABASE_URL;
+    const serviceKey = localStorage.getItem("supabase_service_role_key");
+
+    let error = null;
+
+    if (serviceKey && url) {
+      // Direct REST call with service_role bypasses RLS
       try {
-        const pat = localStorage.getItem("supabase_pat");
-        const projRef = localStorage.getItem("supabase_project_ref") ||
-          (localStorage.getItem("supabase_url") || "").match(/https:\/\/(.+?)\.supabase/)?.[1];
-        if (pat && projRef) {
-          await fetch("/api/run-sql", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              projectRef: projRef,
-              pat: pat,
-              sql: `CREATE POLICY IF NOT EXISTS "Authenticated users can insert system config" ON public.system_config FOR INSERT TO authenticated WITH CHECK (true); CREATE POLICY IF NOT EXISTS "Authenticated users can update system config" ON public.system_config FOR UPDATE TO authenticated USING (true);`
-            })
-          });
-          // Retry the upsert
-          const retry = await supabase
-            .from("system_config")
-            .upsert({ key: "resend_api_key", value: trimmed }, { onConflict: "key" });
-          error = retry.error;
+        const res = await fetch(`${url}/rest/v1/system_config`, {
+          method: "POST",
+          headers: {
+            "apikey": serviceKey,
+            "Authorization": `Bearer ${serviceKey}`,
+            "Content-Type": "application/json",
+            "Prefer": "resolution=merge-duplicates"
+          },
+          body: JSON.stringify({ key: "resend_api_key", value: trimmed })
+        });
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          error = { message: errData.message || `Erro HTTP ${res.status}` };
         }
-      } catch (e) {
-        // If auto-fix fails, show original error
+      } catch (e: any) {
+        error = { message: e.message };
       }
+    } else {
+      // Fallback to regular supabase client
+      const result = await supabase
+        .from("system_config")
+        .upsert({ key: "resend_api_key", value: trimmed }, { onConflict: "key" });
+      error = result.error;
     }
 
     if (error) {
