@@ -6,6 +6,12 @@ verify_jwt = false
 [functions.create-salon]
 verify_jwt = false
 
+[functions.send-email]
+verify_jwt = false
+
+[functions.email-cron]
+verify_jwt = false
+
 [functions.resend-webhook]
 verify_jwt = false
 
