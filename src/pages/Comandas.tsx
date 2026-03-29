@@ -407,6 +407,8 @@ export default function Comandas() {
       // Delete all related records first
       await supabase.from("client_package_usage").delete().eq("comanda_id", comandaToDelete.id);
       await supabase.from("client_balance").delete().eq("comanda_id", comandaToDelete.id);
+      await supabase.from("client_debts").delete().eq("comanda_id", comandaToDelete.id);
+      await supabase.from("client_credits").delete().eq("comanda_id", comandaToDelete.id);
       await supabase.from("comanda_items").delete().eq("comanda_id", comandaToDelete.id);
       await supabase.from("payments").delete().eq("comanda_id", comandaToDelete.id);
 
