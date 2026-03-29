@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { useState, useMemo } from "react";
+import { useState, useMemo, lazy, Suspense } from "react";
 import { AppLayoutNew } from "@/components/layout/AppLayoutNew";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,9 +8,12 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { format, subDays, startOfMonth, endOfMonth, startOfWeek, endOfWeek, isWithinInterval } from "date-fns";
+import { format, subDays, startOfMonth, endOfMonth, startOfWeek, endOfWeek } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CalendarIcon, DollarSign, Users, TrendingUp, ShoppingBag, Loader2, BarChart3, PieChart, Mail } from "lucide-react";
+import {
+  CalendarIcon, DollarSign, Users, TrendingUp, ShoppingBag, Loader2,
+  BarChart3, PieChart, Mail, FileText, UserCog, Scissors, CreditCard, ArrowLeft,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/dynamicSupabaseClient";
@@ -20,6 +23,22 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   BarChart, Bar, PieChart as RechartsPie, Pie, Cell, Legend,
 } from "recharts";
+
+// Report components
+import { Report0004 } from "@/components/reports/Report0004";
+import { Report0008 } from "@/components/reports/Report0008";
+import { Report0010 } from "@/components/reports/Report0010";
+import { Report0015 } from "@/components/reports/Report0015";
+import { Report0020 } from "@/components/reports/Report0020";
+import { Report0021 } from "@/components/reports/Report0021";
+import { Report0024 } from "@/components/reports/Report0024";
+import { Report0028 } from "@/components/reports/Report0028";
+import { Report1128 } from "@/components/reports/Report1128";
+import { Report0033 } from "@/components/reports/Report0033";
+import { Report0085 } from "@/components/reports/Report0085";
+import { Report0175 } from "@/components/reports/Report0175";
+import { Report0180 } from "@/components/reports/Report0180";
+import { Report0281 } from "@/components/reports/Report0281";
 
 type DateRange = { from: Date; to: Date };
 
@@ -33,12 +52,139 @@ const PRESET_RANGES = [
 
 const COLORS = ["hsl(217, 91%, 50%)", "hsl(142, 76%, 36%)", "hsl(38, 92%, 50%)", "hsl(0, 84%, 60%)", "hsl(262, 83%, 58%)", "hsl(199, 89%, 48%)"];
 
+// Report catalog
+const REPORT_CATEGORIES = [
+  {
+    id: "clientes",
+    label: "Clientes",
+    icon: Users,
+    color: "text-blue-600",
+    bgColor: "bg-blue-50",
+    reports: [
+      { id: "0004", label: "Lista de dados cadastrais de clientes", needsDate: false },
+      { id: "0008", label: "Clientes que fizeram um serviço específico", needsDate: true },
+      { id: "0010", label: "Clientes com celulares duplicados", needsDate: false },
+      { id: "0015", label: "Clientes por perfil de compra", needsDate: true, hasChart: true },
+      { id: "0020", label: "Clientes com retorno atrasado", needsDate: false },
+    ],
+  },
+  {
+    id: "profissionais",
+    label: "Profissionais",
+    icon: UserCog,
+    color: "text-purple-600",
+    bgColor: "bg-purple-50",
+    reports: [
+      { id: "0021", label: "Faturamento e ticket médio por profissional", needsDate: true, hasChart: true },
+      { id: "0024", label: "Serviços por profissional", needsDate: true, hasChart: true },
+      { id: "0028", label: "Comissões pagas no período", needsDate: true },
+      { id: "1128", label: "Vendas por categoria de um profissional", needsDate: true, hasChart: true },
+    ],
+  },
+  {
+    id: "servicos",
+    label: "Serviços",
+    icon: Scissors,
+    color: "text-green-600",
+    bgColor: "bg-green-50",
+    reports: [
+      { id: "0033", label: "Tabela de preços dos serviços", needsDate: false },
+    ],
+  },
+  {
+    id: "financeiro",
+    label: "Financeiro",
+    icon: DollarSign,
+    color: "text-amber-600",
+    bgColor: "bg-amber-50",
+    reports: [
+      { id: "0085", label: "Evolução do faturamento mensal", needsDate: false, hasChart: true },
+      { id: "0175", label: "Faturamento de serviço por profissional", needsDate: true },
+      { id: "0180", label: "Serviços e produtos vendidos no período", needsDate: true },
+      { id: "0281", label: "Entradas por forma de pagamento", needsDate: true, hasChart: true },
+    ],
+  },
+];
+
+function ReportSelector({ onSelect }: { onSelect: (reportId: string) => void }) {
+  return (
+    <div className="space-y-6">
+      {REPORT_CATEGORIES.map(cat => (
+        <div key={cat.id} className="space-y-3">
+          <div className="flex items-center gap-2">
+            <cat.icon className={cn("h-5 w-5", cat.color)} />
+            <h3 className="text-lg font-semibold">{cat.label}</h3>
+            <Badge variant="secondary">{cat.reports.length}</Badge>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {cat.reports.map(report => (
+              <Card
+                key={report.id}
+                className="cursor-pointer transition-all hover:shadow-md hover:border-primary/50"
+                onClick={() => onSelect(report.id)}
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="space-y-1">
+                      <p className="font-medium text-sm leading-tight">{report.label}</p>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-xs font-mono">#{report.id}</Badge>
+                        {report.hasChart && (
+                          <Badge variant="secondary" className="text-xs">
+                            <BarChart3 className="h-3 w-3 mr-1" />Gráfico
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                    <div className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-lg", cat.bgColor)}>
+                      <cat.icon className={cn("h-4 w-4", cat.color)} />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ActiveReport({ reportId, dateRange }: { reportId: string; dateRange: DateRange }) {
+  switch (reportId) {
+    case "0004": return <Report0004 />;
+    case "0008": return <Report0008 dateRange={dateRange} />;
+    case "0010": return <Report0010 />;
+    case "0015": return <Report0015 dateRange={dateRange} />;
+    case "0020": return <Report0020 />;
+    case "0021": return <Report0021 dateRange={dateRange} />;
+    case "0024": return <Report0024 dateRange={dateRange} />;
+    case "0028": return <Report0028 dateRange={dateRange} />;
+    case "1128": return <Report1128 dateRange={dateRange} />;
+    case "0033": return <Report0033 />;
+    case "0085": return <Report0085 />;
+    case "0175": return <Report0175 dateRange={dateRange} />;
+    case "0180": return <Report0180 dateRange={dateRange} />;
+    case "0281": return <Report0281 dateRange={dateRange} />;
+    default: return <div className="text-center py-8 text-muted-foreground">Relatório não encontrado</div>;
+  }
+}
+
+function getReportInfo(reportId: string) {
+  for (const cat of REPORT_CATEGORIES) {
+    const report = cat.reports.find(r => r.id === reportId);
+    if (report) return { ...report, category: cat };
+  }
+  return null;
+}
+
 export default function Relatorios() {
   const { salonId } = useAuth();
   const [dateRange, setDateRange] = useState<DateRange>(PRESET_RANGES[2].getValue());
   const [activePreset, setActivePreset] = useState("Últimos 30 dias");
+  const [selectedReport, setSelectedReport] = useState<string | null>(null);
 
-  // Fetch comandas with payments for the period
+  // Fetch comandas with payments for the period (used by Geral tab)
   const { data: comandas, isLoading: loadingComandas } = useQuery({
     queryKey: ["report-comandas", salonId, dateRange.from, dateRange.to],
     queryFn: async () => {
@@ -168,6 +314,8 @@ export default function Relatorios() {
     setActivePreset(preset.label);
   };
 
+  const reportInfo = selectedReport ? getReportInfo(selectedReport) : null;
+
   return (
     <AppLayoutNew>
       <div className="space-y-6">
@@ -177,16 +325,86 @@ export default function Relatorios() {
           <p className="text-muted-foreground">Análise detalhada do desempenho do salão</p>
         </div>
 
-        <Tabs defaultValue="geral" className="space-y-6">
+        <Tabs defaultValue="relatorios" className="space-y-6">
           <TabsList>
             <TabsTrigger value="geral" className="gap-2"><BarChart3 className="h-4 w-4" />Geral</TabsTrigger>
+            <TabsTrigger value="relatorios" className="gap-2"><FileText className="h-4 w-4" />Relatórios</TabsTrigger>
             <TabsTrigger value="emails" className="gap-2"><Mail className="h-4 w-4" />E-mails</TabsTrigger>
           </TabsList>
 
+          {/* ===== RELATÓRIOS TAB ===== */}
+          <TabsContent value="relatorios" className="space-y-6">
+            {selectedReport ? (
+              <>
+                {/* Back button + date range */}
+                <div className="flex flex-wrap items-center gap-3">
+                  <Button variant="outline" size="sm" onClick={() => setSelectedReport(null)} className="gap-2">
+                    <ArrowLeft className="h-4 w-4" />Voltar
+                  </Button>
+
+                  {reportInfo?.needsDate && (
+                    <>
+                      <div className="h-6 w-px bg-border" />
+                      {PRESET_RANGES.map(preset => (
+                        <Button
+                          key={preset.label}
+                          variant={activePreset === preset.label ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => handlePreset(preset)}
+                        >
+                          {preset.label}
+                        </Button>
+                      ))}
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" size="sm" className="gap-2">
+                            <CalendarIcon className="h-4 w-4" />
+                            {format(dateRange.from, "dd/MM", { locale: ptBR })} - {format(dateRange.to, "dd/MM", { locale: ptBR })}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="end">
+                          <Calendar
+                            mode="range"
+                            selected={{ from: dateRange.from, to: dateRange.to }}
+                            onSelect={(range) => {
+                              if (range?.from && range?.to) {
+                                setDateRange({ from: range.from, to: range.to });
+                                setActivePreset("");
+                              }
+                            }}
+                            locale={ptBR}
+                            numberOfMonths={2}
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </>
+                  )}
+                </div>
+
+                {/* Report breadcrumb */}
+                {reportInfo && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <reportInfo.category.icon className={cn("h-4 w-4", reportInfo.category.color)} />
+                    <span>{reportInfo.category.label}</span>
+                    <span>/</span>
+                    <span className="font-medium text-foreground">#{reportInfo.id} — {reportInfo.label}</span>
+                  </div>
+                )}
+
+                {/* Active report */}
+                <ActiveReport reportId={selectedReport} dateRange={dateRange} />
+              </>
+            ) : (
+              <ReportSelector onSelect={setSelectedReport} />
+            )}
+          </TabsContent>
+
+          {/* ===== E-MAILS TAB ===== */}
           <TabsContent value="emails">
             <EmailReportsTab />
           </TabsContent>
 
+          {/* ===== GERAL TAB ===== */}
           <TabsContent value="geral" className="space-y-6">
         {/* Date filters */}
           <div className="flex flex-wrap items-center gap-2">
