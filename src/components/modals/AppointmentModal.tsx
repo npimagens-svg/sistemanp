@@ -227,9 +227,11 @@ export function AppointmentModal({
     if (!clientId || !allBlocksValid) return;
 
     if (isEditing) {
-      // Single appointment update (keep existing behavior)
+      // Update the original appointment with first block
       const block = serviceBlocks[0];
       const scheduled_at = new Date(`${date}T${block.time}`).toISOString();
+      const groupId = appointment!.group_id || (serviceBlocks.length > 1 ? crypto.randomUUID() : undefined);
+
       onSubmit({
         id: appointment!.id,
         client_id: clientId,
@@ -240,7 +242,27 @@ export function AppointmentModal({
         status: status as any,
         notes: notes || undefined,
         price: block.price,
+        group_id: groupId,
       });
+
+      // Create additional services as new appointments
+      if (serviceBlocks.length > 1 && onSubmitMultiple) {
+        const newBlocks = serviceBlocks.slice(1);
+        onSubmitMultiple({
+          services: newBlocks.map((b) => ({
+            client_id: clientId,
+            professional_id: b.professional_id,
+            service_id: b.service_id,
+            scheduled_at: new Date(`${date}T${b.time}`).toISOString(),
+            duration_minutes: b.duration_minutes,
+            status: status as any,
+            notes: notes || undefined,
+            price: b.price,
+            group_id: groupId,
+          })),
+        });
+      }
+
       onOpenChange(false);
       return;
     }
@@ -478,19 +500,17 @@ export function AppointmentModal({
               </div>
             ))}
 
-            {/* Add service button - only in creation mode */}
-            {!isEditing && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="w-full"
-                onClick={addServiceBlock}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Adicionar serviço
-              </Button>
-            )}
+            {/* Add service button */}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="w-full"
+              onClick={addServiceBlock}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Adicionar serviço
+            </Button>
           </div>
 
           {/* Summary (only show when multiple services) */}
