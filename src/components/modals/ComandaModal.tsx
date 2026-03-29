@@ -267,19 +267,19 @@ export function ComandaModal({ comanda, open, onClose, professionals, services, 
     let packageLabel = "";
     if (comanda.client_id) {
       try {
-        // Get active client packages that contain this service
+        // Get active client packages with their package items
         const { data: clientPackages } = await supabase
           .from("client_packages")
-          .select("id, package_id, package:packages(name), items:package_items!inner(service_id, quantity)")
+          .select("id, package_id, package:packages(name, package_items(service_id, quantity))")
           .eq("client_id", comanda.client_id)
           .eq("salon_id", salonId)
-          .eq("status", "active")
-          .eq("items.service_id", serviceId);
+          .eq("status", "active");
 
         if (clientPackages && clientPackages.length > 0) {
-          // For each client package, check usage count
+          // For each client package, check if it contains this service
           for (const cp of clientPackages) {
-            const pkgItem = (cp.items || []).find((i: any) => i.service_id === serviceId);
+            const pkgItems = (cp as any).package?.package_items || [];
+            const pkgItem = pkgItems.find((i: any) => i.service_id === serviceId);
             if (!pkgItem) continue;
             const totalCredits = pkgItem.quantity;
 
