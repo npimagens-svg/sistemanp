@@ -100,32 +100,31 @@ export function useAppointments(date?: Date) {
       return data;
     },
     onSuccess: (data) => {
-      // Invalidate all appointment queries regardless of date
       queryClient.invalidateQueries({ queryKey: ["appointments"] });
       toast({ title: "Agendamento criado com sucesso!" });
 
-      // Send confirmation email (fire-and-forget, don't block UI)
-      const client = (data as any).clients;
-      const professional = (data as any).professionals;
-      const service = (data as any).services;
-      if (client?.email && salonId) {
-        const scheduledDate = new Date(data.scheduled_at);
-        sendEmail({
-          type: "appointment_confirmation",
-          salon_id: salonId,
-          to_email: client.email,
-          to_name: client.name || "Cliente",
-          client_id: data.client_id || undefined,
-          variables: {
-            service_name: service?.name || "Não informado",
-            professional_name: professional?.name || "Não informado",
-            date: format(scheduledDate, "dd/MM/yyyy", { locale: ptBR }),
-            time: format(scheduledDate, "HH:mm", { locale: ptBR }),
-          },
-        }).catch((err) => {
-          console.error("Erro ao enviar e-mail de confirmação:", err);
-        });
-      }
+      // Send confirmation email
+      try {
+        const client = (data as any)?.clients;
+        const professional = (data as any)?.professionals;
+        const service = (data as any)?.services;
+        if (client?.email && salonId) {
+          const scheduledDate = new Date(data.scheduled_at);
+          sendEmail({
+            type: "appointment_confirmation",
+            salon_id: salonId,
+            to_email: client.email,
+            to_name: client.name || "Cliente",
+            client_id: data.client_id || undefined,
+            variables: {
+              service_name: service?.name || "Não informado",
+              professional_name: professional?.name || "Não informado",
+              date: format(scheduledDate, "dd/MM/yyyy", { locale: ptBR }),
+              time: format(scheduledDate, "HH:mm"),
+            },
+          }).catch(console.error);
+        }
+      } catch (e) { console.error("Email error:", e); }
     },
     onError: (error: Error) => {
       toast({ title: "Erro ao criar agendamento", description: error.message, variant: "destructive" });
@@ -196,9 +195,37 @@ export function useAppointments(date?: Date) {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["appointments"] });
       toast({ title: "Agendamento atualizado com sucesso!" });
+
+      // Send confirmation email on update too
+      try {
+        if (data?.client_id && salonId) {
+          supabase.from("clients").select("name, email").eq("id", data.client_id).single().then(({ data: client }) => {
+            if (client?.email) {
+              supabase.from("services").select("name").eq("id", data.service_id).single().then(({ data: service }) => {
+                supabase.from("professionals").select("name").eq("id", data.professional_id).single().then(({ data: prof }) => {
+                  const scheduledDate = new Date(data.scheduled_at);
+                  sendEmail({
+                    type: "appointment_confirmation",
+                    salon_id: salonId,
+                    to_email: client.email,
+                    to_name: client.name || "Cliente",
+                    client_id: data.client_id || undefined,
+                    variables: {
+                      service_name: service?.name || "Não informado",
+                      professional_name: prof?.name || "Não informado",
+                      date: format(scheduledDate, "dd/MM/yyyy", { locale: ptBR }),
+                      time: format(scheduledDate, "HH:mm"),
+                    },
+                  }).catch(console.error);
+                });
+              });
+            }
+          });
+        }
+      } catch (e) { console.error("Email error:", e); }
     },
     onError: (error: Error) => {
       toast({ title: "Erro ao atualizar agendamento", description: error.message, variant: "destructive" });
