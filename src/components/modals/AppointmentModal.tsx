@@ -23,8 +23,9 @@ import { Client } from "@/hooks/useClients";
 import { Professional } from "@/hooks/useProfessionals";
 import { Service } from "@/hooks/useServices";
 import { DollarSign, Plus, X } from "lucide-react";
-import { isSameDay } from "date-fns";
+import { isSameDay, isFuture, startOfDay } from "date-fns";
 import { ClientSearchSelect } from "@/components/shared/ClientSearchSelect";
+import { supabase } from "@/lib/dynamicSupabaseClient";
 
 interface ServiceBlock {
   id: string; // local key for React
@@ -320,10 +321,46 @@ export function AppointmentModal({
     return cid ? clients.find((c) => c.id === cid) : null;
   }, [appointment?.client_id, clientId, clients]);
 
-  const isAppointmentToday = useMemo(() => {
-    if (!appointment?.scheduled_at) return false;
-    return isSameDay(new Date(appointment.scheduled_at), new Date());
-  }, [appointment?.scheduled_at]);
+  // Check if comanda button should show:
+  // - NOT for future dates
+  // - Today: always show
+  // - Past dates: only if caixa for that day is open
+  const [canOpenComanda, setCanOpenComanda] = useState(false);
+
+  useEffect(() => {
+    if (!appointment?.scheduled_at || !open) {
+      setCanOpenComanda(false);
+      return;
+    }
+    const appointmentDate = new Date(appointment.scheduled_at);
+    const today = new Date();
+
+    // Future date: never
+    if (isFuture(startOfDay(appointmentDate)) && !isSameDay(appointmentDate, today)) {
+      setCanOpenComanda(false);
+      return;
+    }
+
+    // Today: always
+    if (isSameDay(appointmentDate, today)) {
+      setCanOpenComanda(true);
+      return;
+    }
+
+    // Past date: check if caixa is open for that day
+    const dayStart = startOfDay(appointmentDate).toISOString();
+    const dayEnd = new Date(startOfDay(appointmentDate).getTime() + 86400000 - 1).toISOString();
+    supabase
+      .from("caixas")
+      .select("id")
+      .gte("opened_at", dayStart)
+      .lte("opened_at", dayEnd)
+      .is("closed_at", null)
+      .limit(1)
+      .then(({ data }) => {
+        setCanOpenComanda((data && data.length > 0) || false);
+      });
+  }, [appointment?.scheduled_at, open]);
 
   const handleOpenComanda = () => {
     if (appointment?.id) {
@@ -353,15 +390,17 @@ export function AppointmentModal({
                 <p className="text-sm text-primary">Celular: {selectedClient.phone}</p>
               )}
             </div>
-            <Button
-              type="button"
-              variant="default"
-              className="bg-green-600 hover:bg-green-700"
-              onClick={handleOpenComanda}
-            >
-              <DollarSign className="h-4 w-4 mr-2" />
-              Abrir Comanda
-            </Button>
+            {canOpenComanda && (
+              <Button
+                type="button"
+                variant="default"
+                className="bg-green-600 hover:bg-green-700"
+                onClick={handleOpenComanda}
+              >
+                <DollarSign className="h-4 w-4 mr-2" />
+                Abrir Comanda
+              </Button>
+            )}
           </div>
         )}
 
