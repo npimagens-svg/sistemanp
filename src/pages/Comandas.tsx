@@ -404,8 +404,39 @@ export default function Comandas() {
         original_closed_at: comandaToDelete.closed_at,
       });
 
-      // Delete all related records first
+      // Delete package usage from this comanda
       await supabase.from("client_package_usage").delete().eq("comanda_id", comandaToDelete.id);
+
+      // Cancel client_packages that were sold in this comanda (check comanda items for package type)
+      const { data: packageItems } = await supabase
+        .from("comanda_items")
+        .select("description")
+        .eq("comanda_id", comandaToDelete.id)
+        .eq("item_type", "package");
+
+      if (packageItems && packageItems.length > 0 && comandaToDelete.client_id) {
+        // Find and cancel active packages for this client that were created around the same time
+        const { data: clientPkgs } = await supabase
+          .from("client_packages")
+          .select("id, notes")
+          .eq("client_id", comandaToDelete.client_id)
+          .eq("status", "active");
+
+        if (clientPkgs) {
+          const comandaRef = comandaToDelete.id.slice(0, 8);
+          for (const pkg of clientPkgs) {
+            // Match by comanda reference in notes or by timing
+            if (pkg.notes && pkg.notes.includes(comandaRef)) {
+              // Delete usage records for this package
+              await supabase.from("client_package_usage").delete().eq("client_package_id", pkg.id);
+              // Delete the package
+              await supabase.from("client_packages").delete().eq("id", pkg.id);
+            }
+          }
+        }
+      }
+
+      // Delete all other related records
       await supabase.from("client_balance").delete().eq("comanda_id", comandaToDelete.id);
       await supabase.from("client_debts").delete().eq("comanda_id", comandaToDelete.id);
       await supabase.from("client_credits").delete().eq("comanda_id", comandaToDelete.id);
