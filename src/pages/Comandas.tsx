@@ -404,23 +404,19 @@ export default function Comandas() {
         original_closed_at: comandaToDelete.closed_at,
       });
 
-      // Delete comanda items first
-      await supabase
-        .from("comanda_items")
-        .delete()
-        .eq("comanda_id", comandaToDelete.id);
-
-      // Delete payments
-      await supabase
-        .from("payments")
-        .delete()
-        .eq("comanda_id", comandaToDelete.id);
+      // Delete all related records first
+      await supabase.from("client_package_usage").delete().eq("comanda_id", comandaToDelete.id);
+      await supabase.from("client_balance").delete().eq("comanda_id", comandaToDelete.id);
+      await supabase.from("comanda_items").delete().eq("comanda_id", comandaToDelete.id);
+      await supabase.from("payments").delete().eq("comanda_id", comandaToDelete.id);
 
       // Delete the comanda
-      await supabase
+      const { error: deleteError } = await supabase
         .from("comandas")
         .delete()
         .eq("id", comandaToDelete.id);
+
+      if (deleteError) throw deleteError;
 
       queryClient.invalidateQueries({ queryKey: ["comandas", salonId] });
       toast({ title: "Comanda excluída com sucesso" });
