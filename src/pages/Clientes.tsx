@@ -309,7 +309,7 @@ export default function Clientes() {
                 </TableHeader>
                 <TableBody>
                   {paginatedClients.map((client) => (
-                    <TableRow key={client.id} className="hover:bg-muted/30">
+                    <TableRow key={client.id} className="hover:bg-muted/30 cursor-pointer" onClick={() => handleEdit(client)}>
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <Avatar className="h-10 w-10">
