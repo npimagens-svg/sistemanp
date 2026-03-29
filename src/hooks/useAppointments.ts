@@ -20,6 +20,7 @@ export interface Appointment {
   status: AppointmentStatus;
   notes: string | null;
   price: number | null;
+  group_id: string | null;
   created_at: string;
   updated_at: string;
   clients?: { name: string; phone: string | null } | null;
@@ -36,6 +37,11 @@ export interface AppointmentInput {
   status?: AppointmentStatus;
   notes?: string;
   price?: number;
+  group_id?: string;
+}
+
+export interface MultiAppointmentInput {
+  services: AppointmentInput[];
 }
 
 export function useAppointments(date?: Date) {
@@ -126,6 +132,59 @@ export function useAppointments(date?: Date) {
     },
   });
 
+  const createMultipleMutation = useMutation({
+    mutationFn: async (input: MultiAppointmentInput) => {
+      if (!salonId) throw new Error("Salão não encontrado");
+      const rows = input.services.map((s) => ({ ...s, salon_id: salonId }));
+      const { data, error } = await supabase
+        .from("appointments")
+        .insert(rows)
+        .select(`
+          *,
+          clients(name, phone, email),
+          professionals(name),
+          services(name)
+        `);
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["appointments"] });
+      toast({ title: `${data.length} agendamento(s) criado(s) com sucesso!` });
+
+      // Send email for first appointment only (to avoid duplicates)
+      if (data.length > 0) {
+        const first = data[0] as any;
+        const client = first.clients;
+        const professional = first.professionals;
+        const service = first.services;
+        if (client?.email && salonId) {
+          const scheduledDate = new Date(first.scheduled_at);
+          sendEmail({
+            type: "appointment_confirmation",
+            salon_id: salonId,
+            to_email: client.email,
+            to_name: client.name || "Cliente",
+            client_id: first.client_id || undefined,
+            variables: {
+              service_name: data.length > 1
+                ? `${service?.name || "Serviço"} + ${data.length - 1} outro(s)`
+                : service?.name || "Não informado",
+              professional_name: professional?.name || "Não informado",
+              date: format(scheduledDate, "dd/MM/yyyy", { locale: ptBR }),
+              time: format(scheduledDate, "HH:mm", { locale: ptBR }),
+            },
+          }).catch((err) => {
+            console.error("Erro ao enviar e-mail de confirmação:", err);
+          });
+        }
+      }
+    },
+    onError: (error: Error) => {
+      toast({ title: "Erro ao criar agendamentos", description: error.message, variant: "destructive" });
+    },
+  });
+
   const updateMutation = useMutation({
     mutationFn: async ({ id, ...input }: Partial<AppointmentInput> & { id: string }) => {
       const { data, error } = await supabase
@@ -165,9 +224,10 @@ export function useAppointments(date?: Date) {
     isLoading: query.isLoading,
     error: query.error,
     createAppointment: createMutation.mutate,
+    createMultipleAppointments: createMultipleMutation.mutate,
     updateAppointment: updateMutation.mutate,
     deleteAppointment: deleteMutation.mutate,
-    isCreating: createMutation.isPending,
+    isCreating: createMutation.isPending || createMultipleMutation.isPending,
     isUpdating: updateMutation.isPending,
     isDeleting: deleteMutation.isPending,
   };

@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Calendar } from "@/components/ui/calendar";
 import { ptBR } from "date-fns/locale";
-import { useAppointments, AppointmentInput, Appointment } from "@/hooks/useAppointments";
+import { useAppointments, AppointmentInput, MultiAppointmentInput, Appointment } from "@/hooks/useAppointments";
 import { useProfessionals } from "@/hooks/useProfessionals";
 import { useClients } from "@/hooks/useClients";
 import { useServices } from "@/hooks/useServices";
@@ -72,7 +72,7 @@ export default function Agenda() {
   const { toast } = useToast();
   const { salonId } = useAuth();
   const queryClient = useQueryClient();
-  const { appointments, isLoading: appointmentsLoading, createAppointment, updateAppointment, isCreating, isUpdating } = useAppointments(currentDate);
+  const { appointments, isLoading: appointmentsLoading, createAppointment, createMultipleAppointments, updateAppointment, isCreating, isUpdating } = useAppointments(currentDate);
   const { professionals, isLoading: professionalsLoading } = useProfessionals();
   const { clients, createClient, updateClient } = useClients();
   const { services } = useServices();
@@ -215,6 +215,10 @@ export default function Agenda() {
     } else {
       createAppointment(data);
     }
+  };
+
+  const handleSubmitMultiple = (data: MultiAppointmentInput) => {
+    createMultipleAppointments(data);
   };
 
   const [viewClientId, setViewClientId] = useState<string | null>(null);
@@ -707,6 +711,7 @@ export default function Agenda() {
         professionals={professionals.filter(p => p.is_active)}
         services={services.filter(s => s.is_active)}
         onSubmit={handleSubmit}
+        onSubmitMultiple={handleSubmitMultiple}
         isLoading={isCreating || isUpdating}
         defaultDate={getDefaultDateWithTime()}
         defaultProfessionalId={selectedSlot?.professionalId}

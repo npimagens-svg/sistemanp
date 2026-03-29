@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Dialog,
@@ -18,13 +18,41 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Appointment, AppointmentInput } from "@/hooks/useAppointments";
+import { Appointment, AppointmentInput, MultiAppointmentInput } from "@/hooks/useAppointments";
 import { Client } from "@/hooks/useClients";
 import { Professional } from "@/hooks/useProfessionals";
 import { Service } from "@/hooks/useServices";
-import { DollarSign } from "lucide-react";
+import { DollarSign, Plus, X } from "lucide-react";
 import { isSameDay } from "date-fns";
 import { ClientSearchSelect } from "@/components/shared/ClientSearchSelect";
+
+interface ServiceBlock {
+  id: string; // local key for React
+  service_id: string;
+  professional_id: string;
+  time: string;
+  duration_minutes: number;
+  price: number;
+}
+
+function generateBlockId() {
+  return crypto.randomUUID();
+}
+
+function addMinutesToTime(time: string, minutes: number): string {
+  const [h, m] = time.split(":").map(Number);
+  const totalMin = h * 60 + m + minutes;
+  const newH = Math.floor(totalMin / 60) % 24;
+  const newM = totalMin % 60;
+  return `${String(newH).padStart(2, "0")}:${String(newM).padStart(2, "0")}`;
+}
+
+function formatDuration(minutes: number): string {
+  if (minutes < 60) return `${minutes}min`;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return m > 0 ? `${h}h${String(m).padStart(2, "0")}` : `${h}h`;
+}
 
 interface AppointmentModalProps {
   open: boolean;
@@ -34,6 +62,7 @@ interface AppointmentModalProps {
   professionals: Professional[];
   services: Service[];
   onSubmit: (data: AppointmentInput & { id?: string }) => void;
+  onSubmitMultiple?: (data: MultiAppointmentInput) => void;
   isLoading?: boolean;
   defaultDate?: Date;
   defaultProfessionalId?: string;
@@ -50,6 +79,7 @@ export function AppointmentModal({
   professionals,
   services,
   onSubmit,
+  onSubmitMultiple,
   isLoading,
   defaultDate,
   defaultProfessionalId,
@@ -58,109 +88,219 @@ export function AppointmentModal({
   onViewClient,
 }: AppointmentModalProps) {
   const navigate = useNavigate();
-  const [formData, setFormData] = useState<AppointmentInput & { date: string; time: string }>({
-    client_id: "",
-    professional_id: "",
-    service_id: "",
-    scheduled_at: "",
-    duration_minutes: 30,
-    status: "scheduled",
-    notes: "",
-    price: 0,
-    date: "",
-    time: "",
-  });
 
+  // Shared fields
+  const [clientId, setClientId] = useState("");
+  const [date, setDate] = useState("");
+  const [status, setStatus] = useState<string>("scheduled");
+  const [notes, setNotes] = useState("");
+
+  // Service blocks (multi-service support)
+  const [serviceBlocks, setServiceBlocks] = useState<ServiceBlock[]>([]);
+
+  const isEditing = !!appointment;
+
+  // Initialize form
   useEffect(() => {
     if (appointment) {
-      const date = new Date(appointment.scheduled_at);
-      setFormData({
-        client_id: appointment.client_id || "",
-        professional_id: appointment.professional_id,
-        service_id: appointment.service_id || "",
-        scheduled_at: appointment.scheduled_at,
-        duration_minutes: appointment.duration_minutes,
-        status: appointment.status,
-        notes: appointment.notes || "",
-        price: Number(appointment.price) || 0,
-        date: date.toISOString().split("T")[0],
-        time: date.toTimeString().slice(0, 5),
-      });
+      const d = new Date(appointment.scheduled_at);
+      setClientId(appointment.client_id || "");
+      setDate(d.toISOString().split("T")[0]);
+      setStatus(appointment.status);
+      setNotes(appointment.notes || "");
+      setServiceBlocks([
+        {
+          id: generateBlockId(),
+          service_id: appointment.service_id || "",
+          professional_id: appointment.professional_id,
+          time: d.toTimeString().slice(0, 5),
+          duration_minutes: appointment.duration_minutes,
+          price: Number(appointment.price) || 0,
+        },
+      ]);
     } else {
-      const date = defaultDate || new Date();
-      setFormData({
-        client_id: "",
-        professional_id: defaultProfessionalId || "",
-        service_id: "",
-        scheduled_at: "",
-        duration_minutes: 30,
-        status: "scheduled",
-        notes: "",
-        price: 0,
-        date: date.toISOString().split("T")[0],
-        time: date.toTimeString().slice(0, 5),
-      });
+      const d = defaultDate || new Date();
+      setClientId("");
+      setDate(d.toISOString().split("T")[0]);
+      setStatus("scheduled");
+      setNotes("");
+      setServiceBlocks([
+        {
+          id: generateBlockId(),
+          service_id: "",
+          professional_id: defaultProfessionalId || "",
+          time: d.toTimeString().slice(0, 5),
+          duration_minutes: 30,
+          price: 0,
+        },
+      ]);
     }
   }, [appointment, open, defaultDate, defaultProfessionalId]);
 
-  const handleServiceChange = (serviceId: string) => {
-    const service = services.find((s) => s.id === serviceId);
-    if (service) {
-      setFormData({
-        ...formData,
-        service_id: serviceId,
-        duration_minutes: service.duration_minutes,
-        price: Number(service.price),
+  const updateBlock = useCallback(
+    (index: number, updates: Partial<ServiceBlock>) => {
+      setServiceBlocks((prev) => {
+        const next = [...prev];
+        next[index] = { ...next[index], ...updates };
+
+        // Auto-cascade times for subsequent blocks
+        for (let i = index + 1; i < next.length; i++) {
+          const prevBlock = next[i - 1];
+          next[i] = {
+            ...next[i],
+            time: addMinutesToTime(prevBlock.time, prevBlock.duration_minutes),
+          };
+        }
+        return next;
       });
-    } else {
-      setFormData({ ...formData, service_id: serviceId });
-    }
-  };
+    },
+    []
+  );
+
+  const handleServiceChangeInBlock = useCallback(
+    (index: number, serviceId: string) => {
+      const service = services.find((s) => s.id === serviceId);
+      if (service) {
+        updateBlock(index, {
+          service_id: serviceId,
+          duration_minutes: service.duration_minutes,
+          price: Number(service.price),
+        });
+      } else {
+        updateBlock(index, { service_id: serviceId });
+      }
+    },
+    [services, updateBlock]
+  );
+
+  const addServiceBlock = useCallback(() => {
+    setServiceBlocks((prev) => {
+      const last = prev[prev.length - 1];
+      const nextTime = addMinutesToTime(last.time, last.duration_minutes);
+      return [
+        ...prev,
+        {
+          id: generateBlockId(),
+          service_id: "",
+          professional_id: last.professional_id,
+          time: nextTime,
+          duration_minutes: 30,
+          price: 0,
+        },
+      ];
+    });
+  }, []);
+
+  const removeServiceBlock = useCallback((index: number) => {
+    setServiceBlocks((prev) => {
+      if (prev.length <= 1) return prev;
+      const next = prev.filter((_, i) => i !== index);
+      // Recalculate times from the removed index onward
+      for (let i = Math.max(1, index); i < next.length; i++) {
+        const prevBlock = next[i - 1];
+        next[i] = {
+          ...next[i],
+          time: addMinutesToTime(prevBlock.time, prevBlock.duration_minutes),
+        };
+      }
+      return next;
+    });
+  }, []);
+
+  // Summary calculations
+  const totalDuration = useMemo(
+    () => serviceBlocks.reduce((sum, b) => sum + b.duration_minutes, 0),
+    [serviceBlocks]
+  );
+  const totalPrice = useMemo(
+    () => serviceBlocks.reduce((sum, b) => sum + b.price, 0),
+    [serviceBlocks]
+  );
+
+  const allBlocksValid = useMemo(
+    () => serviceBlocks.every((b) => b.service_id && b.professional_id),
+    [serviceBlocks]
+  );
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Validate that both client and service are required
-    if (!formData.client_id) {
-      return;
-    }
-    if (!formData.service_id) {
-      return;
-    }
-    
-    const scheduled_at = new Date(`${formData.date}T${formData.time}`).toISOString();
-    
-    const data: AppointmentInput = {
-      client_id: formData.client_id,
-      professional_id: formData.professional_id,
-      service_id: formData.service_id,
-      scheduled_at,
-      duration_minutes: formData.duration_minutes,
-      status: formData.status,
-      notes: formData.notes || undefined,
-      price: formData.price,
-    };
+    if (!clientId || !allBlocksValid) return;
 
-    if (appointment) {
-      onSubmit({ ...data, id: appointment.id });
+    if (isEditing) {
+      // Single appointment update (keep existing behavior)
+      const block = serviceBlocks[0];
+      const scheduled_at = new Date(`${date}T${block.time}`).toISOString();
+      onSubmit({
+        id: appointment!.id,
+        client_id: clientId,
+        professional_id: block.professional_id,
+        service_id: block.service_id,
+        scheduled_at,
+        duration_minutes: block.duration_minutes,
+        status: status as any,
+        notes: notes || undefined,
+        price: block.price,
+      });
+      onOpenChange(false);
+      return;
+    }
+
+    // Creating new: single or multiple
+    if (serviceBlocks.length === 1) {
+      const block = serviceBlocks[0];
+      const scheduled_at = new Date(`${date}T${block.time}`).toISOString();
+      onSubmit({
+        client_id: clientId,
+        professional_id: block.professional_id,
+        service_id: block.service_id,
+        scheduled_at,
+        duration_minutes: block.duration_minutes,
+        status: status as any,
+        notes: notes || undefined,
+        price: block.price,
+      });
+    } else if (onSubmitMultiple) {
+      const groupId = crypto.randomUUID();
+      const items: AppointmentInput[] = serviceBlocks.map((block) => ({
+        client_id: clientId,
+        professional_id: block.professional_id,
+        service_id: block.service_id,
+        scheduled_at: new Date(`${date}T${block.time}`).toISOString(),
+        duration_minutes: block.duration_minutes,
+        status: status as any,
+        notes: notes || undefined,
+        price: block.price,
+        group_id: groupId,
+      }));
+      onSubmitMultiple({ services: items });
     } else {
-      onSubmit(data);
+      // Fallback: create one by one if onSubmitMultiple not provided
+      serviceBlocks.forEach((block) => {
+        const scheduled_at = new Date(`${date}T${block.time}`).toISOString();
+        onSubmit({
+          client_id: clientId,
+          professional_id: block.professional_id,
+          service_id: block.service_id,
+          scheduled_at,
+          duration_minutes: block.duration_minutes,
+          status: status as any,
+          notes: notes || undefined,
+          price: block.price,
+        });
+      });
     }
     onOpenChange(false);
   };
 
-  // Get selected client - from appointment when editing, or from formData when selected
+  // Get selected client
   const selectedClient = useMemo(() => {
-    const clientId = appointment?.client_id || formData.client_id;
-    return clientId ? clients.find(c => c.id === clientId) : null;
-  }, [appointment?.client_id, formData.client_id, clients]);
+    const cid = appointment?.client_id || clientId;
+    return cid ? clients.find((c) => c.id === cid) : null;
+  }, [appointment?.client_id, clientId, clients]);
 
-  // Check if appointment is for today - only allow opening comanda for today's appointments
   const isAppointmentToday = useMemo(() => {
     if (!appointment?.scheduled_at) return false;
-    const appointmentDate = new Date(appointment.scheduled_at);
-    const today = new Date();
-    return isSameDay(appointmentDate, today);
+    return isSameDay(new Date(appointment.scheduled_at), new Date());
   }, [appointment?.scheduled_at]);
 
   const handleOpenComanda = () => {
@@ -170,18 +310,23 @@ export function AppointmentModal({
     }
   };
 
+  const activeServices = useMemo(() => services.filter((s) => s.is_active), [services]);
+  const activeProfessionals = useMemo(() => professionals.filter((p) => p.is_active), [professionals]);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{appointment ? "Editar Agendamento" : "Novo Agendamento"}</DialogTitle>
+          <DialogTitle>{isEditing ? "Editar Agendamento" : "Novo Agendamento"}</DialogTitle>
         </DialogHeader>
-        
-        {/* Client Info Header with Abrir Comanda button - shows when editing existing appointment with client */}
-        {appointment && selectedClient && (
+
+        {/* Client Info Header with Abrir Comanda button */}
+        {isEditing && selectedClient && (
           <div className="bg-muted/50 rounded-lg p-4 flex items-center justify-between">
             <div>
-              <p className="text-sm text-primary font-semibold">Cliente: {selectedClient.name.toUpperCase()}</p>
+              <p className="text-sm text-primary font-semibold">
+                Cliente: {selectedClient.name.toUpperCase()}
+              </p>
               {selectedClient.phone && (
                 <p className="text-sm text-primary">Celular: {selectedClient.phone}</p>
               )}
@@ -199,116 +344,174 @@ export function AppointmentModal({
             )}
           </div>
         )}
-        
+
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Client selection */}
           <div className="space-y-2">
             <Label>Cliente *</Label>
             <ClientSearchSelect
               clients={clients}
-              value={formData.client_id || null}
-              onSelect={(clientId) => setFormData({ ...formData, client_id: clientId || "" })}
+              value={clientId || null}
+              onSelect={(id) => setClientId(id || "")}
               onCreateNew={onCreateClient}
               onViewClient={onViewClient}
               placeholder="Buscar cliente..."
             />
-            {!formData.client_id && (
-              <p className="text-xs text-destructive">Cliente é obrigatório</p>
-            )}
+            {!clientId && <p className="text-xs text-destructive">Cliente é obrigatório</p>}
           </div>
-          
+
+          {/* Date */}
           <div className="space-y-2">
-            <Label>Profissional *</Label>
-            <Select 
-              value={formData.professional_id} 
-              onValueChange={(v) => setFormData({ ...formData, professional_id: v })}
+            <Label htmlFor="date">Data *</Label>
+            <Input
+              id="date"
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
               required
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione um profissional" />
-              </SelectTrigger>
-              <SelectContent>
-                {professionals.filter((p) => p.is_active).map((pro) => (
-                  <SelectItem key={pro.id} value={pro.id}>
-                    {pro.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            />
           </div>
 
-          <div className="space-y-2">
-            <Label>Serviço *</Label>
-            <Select value={formData.service_id} onValueChange={handleServiceChange}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione um serviço" />
-              </SelectTrigger>
-              <SelectContent>
-                {services.filter((s) => s.is_active).map((service) => (
-                  <SelectItem key={service.id} value={service.id}>
-                    {service.name} - R$ {Number(service.price).toFixed(2)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {!formData.service_id && (
-              <p className="text-xs text-destructive">Serviço é obrigatório</p>
+          {/* Service Blocks */}
+          <div className="space-y-3">
+            <Label className="text-base font-semibold">Serviços</Label>
+
+            {serviceBlocks.map((block, index) => (
+              <div
+                key={block.id}
+                className="border rounded-lg p-3 space-y-3 bg-muted/30 relative"
+              >
+                {/* Remove button */}
+                {serviceBlocks.length > 1 && (
+                  <button
+                    type="button"
+                    className="absolute top-2 right-2 text-muted-foreground hover:text-destructive transition-colors"
+                    onClick={() => removeServiceBlock(index)}
+                    title="Remover serviço"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+
+                {/* Row 1: Service + Professional */}
+                <div className="grid grid-cols-2 gap-3 pr-6">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Serviço *</Label>
+                    <Select
+                      value={block.service_id}
+                      onValueChange={(v) => handleServiceChangeInBlock(index, v)}
+                    >
+                      <SelectTrigger className="h-9">
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {activeServices.map((s) => (
+                          <SelectItem key={s.id} value={s.id}>
+                            {s.name} - R$ {Number(s.price).toFixed(2)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Profissional *</Label>
+                    <Select
+                      value={block.professional_id}
+                      onValueChange={(v) => updateBlock(index, { professional_id: v })}
+                    >
+                      <SelectTrigger className="h-9">
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {activeProfessionals.map((p) => (
+                          <SelectItem key={p.id} value={p.id}>
+                            {p.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Row 2: Time + Duration + Price */}
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Horário</Label>
+                    <Input
+                      type="time"
+                      className="h-9"
+                      value={block.time}
+                      onChange={(e) => updateBlock(index, { time: e.target.value })}
+                      disabled={index > 0}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Duração (min)</Label>
+                    <Input
+                      type="number"
+                      className="h-9"
+                      min={5}
+                      step={5}
+                      value={block.duration_minutes}
+                      onChange={(e) =>
+                        updateBlock(index, {
+                          duration_minutes: parseInt(e.target.value) || 30,
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Preço (R$)</Label>
+                    <Input
+                      type="number"
+                      className="h-9"
+                      min={0}
+                      step={0.01}
+                      value={block.price}
+                      onChange={(e) =>
+                        updateBlock(index, { price: parseFloat(e.target.value) || 0 })
+                      }
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
+
+            {/* Add service button - only in creation mode */}
+            {!isEditing && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-full"
+                onClick={addServiceBlock}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Adicionar serviço
+              </Button>
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="date">Data *</Label>
-              <Input
-                id="date"
-                type="date"
-                value={formData.date}
-                onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                required
-              />
+          {/* Summary (only show when multiple services) */}
+          {serviceBlocks.length > 1 && (
+            <div className="bg-primary/5 border border-primary/20 rounded-lg px-4 py-3 flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">
+                {serviceBlocks.length} serviços
+              </span>
+              <span className="text-muted-foreground">
+                Duração total: <span className="font-medium text-foreground">{formatDuration(totalDuration)}</span>
+              </span>
+              <span className="text-muted-foreground">
+                Total: <span className="font-semibold text-foreground">R$ {totalPrice.toFixed(2)}</span>
+              </span>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="time">Horário *</Label>
-              <Input
-                id="time"
-                type="time"
-                value={formData.time}
-                onChange={(e) => setFormData({ ...formData, time: e.target.value })}
-                required
-              />
-            </div>
-          </div>
+          )}
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="duration">Duração (min)</Label>
-              <Input
-                id="duration"
-                type="number"
-                min={5}
-                step={5}
-                value={formData.duration_minutes}
-                onChange={(e) => setFormData({ ...formData, duration_minutes: parseInt(e.target.value) || 30 })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="price">Preço (R$)</Label>
-              <Input
-                id="price"
-                type="number"
-                min={0}
-                step={0.01}
-                value={formData.price}
-                onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })}
-              />
-            </div>
-          </div>
-
+          {/* Status */}
           <div className="space-y-2">
             <Label>Status</Label>
-            <Select 
-              value={formData.status} 
-              onValueChange={(v: any) => setFormData({ ...formData, status: v })}
-            >
+            <Select value={status} onValueChange={setStatus}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -323,12 +526,13 @@ export function AppointmentModal({
             </Select>
           </div>
 
+          {/* Notes */}
           <div className="space-y-2">
             <Label htmlFor="notes">Observações</Label>
             <Textarea
               id="notes"
-              value={formData.notes}
-              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
               rows={2}
             />
           </div>
@@ -337,10 +541,7 @@ export function AppointmentModal({
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancelar
             </Button>
-            <Button 
-              type="submit" 
-              disabled={isLoading || !formData.professional_id || !formData.client_id || !formData.service_id}
-            >
+            <Button type="submit" disabled={isLoading || !clientId || !allBlocksValid}>
               {isLoading ? "Salvando..." : "Salvar"}
             </Button>
           </DialogFooter>

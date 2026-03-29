@@ -170,6 +170,7 @@ CREATE TABLE public.appointments (
   status appointment_status NOT NULL DEFAULT 'scheduled',
   notes TEXT,
   price NUMERIC,
+  group_id UUID,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
