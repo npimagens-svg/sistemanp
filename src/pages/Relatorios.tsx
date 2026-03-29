@@ -106,46 +106,147 @@ const REPORT_CATEGORIES = [
   },
 ];
 
+import { Input } from "@/components/ui/input";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Search, Eye, Star } from "lucide-react";
+
+// Full report descriptions
+const REPORT_DESCRIPTIONS: Record<string, string> = {
+  "0004": "Exibir os dados: e-mail, telefone, celular e aniversário; de todos os clientes",
+  "0008": "Exibir todos os clientes atendidos no período exibindo informações cadastrais e dados complementares de visitas ao estabelecimento",
+  "0010": "Exibir todos os clientes que possuam o mesmo número de celular cadastrado em comum",
+  "0015": "Exibir o perfil de compras dos clientes. O período serve para filtrar os clientes que estiveram no estabelecimento, mas é analisado todo o histórico do cliente para determinar qual o perfil de compra dele",
+  "0020": "Exibir clientes que fizeram algum serviço que tinha \"dias para retorno\" cadastrado, passaram-se os dias e não retornaram e calcular em quantos dias de atraso cada cliente está",
+  "0021": "Exibir qual é o faturamento total, a quantidade de comandas geradas e o ticket médio gerado por cada profissional no período definido",
+  "0024": "Exibir todos os serviços com a categoria, a quantidade realizada, o faturamento total por serviço e valores médios, filtrados por profissional no período",
+  "0028": "Exibir todas as comissões pagas no período com datas de pagamento, valores pagos e formas de pagamento",
+  "1128": "Exibir as categorias dos serviços vendidos, faturamentos totais, quantidades vendidas e % de faturamento por profissional selecionado no período",
+  "0033": "Exibir todos os serviços do estabelecimento, suas categorias e os seus respectivos valores",
+  "0085": "Exibir a evolução do faturamento mensal do estabelecimento e os tickets médios dos serviços vendidos aos clientes",
+  "0175": "Exibir os faturamentos brutos para o estabelecimento e para os profissionais no período definido",
+  "0180": "Exibir todas as vendas de serviços e produtos no período definido",
+  "0281": "Exibir as formas de pagamento e os respectivos faturamentos que entraram para o caixa, além do faturamento total segmentado",
+};
+
 function ReportSelector({ onSelect }: { onSelect: (reportId: string) => void }) {
+  const [filterCategory, setFilterCategory] = useState<string>("todos");
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const allReports = useMemo(() => {
+    const reports: { id: string; label: string; category: string; categoryColor: string; needsDate: boolean; hasChart?: boolean }[] = [];
+    REPORT_CATEGORIES.forEach(cat => {
+      cat.reports.forEach(r => {
+        reports.push({ ...r, category: cat.label, categoryColor: cat.color });
+      });
+    });
+    return reports;
+  }, []);
+
+  const filteredReports = useMemo(() => {
+    return allReports.filter(r => {
+      const matchesCategory = filterCategory === "todos" || r.category === REPORT_CATEGORIES.find(c => c.id === filterCategory)?.label;
+      const query = searchQuery.toLowerCase();
+      const matchesSearch = !query || r.label.toLowerCase().includes(query) || r.id.includes(query) || (REPORT_DESCRIPTIONS[r.id] || "").toLowerCase().includes(query);
+      return matchesCategory && matchesSearch;
+    });
+  }, [allReports, filterCategory, searchQuery]);
+
   return (
-    <div className="space-y-6">
-      {REPORT_CATEGORIES.map(cat => (
-        <div key={cat.id} className="space-y-3">
-          <div className="flex items-center gap-2">
-            <cat.icon className={cn("h-5 w-5", cat.color)} />
-            <h3 className="text-lg font-semibold">{cat.label}</h3>
-            <Badge variant="secondary">{cat.reports.length}</Badge>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {cat.reports.map(report => (
-              <Card
-                key={report.id}
-                className="cursor-pointer transition-all hover:shadow-md hover:border-primary/50"
-                onClick={() => onSelect(report.id)}
-              >
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="space-y-1">
-                      <p className="font-medium text-sm leading-tight">{report.label}</p>
+    <div className="space-y-4">
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-2 overflow-x-auto">
+          <Button
+            variant={filterCategory === "todos" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setFilterCategory("todos")}
+          >
+            Todos
+          </Button>
+          {REPORT_CATEGORIES.map(cat => (
+            <Button
+              key={cat.id}
+              variant={filterCategory === cat.id ? "default" : "outline"}
+              size="sm"
+              className="gap-1 whitespace-nowrap"
+              onClick={() => setFilterCategory(cat.id)}
+            >
+              <cat.icon className="h-3.5 w-3.5" />
+              {cat.label}
+            </Button>
+          ))}
+        </div>
+        <div className="relative w-full sm:w-64">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+      </div>
+
+      {/* Table */}
+      <Card>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/50">
+                <TableHead className="w-20">Código</TableHead>
+                <TableHead className="w-32">Categoria</TableHead>
+                <TableHead className="w-64">Relatório</TableHead>
+                <TableHead>Descrição</TableHead>
+                <TableHead className="w-20 text-center">Ação</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredReports.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                    Nenhum relatório encontrado
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredReports.map(report => (
+                  <TableRow
+                    key={report.id}
+                    className="cursor-pointer hover:bg-primary/5"
+                    onClick={() => onSelect(report.id)}
+                  >
+                    <TableCell>
+                      <Badge variant="outline" className="font-mono text-xs">{report.id}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-sm font-medium">{report.category}</span>
+                    </TableCell>
+                    <TableCell>
                       <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="text-xs font-mono">#{report.id}</Badge>
+                        <span className="text-sm font-medium">{report.label}</span>
                         {report.hasChart && (
-                          <Badge variant="secondary" className="text-xs">
-                            <BarChart3 className="h-3 w-3 mr-1" />Gráfico
+                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                            Gráfico
                           </Badge>
                         )}
                       </div>
-                    </div>
-                    <div className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-lg", cat.bgColor)}>
-                      <cat.icon className={cn("h-4 w-4", cat.color)} />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      ))}
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-xs text-muted-foreground line-clamp-2">
+                        {REPORT_DESCRIPTIONS[report.id] || ""}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <Eye className="h-4 w-4 text-primary" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
     </div>
   );
 }
