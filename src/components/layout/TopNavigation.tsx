@@ -9,6 +9,7 @@ import {
   BarChart3,
   Settings,
   Scissors,
+  Gift,
 } from "lucide-react";
 
 interface NavItem {
@@ -48,6 +49,11 @@ const navItems: NavItem[] = [
     title: "Serviços",
     url: "/servicos",
     icon: Scissors,
+  },
+  {
+    title: "Pacotes",
+    url: "/pacotes",
+    icon: Gift,
   },
   {
     title: "Clientes",

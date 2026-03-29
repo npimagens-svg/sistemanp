@@ -25,6 +25,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Loader2, Search } from "lucide-react";
 import { AvatarUpload } from "@/components/shared/AvatarUpload";
+import { ClientPackagesTab } from "@/components/clients/ClientPackagesTab";
 
 const HOW_MET_OPTIONS = [
   { value: "indicacao", label: "Indicação" },
@@ -205,9 +206,10 @@ export function ClientModal({ open, onOpenChange, client, onSubmit, isLoading, i
           <DialogTitle>{client ? "Editar Cliente" : "Cadastre um novo cliente"}</DialogTitle>
         </DialogHeader>
         <Tabs defaultValue="cadastro" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="cadastro">Cadastro</TabsTrigger>
             <TabsTrigger value="comandas" disabled={!client}>Comandas</TabsTrigger>
+            <TabsTrigger value="pacotes" disabled={!client}>Pacotes</TabsTrigger>
             <TabsTrigger value="anamnese">Anamnese</TabsTrigger>
           </TabsList>
           <form onSubmit={handleSubmit}>
@@ -534,6 +536,16 @@ export function ClientModal({ open, onOpenChange, client, onSubmit, isLoading, i
 
               <TabsContent value="comandas" className="space-y-4 mt-4">
                 <ClientComandasTab clientId={client?.id || null} />
+              </TabsContent>
+
+              <TabsContent value="pacotes" className="space-y-4 mt-4">
+                {client ? (
+                  <ClientPackagesTab clientId={client.id} clientName={client.name} />
+                ) : (
+                  <div className="flex items-center justify-center h-40 text-muted-foreground">
+                    <p>Salve o cliente primeiro para gerenciar pacotes.</p>
+                  </div>
+                )}
               </TabsContent>
 
               <TabsContent value="anamnese" className="space-y-4 mt-4">

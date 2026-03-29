@@ -11,6 +11,7 @@ import Dashboard from "./pages/Dashboard";
 import Agenda from "./pages/Agenda";
 import Clientes from "./pages/Clientes";
 import Servicos from "./pages/Servicos";
+import Pacotes from "./pages/Pacotes";
 import AuthNew from "./pages/AuthNew";
 import { Profissionais } from "./pages/Profissionais";
 import Comandas from "./pages/Comandas";
@@ -85,6 +86,7 @@ function AppRoutes() {
         <Route path="/clientes/fidelidade" element={<ProtectedRoute><ClientLoyalty /></ProtectedRoute>} />
         <Route path="/clientes/*" element={<ProtectedRoute><Clientes /></ProtectedRoute>} />
         <Route path="/servicos" element={<ProtectedRoute><Servicos /></ProtectedRoute>} />
+        <Route path="/pacotes" element={<ProtectedRoute><Pacotes /></ProtectedRoute>} />
         <Route path="/profissionais" element={<ProtectedRoute><Profissionais /></ProtectedRoute>} />
         <Route path="/comandas" element={<ProtectedRoute><Comandas /></ProtectedRoute>} />
         <Route path="/comandas/*" element={<ProtectedRoute><Comandas /></ProtectedRoute>} />

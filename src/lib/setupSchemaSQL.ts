@@ -951,6 +951,91 @@ GRANT EXECUTE ON FUNCTION public.is_setup_done() TO anon;
 GRANT EXECUTE ON FUNCTION public.is_setup_done() TO authenticated;
 
 -- ============================================================
+-- 12. SISTEMA DE PACOTES
+-- ============================================================
+
+CREATE TABLE public.packages (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  salon_id UUID REFERENCES public.salons(id) ON DELETE CASCADE NOT NULL,
+  name TEXT NOT NULL,
+  description TEXT,
+  price NUMERIC NOT NULL DEFAULT 0,
+  original_price NUMERIC NOT NULL DEFAULT 0,
+  discount_percent NUMERIC NOT NULL DEFAULT 0,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE public.package_items (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  package_id UUID REFERENCES public.packages(id) ON DELETE CASCADE NOT NULL,
+  service_id UUID REFERENCES public.services(id) ON DELETE CASCADE NOT NULL,
+  quantity INTEGER NOT NULL DEFAULT 1,
+  unit_price NUMERIC NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE public.client_packages (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  salon_id UUID REFERENCES public.salons(id) ON DELETE CASCADE NOT NULL,
+  client_id UUID REFERENCES public.clients(id) ON DELETE CASCADE NOT NULL,
+  package_id UUID REFERENCES public.packages(id) ON DELETE CASCADE NOT NULL,
+  purchase_date TIMESTAMPTZ NOT NULL DEFAULT now(),
+  total_paid NUMERIC NOT NULL DEFAULT 0,
+  status TEXT NOT NULL DEFAULT 'active',
+  notes TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE public.client_package_usage (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  client_package_id UUID REFERENCES public.client_packages(id) ON DELETE CASCADE NOT NULL,
+  service_id UUID REFERENCES public.services(id) ON DELETE SET NULL,
+  used_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  professional_id UUID REFERENCES public.professionals(id) ON DELETE SET NULL,
+  comanda_id UUID REFERENCES public.comandas(id) ON DELETE SET NULL,
+  notes TEXT
+);
+
+-- RLS for packages
+ALTER TABLE public.packages ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can view packages in their salon" ON public.packages FOR SELECT TO authenticated USING (salon_id = get_user_salon_id(auth.uid()));
+CREATE POLICY "Users can insert packages in their salon" ON public.packages FOR INSERT TO authenticated WITH CHECK (salon_id = get_user_salon_id(auth.uid()));
+CREATE POLICY "Users can update packages in their salon" ON public.packages FOR UPDATE TO authenticated USING (salon_id = get_user_salon_id(auth.uid()));
+CREATE POLICY "Users can delete packages in their salon" ON public.packages FOR DELETE TO authenticated USING (salon_id = get_user_salon_id(auth.uid()));
+
+-- RLS for package_items
+ALTER TABLE public.package_items ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can view package items" ON public.package_items FOR SELECT TO authenticated USING (EXISTS (SELECT 1 FROM packages p WHERE p.id = package_id AND p.salon_id = get_user_salon_id(auth.uid())));
+CREATE POLICY "Users can insert package items" ON public.package_items FOR INSERT TO authenticated WITH CHECK (EXISTS (SELECT 1 FROM packages p WHERE p.id = package_id AND p.salon_id = get_user_salon_id(auth.uid())));
+CREATE POLICY "Users can update package items" ON public.package_items FOR UPDATE TO authenticated USING (EXISTS (SELECT 1 FROM packages p WHERE p.id = package_id AND p.salon_id = get_user_salon_id(auth.uid())));
+CREATE POLICY "Users can delete package items" ON public.package_items FOR DELETE TO authenticated USING (EXISTS (SELECT 1 FROM packages p WHERE p.id = package_id AND p.salon_id = get_user_salon_id(auth.uid())));
+
+-- RLS for client_packages
+ALTER TABLE public.client_packages ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can view client packages in their salon" ON public.client_packages FOR SELECT TO authenticated USING (salon_id = get_user_salon_id(auth.uid()));
+CREATE POLICY "Users can insert client packages in their salon" ON public.client_packages FOR INSERT TO authenticated WITH CHECK (salon_id = get_user_salon_id(auth.uid()));
+CREATE POLICY "Users can update client packages in their salon" ON public.client_packages FOR UPDATE TO authenticated USING (salon_id = get_user_salon_id(auth.uid()));
+CREATE POLICY "Users can delete client packages in their salon" ON public.client_packages FOR DELETE TO authenticated USING (salon_id = get_user_salon_id(auth.uid()));
+
+-- RLS for client_package_usage
+ALTER TABLE public.client_package_usage ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can view client package usage" ON public.client_package_usage FOR SELECT TO authenticated USING (EXISTS (SELECT 1 FROM client_packages cp WHERE cp.id = client_package_id AND cp.salon_id = get_user_salon_id(auth.uid())));
+CREATE POLICY "Users can insert client package usage" ON public.client_package_usage FOR INSERT TO authenticated WITH CHECK (EXISTS (SELECT 1 FROM client_packages cp WHERE cp.id = client_package_id AND cp.salon_id = get_user_salon_id(auth.uid())));
+CREATE POLICY "Users can delete client package usage" ON public.client_package_usage FOR DELETE TO authenticated USING (EXISTS (SELECT 1 FROM client_packages cp WHERE cp.id = client_package_id AND cp.salon_id = get_user_salon_id(auth.uid())));
+
+-- Triggers for packages
+CREATE TRIGGER update_packages_updated_at BEFORE UPDATE ON public.packages FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Indexes for packages
+CREATE INDEX idx_packages_salon_id ON public.packages(salon_id);
+CREATE INDEX idx_package_items_package_id ON public.package_items(package_id);
+CREATE INDEX idx_client_packages_salon_id ON public.client_packages(salon_id);
+CREATE INDEX idx_client_packages_client_id ON public.client_packages(client_id);
+CREATE INDEX idx_client_package_usage_client_package_id ON public.client_package_usage(client_package_id);
+
+-- ============================================================
 -- Schema criado com sucesso! Agora volte ao instalador.
 -- ============================================================
 `;
