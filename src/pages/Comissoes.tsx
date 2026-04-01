@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { AppLayoutNew } from "@/components/layout/AppLayoutNew";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import { useProfessionals } from "@/hooks/useProfessionals";
 import { useComandas } from "@/hooks/useComandas";
 import { useServices } from "@/hooks/useServices";
 import { useClients } from "@/hooks/useClients";
+import { useCurrentProfessional } from "@/hooks/useCurrentProfessional";
 import { format, startOfMonth, isWithinInterval } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -41,7 +42,15 @@ export default function Comissoes() {
   const [selectedProfessional, setSelectedProfessional] = useState<string>("all");
   const [commissionStatus, setCommissionStatus] = useState<string>("all");
 
+  const { professionalId: currentProfessionalId, isProfessionalUser } = useCurrentProfessional();
   const { professionals, isLoading: loadingProfessionals } = useProfessionals();
+
+  // Auto-select the current professional's ID when they are a professional user
+  useEffect(() => {
+    if (isProfessionalUser && currentProfessionalId && selectedProfessional === "all") {
+      setSelectedProfessional(currentProfessionalId);
+    }
+  }, [isProfessionalUser, currentProfessionalId]);
   const { comandas, isLoading: loadingComandas } = useComandas();
   const { services, isLoading: loadingServices } = useServices();
   const { clients, isLoading: loadingClients } = useClients();
@@ -311,22 +320,24 @@ export default function Comissoes() {
                   onChange={e => setDateEnd(e.target.value)}
                 />
               </div>
-              <div className="space-y-2">
-                <Label>Profissionais:</Label>
-                <Select value={selectedProfessional} onValueChange={setSelectedProfessional}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Todos" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos</SelectItem>
-                    {professionals.filter(p => p.is_active).map(prof => (
-                      <SelectItem key={prof.id} value={prof.id}>
-                        {prof.name} {(prof as any).role ? `- ${getSpecialtyLabel((prof as any).role)}` : ""}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              {!isProfessionalUser && (
+                <div className="space-y-2">
+                  <Label>Profissionais:</Label>
+                  <Select value={selectedProfessional} onValueChange={setSelectedProfessional}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Todos" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos</SelectItem>
+                      {professionals.filter(p => p.is_active).map(prof => (
+                        <SelectItem key={prof.id} value={prof.id}>
+                          {prof.name} {(prof as any).role ? `- ${getSpecialtyLabel((prof as any).role)}` : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               <div className="space-y-2">
                 <Label>Comissões:</Label>
                 <Select value={commissionStatus} onValueChange={setCommissionStatus}>
