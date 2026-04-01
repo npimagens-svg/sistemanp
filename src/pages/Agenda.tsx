@@ -3,7 +3,8 @@ import { AppLayoutNew } from "@/components/layout/AppLayoutNew";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ChevronLeft, ChevronRight, Plus, Clock, Search, Loader2, Ban, List, Maximize2, Eye } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Clock, Search, Loader2, Ban, List, Maximize2, Eye, CalendarDays } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -68,6 +69,7 @@ export default function Agenda() {
   const [isBlocking, setIsBlocking] = useState(false);
   const [maxColumns, setMaxColumns] = useState(10);
   const [expandCategories, setExpandCategories] = useState(false);
+  const [mobileDatePickerOpen, setMobileDatePickerOpen] = useState(false);
 
   const { toast } = useToast();
   const { salonId } = useAuth();
@@ -142,6 +144,26 @@ export default function Agenda() {
 
   const goToToday = () => {
     setCurrentDate(new Date());
+  };
+
+  const goToPreviousDay = () => {
+    setCurrentDate((prev) => new Date(prev.getFullYear(), prev.getMonth(), prev.getDate() - 1));
+  };
+
+  const goToNextDay = () => {
+    setCurrentDate((prev) => new Date(prev.getFullYear(), prev.getMonth(), prev.getDate() + 1));
+  };
+
+  const formatDateDisplay = (date: Date) => {
+    const today = new Date();
+    const isToday = date.toDateString() === today.toDateString();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+    const isTomorrow = date.toDateString() === tomorrow.toDateString();
+
+    if (isToday) return "Hoje";
+    if (isTomorrow) return "Amanhã";
+    return date.toLocaleDateString("pt-BR", { weekday: "short", day: "numeric", month: "short" });
   };
 
   const toggleProfessional = (id: string) => {
@@ -462,13 +484,39 @@ export default function Agenda() {
         <div className="flex-1 min-w-0 flex flex-col">
           {/* Top Controls Bar - Matches AVEC style */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 px-3 py-2 border-b border-border bg-card">
-            {/* Mobile date display */}
-            <div className="flex items-center gap-2 md:hidden w-full">
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={goToPreviousMonth}>
+            {/* Mobile date display — arrows navigate by day, tap date opens calendar */}
+            <div className="flex items-center gap-1 md:hidden w-full">
+              <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={goToPreviousDay}>
                 <ChevronLeft className="h-4 w-4" />
               </Button>
-              <span className="text-sm font-medium flex-1 text-center capitalize">{formatMonthYear(currentDate)}</span>
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={goToNextMonth}>
+
+              <Popover open={mobileDatePickerOpen} onOpenChange={setMobileDatePickerOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="ghost" className="flex-1 h-9 gap-1.5 text-sm font-medium capitalize">
+                    <CalendarDays className="h-4 w-4 text-muted-foreground" />
+                    <span>{formatDateDisplay(currentDate)}</span>
+                    <span className="text-muted-foreground text-xs">
+                      {currentDate.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}
+                    </span>
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="center">
+                  <Calendar
+                    mode="single"
+                    selected={currentDate}
+                    onSelect={(date) => {
+                      if (date) {
+                        setCurrentDate(date);
+                        setMobileDatePickerOpen(false);
+                      }
+                    }}
+                    locale={ptBR}
+                    className="rounded-md"
+                  />
+                </PopoverContent>
+              </Popover>
+
+              <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={goToNextDay}>
                 <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
