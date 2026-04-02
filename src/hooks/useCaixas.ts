@@ -178,6 +178,7 @@ export function useCaixas() {
           updates.total_pix = (currentCaixa.total_pix || 0) + amount;
           break;
         case "credit_card":
+        case "installment":
           updates.total_credit_card = (currentCaixa.total_credit_card || 0) + amount;
           break;
         case "debit_card":

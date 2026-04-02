@@ -56,6 +56,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/dynamicSupabaseClient";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSchedulingSettings, SchedulingSettings } from "@/hooks/useSchedulingSettings";
+import { useCommissionSettings } from "@/hooks/useCommissionSettings";
 import { WebhookSettingsSection } from "@/components/settings/WebhookSettingsSection";
 import { ApiGatewaySettingsSection } from "@/components/settings/ApiGatewaySettingsSection";
 import { ResendSettingsSection } from "@/components/settings/ResendSettingsSection";
@@ -598,6 +599,7 @@ export default function Configuracoes() {
   const { users, isLoading, updateRole, updateCanOpenCaixa, deleteAccess, isUpdating, isDeleting } = useUserAccess();
   const { cardBrands, isLoading: isLoadingBrands, createCardBrand, updateCardBrand, deleteCardBrand, isCreating: isCreatingBrand, isUpdating: isUpdatingBrand, isDeleting: isDeletingBrand } = useCardBrands();
   const { bankAccounts, isLoading: isLoadingBankAccounts, createBankAccount, updateBankAccount, deleteBankAccount } = useBankAccounts();
+  const { settings: commissionSettings, save: saveCommissionSettings } = useCommissionSettings();
   const { accessLevels, isLoading: isLoadingAccessLevels, error: accessLevelsError, createAccessLevel, updateAccessLevel, updatePermission, deleteAccessLevel, isCreating: isCreatingAccessLevel, isUpdating: isUpdatingAccessLevel, isDeleting: isDeletingAccessLevel } = useAccessLevels();
 
   // Modal states
@@ -803,8 +805,9 @@ export default function Configuracoes() {
                       <TableHeader>
                         <TableRow>
                           <TableHead>Bandeira</TableHead>
-                          <TableHead className="text-center">Taxa Crédito</TableHead>
                           <TableHead className="text-center">Taxa Débito</TableHead>
+                          <TableHead className="text-center">Taxa Crédito</TableHead>
+                          <TableHead className="text-center">Taxa Parcelamento</TableHead>
                           <TableHead className="text-center">Status</TableHead>
                           <TableHead className="w-[100px]">Ações</TableHead>
                         </TableRow>
@@ -813,8 +816,9 @@ export default function Configuracoes() {
                         {cardBrands.map((brand) => (
                           <TableRow key={brand.id}>
                             <TableCell className="font-medium">{brand.name}</TableCell>
-                            <TableCell className="text-center"><Badge variant="outline">{brand.credit_fee_percent.toFixed(2)}%</Badge></TableCell>
                             <TableCell className="text-center"><Badge variant="outline">{brand.debit_fee_percent.toFixed(2)}%</Badge></TableCell>
+                            <TableCell className="text-center"><Badge variant="outline">{brand.credit_fee_percent.toFixed(2)}%</Badge></TableCell>
+                            <TableCell className="text-center"><Badge variant="outline">{(brand.installment_fee_percent || 0).toFixed(2)}%</Badge></TableCell>
                             <TableCell className="text-center"><Badge variant={brand.is_active ? "default" : "secondary"}>{brand.is_active ? "Ativa" : "Inativa"}</Badge></TableCell>
                             <TableCell>
                               <div className="flex items-center gap-1">
@@ -837,9 +841,34 @@ export default function Configuracoes() {
                     <div>
                       <h4 className="font-medium text-amber-900 dark:text-amber-100">Como funcionam as taxas</h4>
                       <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
-                        Ao finalizar uma comanda com pagamento em cartão, o sistema descontará a taxa da bandeira do valor pago. A comissão será calculada sobre o valor líquido.
+                        Ao finalizar uma comanda, o sistema descontará automaticamente a taxa correspondente ao método de pagamento (débito, crédito, parcelamento ou PIX). A comissão será calculada sobre o valor líquido.
                       </p>
                     </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* PIX Fee */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Percent className="h-5 w-5" />Taxa de PIX
+                  </CardTitle>
+                  <CardDescription>Defina a taxa cobrada pela maquininha ou banco nos pagamentos via PIX.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-center gap-3">
+                    <Label className="text-sm whitespace-nowrap">Taxa PIX:</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      max="100"
+                      value={commissionSettings.pix_fee_percent || 0}
+                      onChange={(e) => saveCommissionSettings({ pix_fee_percent: parseFloat(e.target.value) || 0 })}
+                      className="w-24 text-center"
+                    />
+                    <span className="text-sm text-muted-foreground">%</span>
                   </div>
                 </CardContent>
               </Card>

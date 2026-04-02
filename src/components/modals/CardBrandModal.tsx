@@ -18,6 +18,7 @@ export function CardBrandModal({ open, onClose, onSave, cardBrand, isLoading }: 
   const [name, setName] = useState("");
   const [creditFeePercent, setCreditFeePercent] = useState("");
   const [debitFeePercent, setDebitFeePercent] = useState("");
+  const [installmentFeePercent, setInstallmentFeePercent] = useState("");
   const [isActive, setIsActive] = useState(true);
 
   useEffect(() => {
@@ -25,11 +26,13 @@ export function CardBrandModal({ open, onClose, onSave, cardBrand, isLoading }: 
       setName(cardBrand.name);
       setCreditFeePercent(String(cardBrand.credit_fee_percent));
       setDebitFeePercent(String(cardBrand.debit_fee_percent));
+      setInstallmentFeePercent(String(cardBrand.installment_fee_percent));
       setIsActive(cardBrand.is_active);
     } else {
       setName("");
       setCreditFeePercent("");
       setDebitFeePercent("");
+      setInstallmentFeePercent("");
       setIsActive(true);
     }
   }, [cardBrand, open]);
@@ -40,6 +43,7 @@ export function CardBrandModal({ open, onClose, onSave, cardBrand, isLoading }: 
       name,
       credit_fee_percent: parseFloat(creditFeePercent) || 0,
       debit_fee_percent: parseFloat(debitFeePercent) || 0,
+      installment_fee_percent: parseFloat(installmentFeePercent) || 0,
       is_active: isActive,
     });
   };
@@ -64,7 +68,20 @@ export function CardBrandModal({ open, onClose, onSave, cardBrand, isLoading }: 
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="debitFee">Taxa Débito (%)</Label>
+              <Input
+                id="debitFee"
+                type="number"
+                step="0.01"
+                min="0"
+                max="100"
+                value={debitFeePercent}
+                onChange={(e) => setDebitFeePercent(e.target.value)}
+                placeholder="0.00"
+              />
+            </div>
             <div className="space-y-2">
               <Label htmlFor="creditFee">Taxa Crédito (%)</Label>
               <Input
@@ -79,15 +96,15 @@ export function CardBrandModal({ open, onClose, onSave, cardBrand, isLoading }: 
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="debitFee">Taxa Débito (%)</Label>
+              <Label htmlFor="installmentFee">Taxa Parcelamento (%)</Label>
               <Input
-                id="debitFee"
+                id="installmentFee"
                 type="number"
                 step="0.01"
                 min="0"
                 max="100"
-                value={debitFeePercent}
-                onChange={(e) => setDebitFeePercent(e.target.value)}
+                value={installmentFeePercent}
+                onChange={(e) => setInstallmentFeePercent(e.target.value)}
                 placeholder="0.00"
               />
             </div>

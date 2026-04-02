@@ -9,6 +9,7 @@ export interface CommissionSettings {
   // Data de Recebimento
   card_payment_date: string;
   // Descontos
+  pix_fee_percent: number;
   anticipation_fee_enabled: boolean;
   anticipation_fee_percent: number;
   card_fee_mode: string;
@@ -36,6 +37,7 @@ export interface CommissionSettings {
 
 const DEFAULTS: Omit<CommissionSettings, "id" | "salon_id"> = {
   card_payment_date: "comanda_date",
+  pix_fee_percent: 0,
   anticipation_fee_enabled: false,
   anticipation_fee_percent: 0,
   card_fee_mode: "card_brands",
