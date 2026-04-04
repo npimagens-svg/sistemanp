@@ -139,43 +139,6 @@ export default function Comandas() {
         return;
       }
 
-      // Find caixa for the appointment date
-      let userCaixa: any = null;
-
-      if (isToday) {
-        userCaixa = await getCurrentUserOpenCaixa();
-      } else {
-        // Past date: find an open caixa for that specific day
-        const dayStart = new Date(appointmentDate);
-        dayStart.setHours(0, 0, 0, 0);
-        const dayEnd = new Date(dayStart);
-        dayEnd.setDate(dayEnd.getDate() + 1);
-
-        const { data: pastCaixa } = await supabase
-          .from("caixas")
-          .select("*")
-          .eq("salon_id", salonId)
-          .is("closed_at", null)
-          .gte("opened_at", dayStart.toISOString())
-          .lt("opened_at", dayEnd.toISOString())
-          .limit(1)
-          .maybeSingle();
-
-        userCaixa = pastCaixa;
-      }
-
-      if (!userCaixa) {
-        toast({
-          title: "Caixa não aberto",
-          description: isToday
-            ? "Você precisa abrir um caixa antes de criar comandas."
-            : `Não existe caixa aberto para o dia ${appointmentDate.toLocaleDateString("pt-BR")}. Reabra o caixa desse dia para criar a comanda.`,
-          variant: "destructive"
-        });
-        if (isToday) navigate("/financeiro");
-        return;
-      }
-
       // Check if client exists
       if (!appointmentData.client_id) {
         toast({
@@ -195,14 +158,6 @@ export default function Comandas() {
         appointmentData.id,
         appointmentDate
       );
-
-      // Link comanda to the caixa if not already linked
-      if (!comanda.caixa_id) {
-        await supabase
-          .from("comandas")
-          .update({ caixa_id: userCaixa.id })
-          .eq("id", comanda.id);
-      }
 
       // Check if service already exists in comanda items by source_appointment_id first, then by service_id as fallback
       if (appointmentData.service_id && comanda.id) {
@@ -311,43 +266,8 @@ export default function Comandas() {
     const targetDate = comandaDate ? new Date(comandaDate + "T12:00:00") : new Date();
     const isToday = isSameDay(targetDate, new Date());
 
-    // Find appropriate caixa
-    let userCaixa: any = null;
-    if (isToday) {
-      userCaixa = await getCurrentUserOpenCaixa();
-    } else {
-      // Past date: find open caixa for that day
-      const dayStart = new Date(targetDate);
-      dayStart.setHours(0, 0, 0, 0);
-      const dayEnd = new Date(dayStart);
-      dayEnd.setDate(dayEnd.getDate() + 1);
-
-      const { data: pastCaixa } = await supabase
-        .from("caixas")
-        .select("*")
-        .eq("salon_id", salonId)
-        .is("closed_at", null)
-        .gte("opened_at", dayStart.toISOString())
-        .lt("opened_at", dayEnd.toISOString())
-        .limit(1)
-        .maybeSingle();
-      userCaixa = pastCaixa;
-    }
-
-    if (!userCaixa) {
-      toast({
-        title: "Caixa não aberto",
-        description: isToday
-          ? "Você precisa abrir um caixa antes de criar comandas."
-          : `Não existe caixa aberto para ${format(targetDate, "dd/MM/yyyy")}. Reabra o caixa desse dia.`,
-        variant: "destructive"
-      });
-      if (isToday) navigate("/financeiro");
-      return;
-    }
-
-    // Create comanda with the target date
-    const insertData: any = { ...formData, caixa_id: userCaixa.id };
+    // Create comanda without caixa — caixa is linked only when closing
+    const insertData: any = { ...formData };
     if (!isToday) {
       insertData.created_at = targetDate.toISOString();
     }
