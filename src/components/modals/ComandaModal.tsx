@@ -931,11 +931,23 @@ export function ComandaModal({ comanda, open, onClose, professionals, services, 
         }
       }
 
-      // Generate loyalty credit (7% of SERVICES only, not products)
+      // Generate loyalty credit (7% of full-price SERVICES only — no packages, no discounts)
       if (enableCashback && comanda.client_id) {
         try {
           const servicesTotal = editableItems
-            .filter(item => item.item_type === "service")
+            .filter(item => {
+              // Only regular services
+              if (item.item_type !== "service") return false;
+              // Exclude package credits (price = 0 or description has 📦)
+              if ((item.total_price || 0) === 0) return false;
+              if (item.description?.includes("📦")) return false;
+              // Exclude items with discount applied
+              if ((item.editDiscount || 0) > 0) return false;
+              // Exclude items where price was manually reduced
+              const originalService = services.find((s: any) => s.id === item.service_id);
+              if (originalService && item.unit_price < Number(originalService.price)) return false;
+              return true;
+            })
             .reduce((sum, item) => sum + (item.total_price || 0), 0);
 
           if (servicesTotal > 0) {
