@@ -118,11 +118,28 @@ export function CloseCaixaModal({ open, onClose, onConfirm, caixa, isLoading }: 
     onClose();
   };
 
-  const handlePrintCaixaReport = () => {
+  const handlePrintCaixaReport = async () => {
     if (!caixa) return;
 
     const fmtCurr = (v: number) =>
       new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
+
+    // Fetch comandas with items and payments for full detail
+    const { data: comandas } = await supabase
+      .from("comandas")
+      .select(`
+        id, total, closed_at, created_at,
+        client:clients(name),
+        professional:professionals(name),
+        items:comanda_items(description, quantity, unit_price, total_price, item_type, professional:professionals(name)),
+        payments(payment_method, amount)
+      `)
+      .eq("caixa_id", caixa.id)
+      .order("closed_at", { ascending: true });
+
+    const PAYMENT_LABELS: Record<string, string> = {
+      cash: "Dinheiro", pix: "PIX", credit_card: "Crédito", debit_card: "Débito", other: "Outro",
+    };
 
     const openedAtStr = caixa.opened_at
       ? format(new Date(caixa.opened_at), "dd/MM/yyyy HH:mm", { locale: ptBR })
@@ -138,28 +155,82 @@ export function CloseCaixaModal({ open, onClose, onConfirm, caixa, isLoading }: 
     const expectedCashVal = (caixa.opening_balance || 0) + (caixa.total_cash || 0);
     const diffVal = closedBalanceValue - expectedCashVal;
 
+    // Build comanda detail rows
+    const comandaBlocks = (comandas || []).map((cmd: any) => {
+      const clientName = cmd.client?.name || "Cliente avulso";
+      const profName = cmd.professional?.name || "-";
+      const items = (cmd.items || []) as any[];
+      const payments = (cmd.payments || []) as any[];
+
+      const itemRows = items.map((item: any) => `
+        <tr>
+          <td style="padding:2px 8px;font-size:12px">${item.description || "-"}</td>
+          <td style="padding:2px 8px;font-size:12px;text-align:center">${item.quantity || 1}</td>
+          <td style="padding:2px 8px;font-size:12px;text-align:right">${fmtCurr(item.unit_price || 0)}</td>
+          <td style="padding:2px 8px;font-size:12px;text-align:right">${fmtCurr(item.total_price || 0)}</td>
+          <td style="padding:2px 8px;font-size:12px">${item.professional?.name || profName}</td>
+        </tr>
+      `).join("");
+
+      const paymentStr = payments.map((p: any) =>
+        `${PAYMENT_LABELS[p.payment_method] || p.payment_method}: ${fmtCurr(p.amount)}`
+      ).join(" | ");
+
+      const closedStr = cmd.closed_at ? format(new Date(cmd.closed_at), "dd/MM HH:mm") : "-";
+
+      return `
+        <div style="margin-bottom:16px;border:1px solid #ddd;border-radius:6px;overflow:hidden">
+          <div style="background:#f5f5f5;padding:8px 12px;display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <strong>#${cmd.id.slice(0, 4).toUpperCase()}</strong> — ${clientName}
+              <span style="color:#666;margin-left:8px;font-size:12px">(${profName})</span>
+            </div>
+            <div style="text-align:right">
+              <strong style="color:#7c3aed">${fmtCurr(cmd.total || 0)}</strong>
+              <span style="font-size:11px;color:#666;margin-left:8px">${closedStr}</span>
+            </div>
+          </div>
+          <table style="width:100%;border-collapse:collapse">
+            <thead>
+              <tr style="background:#fafafa;font-size:11px;color:#666">
+                <th style="padding:4px 8px;text-align:left">Item</th>
+                <th style="padding:4px 8px;text-align:center">Qtd</th>
+                <th style="padding:4px 8px;text-align:right">Unit.</th>
+                <th style="padding:4px 8px;text-align:right">Total</th>
+                <th style="padding:4px 8px;text-align:left">Profissional</th>
+              </tr>
+            </thead>
+            <tbody>${itemRows}</tbody>
+          </table>
+          <div style="padding:6px 12px;font-size:11px;color:#555;border-top:1px solid #eee">
+            Pagamento: ${paymentStr || "-"}
+          </div>
+        </div>
+      `;
+    }).join("");
+
     const html = `<!DOCTYPE html>
 <html><head><meta charset="utf-8">
 <title>Relatório de Fechamento de Caixa</title>
 <style>
-  @page { size: A4; margin: 20mm; }
-  body { font-family: Arial, sans-serif; font-size: 13px; color: #222; max-width: 700px; margin: 0 auto; padding: 20px; }
+  @page { size: A4; margin: 15mm; }
+  body { font-family: Arial, sans-serif; font-size: 13px; color: #222; max-width: 750px; margin: 0 auto; padding: 20px; }
   h1 { text-align: center; font-size: 18px; margin-bottom: 4px; }
   .subtitle { text-align: center; color: #666; font-size: 12px; margin-bottom: 20px; }
   .section { margin-bottom: 16px; }
-  .section-title { font-weight: bold; font-size: 14px; border-bottom: 1px solid #ccc; padding-bottom: 4px; margin-bottom: 8px; }
+  .section-title { font-weight: bold; font-size: 14px; border-bottom: 2px solid #7c3aed; padding-bottom: 4px; margin-bottom: 10px; color: #333; }
   table { width: 100%; border-collapse: collapse; }
   td { padding: 4px 0; }
   .label { color: #555; }
   .value { text-align: right; font-weight: 500; }
-  .highlight { background: #f5f5f5; padding: 8px; border-radius: 4px; }
-  .diff-ok { color: #16a34a; }
-  .diff-bad { color: #dc2626; }
-  .divider { border-top: 1px solid #ddd; margin: 12px 0; }
+  .diff-ok { color: #16a34a; font-weight: 600; }
+  .diff-bad { color: #dc2626; font-weight: 600; }
+  .divider { border-top: 1px solid #ddd; margin: 8px 0; }
   .footer { text-align: center; margin-top: 24px; font-size: 11px; color: #999; }
+  @media print { body { padding: 0; } }
 </style></head><body>
   <h1>Relatório de Fechamento de Caixa</h1>
-  <div class="subtitle">Gerado em ${format(new Date(), "dd/MM/yyyy HH:mm", { locale: ptBR })}</div>
+  <div class="subtitle">${operatorName} — Gerado em ${format(new Date(), "dd/MM/yyyy HH:mm", { locale: ptBR })}</div>
 
   <div class="section">
     <div class="section-title">Informações Gerais</div>
@@ -167,6 +238,7 @@ export function CloseCaixaModal({ open, onClose, onConfirm, caixa, isLoading }: 
       <tr><td class="label">Operador:</td><td class="value">${operatorName}</td></tr>
       <tr><td class="label">Abertura:</td><td class="value">${openedAtStr}</td></tr>
       <tr><td class="label">Fechamento:</td><td class="value">${closedAtStr}</td></tr>
+      <tr><td class="label">Total de comandas:</td><td class="value">${(comandas || []).length}</td></tr>
     </table>
   </div>
 
@@ -182,7 +254,7 @@ export function CloseCaixaModal({ open, onClose, onConfirm, caixa, isLoading }: 
     </table>
     <div class="divider"></div>
     <table>
-      <tr><td class="label"><strong>Total Recebido:</strong></td><td class="value"><strong>${fmtCurr(totalReceivedVal)}</strong></td></tr>
+      <tr><td class="label"><strong>Total Recebido:</strong></td><td class="value"><strong style="font-size:15px">${fmtCurr(totalReceivedVal)}</strong></td></tr>
     </table>
   </div>
 
@@ -191,7 +263,7 @@ export function CloseCaixaModal({ open, onClose, onConfirm, caixa, isLoading }: 
     <table>
       <tr><td class="label">Dinheiro Esperado em Caixa:</td><td class="value">${fmtCurr(expectedCashVal)}</td></tr>
       <tr><td class="label">Dinheiro Declarado:</td><td class="value">${fmtCurr(closedBalanceValue)}</td></tr>
-      <tr><td class="label">Diferença:</td><td class="value ${diffVal === 0 ? 'diff-ok' : 'diff-bad'}">${diffVal >= 0 ? "+" : ""}${fmtCurr(diffVal)}</td></tr>
+      <tr><td class="label">Diferença:</td><td class="value ${diffVal >= 0 ? 'diff-ok' : 'diff-bad'}">${diffVal >= 0 ? "+" : ""}${fmtCurr(diffVal)}</td></tr>
     </table>
   </div>
 
@@ -204,6 +276,12 @@ export function CloseCaixaModal({ open, onClose, onConfirm, caixa, isLoading }: 
     </table>
   </div>` : ""}
 
+  ${(comandas || []).length > 0 ? `
+  <div class="section">
+    <div class="section-title">Comandas Detalhadas (${(comandas || []).length})</div>
+    ${comandaBlocks}
+  </div>` : ""}
+
   ${closedNotes ? `
   <div class="section">
     <div class="section-title">Observações</div>
@@ -213,12 +291,12 @@ export function CloseCaixaModal({ open, onClose, onConfirm, caixa, isLoading }: 
   <div class="footer">Sistema NP — Relatório gerado automaticamente</div>
 </body></html>`;
 
-    const printWindow = window.open("", "_blank", "width=800,height=900");
+    const printWindow = window.open("", "_blank", "width=900,height=900");
     if (printWindow) {
       printWindow.document.write(html);
       printWindow.document.close();
       printWindow.focus();
-      printWindow.print();
+      setTimeout(() => printWindow.print(), 300);
     }
   };
 
