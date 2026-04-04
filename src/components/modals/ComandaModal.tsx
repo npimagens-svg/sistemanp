@@ -248,7 +248,8 @@ export function ComandaModal({ comanda, open, onClose, professionals, services, 
   // Check if comanda's caixa is closed (locked state)
   const comandaCaixa = comanda?.caixa_id ? openCaixas.find(c => c.id === comanda.caixa_id) : null;
   const isCaixaClosed = comanda?.caixa_id ? !comandaCaixa : false;
-  const isComandaLocked = comanda?.closed_at && isCaixaClosed;
+  // Comanda is locked if: closed and not in edit mode, OR closed with caixa also closed
+  const isComandaLocked = comanda?.closed_at ? (!isEditingClosed || isCaixaClosed) : false;
 
   // Check if user can close this comanda (own comanda or has permission to close others)
   const isOwnComanda = !comanda?.professional_id || comanda.professional_id === currentProfessionalId;

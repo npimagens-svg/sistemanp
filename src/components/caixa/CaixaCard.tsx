@@ -9,6 +9,7 @@ import { X, Eye, Pencil, RotateCcw, Gift, AlertTriangle, ChevronDown, ChevronUp,
 import { Caixa } from "@/hooks/useCaixas";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/dynamicSupabaseClient";
+import { useNavigate } from "react-router-dom";
 
 interface CaixaCardProps {
   caixa: Caixa;
@@ -36,6 +37,7 @@ export function CaixaCard({
   showReopenButton = false,
 }: CaixaCardProps) {
   const [showComandas, setShowComandas] = useState(false);
+  const navigate = useNavigate();
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
@@ -224,7 +226,27 @@ export function CaixaCard({
                           <span className="font-medium">
                             #{cmd.id.slice(0, 4).toUpperCase()} — {(cmd.client as any)?.name || "Cliente avulso"}
                           </span>
-                          <span className="font-semibold text-primary">{formatCurrency(cmd.total || 0)}</span>
+                          <div className="flex items-center gap-1">
+                            <span className="font-semibold text-primary">{formatCurrency(cmd.total || 0)}</span>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6"
+                              title="Ver comanda"
+                              onClick={() => navigate(`/comandas?comanda=${cmd.id}`)}
+                            >
+                              <Eye className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6"
+                              title="Editar comanda"
+                              onClick={() => navigate(`/comandas?comanda=${cmd.id}&edit=true`)}
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
                         </div>
                         {(cmd.professional as any)?.name && (
                           <div className="text-muted-foreground">

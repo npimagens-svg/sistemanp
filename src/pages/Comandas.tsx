@@ -82,6 +82,21 @@ export default function Comandas() {
     checkCaixa();
   }, [openCaixas]);
 
+  // Open comanda from URL param (e.g. from caixa card)
+  useEffect(() => {
+    const comandaId = searchParams.get("comanda");
+    if (comandaId && comandas.length > 0 && !comandaModalOpen) {
+      const comanda = comandas.find(c => c.id === comandaId);
+      if (comanda) {
+        const isEdit = searchParams.get("edit") === "true";
+        handleOpenComanda(comanda, isEdit);
+        searchParams.delete("comanda");
+        searchParams.delete("edit");
+        setSearchParams(searchParams, { replace: true });
+      }
+    }
+  }, [searchParams, comandas]);
+
   // Process appointment parameter from URL
   useEffect(() => {
     const appointmentId = searchParams.get("appointment");
