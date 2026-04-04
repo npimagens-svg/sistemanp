@@ -12,6 +12,7 @@ import { CaixaCard } from "@/components/caixa/CaixaCard";
 import { OpenCaixaModal } from "@/components/caixa/OpenCaixaModal";
 import { CloseCaixaModal } from "@/components/caixa/CloseCaixaModal";
 import { EditCaixaModal } from "@/components/caixa/EditCaixaModal";
+import { CaixaDetailModal } from "@/components/caixa/CaixaDetailModal";
 import { format, isSameDay, getDaysInMonth, startOfMonth, setDate } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -21,6 +22,7 @@ export default function Financeiro() {
   const [openCaixaModalOpen, setOpenCaixaModalOpen] = useState(false);
   const [closeCaixaModalOpen, setCloseCaixaModalOpen] = useState(false);
   const [editCaixaModalOpen, setEditCaixaModalOpen] = useState(false);
+  const [detailCaixaModalOpen, setDetailCaixaModalOpen] = useState(false);
   const [selectedCaixa, setSelectedCaixa] = useState<Caixa | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [userOpenCaixa, setUserOpenCaixa] = useState<Caixa | null>(null);
@@ -294,7 +296,7 @@ export default function Financeiro() {
                       showReopenButton={true}
                       onEdit={() => handleOpenEditModal(caixa)}
                       onReopen={() => handleReopenCaixa(caixa)}
-                      onView={() => {/* TODO: implement detail view */}}
+                      onView={() => { setSelectedCaixa(caixa); setDetailCaixaModalOpen(true); }}
                     />
                   ))}
                 </div>
@@ -327,6 +329,15 @@ export default function Financeiro() {
         open={editCaixaModalOpen}
         onClose={() => {
           setEditCaixaModalOpen(false);
+          setSelectedCaixa(null);
+        }}
+        caixa={selectedCaixa}
+      />
+
+      <CaixaDetailModal
+        open={detailCaixaModalOpen}
+        onClose={() => {
+          setDetailCaixaModalOpen(false);
           setSelectedCaixa(null);
         }}
         caixa={selectedCaixa}
