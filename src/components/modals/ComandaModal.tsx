@@ -869,16 +869,20 @@ export function ComandaModal({ comanda, open, onClose, professionals, services, 
       }
 
       // Close comanda and link to caixa
-      await supabase
+      const { error: closeError } = await supabase
         .from("comandas")
-        .update({ 
-          closed_at: new Date().toISOString(), 
+        .update({
+          closed_at: new Date().toISOString(),
           is_paid: true,
           subtotal: subtotal,
           total: subtotal,
           caixa_id: caixaToUse,
         })
         .eq("id", comanda.id);
+
+      if (closeError) {
+        throw new Error(`Erro ao fechar comanda: ${closeError.message}`);
+      }
 
       // Deduct stock for all services in the comanda
       const serviceItems = editableItems

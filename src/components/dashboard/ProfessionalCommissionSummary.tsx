@@ -28,8 +28,29 @@ export function ProfessionalCommissionSummary({ professionalId, commissionPercen
     return map;
   }, [services]);
 
+  // Load per-professional per-service commission overrides
+  const { data: profServiceCommissions } = useQuery({
+    queryKey: ["prof-service-commissions", professionalId],
+    queryFn: async () => {
+      if (!professionalId) return [];
+      const { data, error } = await supabase
+        .from("professional_service_commissions")
+        .select("service_id, commission_percent")
+        .eq("professional_id", professionalId);
+      if (error) throw error;
+      return data ?? [];
+    },
+    enabled: !!professionalId,
+  });
+
+  const profCommMap = useMemo(() => {
+    const map = new Map<string, number>();
+    (profServiceCommissions ?? []).forEach(c => map.set(c.service_id, c.commission_percent));
+    return map;
+  }, [profServiceCommissions]);
+
   const { data, isLoading } = useQuery({
-    queryKey: ["dashboard-commission-summary", salonId, professionalId],
+    queryKey: ["dashboard-commission-summary", salonId, professionalId, profCommMap.size],
     queryFn: async () => {
       if (!salonId || !professionalId) return null;
 
@@ -78,9 +99,14 @@ export function ProfessionalCommissionSummary({ professionalId, commissionPercen
         }
 
         const netValue = itemTotal - productCost - cardFee;
-        const itemCommissionPercent = item.service_id && serviceMap.has(item.service_id)
-          ? serviceMap.get(item.service_id)!
-          : commissionPercent;
+        // Priority: professional_service_commissions > services.commission_percent > professionals.commission_percent
+        let itemCommissionPercent = commissionPercent;
+        if (item.service_id && serviceMap.has(item.service_id)) {
+          itemCommissionPercent = serviceMap.get(item.service_id)! || itemCommissionPercent;
+        }
+        if (item.service_id && profCommMap.has(item.service_id)) {
+          itemCommissionPercent = profCommMap.get(item.service_id)!;
+        }
         const commission = (netValue * itemCommissionPercent) / 100;
 
         totalServices += itemTotal;

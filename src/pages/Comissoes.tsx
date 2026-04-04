@@ -14,6 +14,9 @@ import { useComandas } from "@/hooks/useComandas";
 import { useServices } from "@/hooks/useServices";
 import { useClients } from "@/hooks/useClients";
 import { useCurrentProfessional } from "@/hooks/useCurrentProfessional";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/lib/dynamicSupabaseClient";
+import { useAuth } from "@/contexts/AuthContext";
 import { format, startOfMonth, isWithinInterval } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -51,9 +54,33 @@ export default function Comissoes() {
       setSelectedProfessional(currentProfessionalId);
     }
   }, [isProfessionalUser, currentProfessionalId]);
+  const { salonId } = useAuth();
   const { comandas, isLoading: loadingComandas } = useComandas();
   const { services, isLoading: loadingServices } = useServices();
   const { clients, isLoading: loadingClients } = useClients();
+
+  // Load per-professional per-service commission overrides
+  const { data: profServiceCommissions } = useQuery({
+    queryKey: ["all-professional-commissions", salonId],
+    queryFn: async () => {
+      if (!salonId) return [];
+      const { data, error } = await supabase
+        .from("professional_service_commissions")
+        .select("professional_id, service_id, commission_percent");
+      if (error) throw error;
+      return data ?? [];
+    },
+    enabled: !!salonId,
+  });
+
+  // Map: "profId:serviceId" → commission_percent
+  const profServiceCommMap = useMemo(() => {
+    const map = new Map<string, number>();
+    (profServiceCommissions ?? []).forEach(c => {
+      map.set(`${c.professional_id}:${c.service_id}`, c.commission_percent);
+    });
+    return map;
+  }, [profServiceCommissions]);
 
   // Create client map for quick lookup
   const clientMap = useMemo(() => {
@@ -114,14 +141,23 @@ export default function Comissoes() {
         const profId = item.professional_id || comanda.professional_id;
         if (profId !== selectedProfessional) return;
 
-        // Get service info
+        // Get service info and commission percent
+        // Priority: professional_service_commissions > services.commission_percent > professionals.commission_percent
         let serviceName = item.description || "Serviço";
         let commissionPercent = selectedProf.commission_percent || 0;
-        
+
         if (item.service_id && serviceMap.has(item.service_id)) {
           const serviceInfo = serviceMap.get(item.service_id)!;
           serviceName = serviceInfo.name;
           commissionPercent = serviceInfo.commission_percent || commissionPercent;
+        }
+
+        // Override with per-professional per-service commission if configured
+        if (item.service_id && profId) {
+          const profCommKey = `${profId}:${item.service_id}`;
+          if (profServiceCommMap.has(profCommKey)) {
+            commissionPercent = profServiceCommMap.get(profCommKey)!;
+          }
         }
 
         const serviceValue = item.total_price || 0;
@@ -156,7 +192,7 @@ export default function Comissoes() {
     });
 
     return items;
-  }, [selectedProfessional, filteredComandas, professionals, serviceMap, clientMap]);
+  }, [selectedProfessional, filteredComandas, professionals, serviceMap, clientMap, profServiceCommMap]);
 
   // Calculate totals for selected professional
   const professionalTotals = useMemo(() => {
@@ -223,11 +259,16 @@ export default function Comissoes() {
         const profData = commissionMap.get(profId);
         if (!profData) return;
 
-        let commissionPercent = 0;
+        // Priority: professional_service_commissions > services.commission_percent > professionals.commission_percent
+        let commissionPercent = profData.professional.commission_percent || 0;
         if (item.service_id && serviceMap.has(item.service_id)) {
-          commissionPercent = serviceMap.get(item.service_id)?.commission_percent || 0;
-        } else {
-          commissionPercent = profData.professional.commission_percent || 0;
+          commissionPercent = serviceMap.get(item.service_id)?.commission_percent || commissionPercent;
+        }
+        if (item.service_id && profId) {
+          const profCommKey = `${profId}:${item.service_id}`;
+          if (profServiceCommMap.has(profCommKey)) {
+            commissionPercent = profServiceCommMap.get(profCommKey)!;
+          }
         }
 
         const itemTotal = item.total_price || 0;
@@ -251,7 +292,7 @@ export default function Comissoes() {
     });
 
     return Array.from(commissionMap.values()).filter(c => c.itemCount > 0);
-  }, [professionals, filteredComandas, serviceMap]);
+  }, [professionals, filteredComandas, serviceMap, profServiceCommMap]);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
