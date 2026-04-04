@@ -679,23 +679,26 @@ export default function Agenda() {
                             >
                               {slotAppointments.length > 0 && (
                                 <div className="absolute inset-0 flex gap-px p-px z-10">
-                                  {slotAppointments.map((appointment) => {
+                                  {slotAppointments.map((appointment, apptIndex) => {
                                     const isBlocked = appointment.notes?.startsWith("🔒 BLOQUEADO:");
                                     const blockReason = isBlocked ? appointment.notes?.replace("🔒 BLOQUEADO: ", "") : null;
                                     const spans = Math.ceil(appointment.duration_minutes / 30);
+                                    const totalOverlapping = slotAppointments.length;
+                                    const hasOverlap = totalOverlapping > 1;
 
                                     return (
                                       <AppointmentHoverCard key={appointment.id} appointment={appointment} allAppointments={appointments}>
                                         <div
                                           className={cn(
-                                            "flex-1 rounded-sm px-1.5 py-0.5 cursor-pointer transition-shadow hover:shadow-lg overflow-hidden text-white",
-                                            isBlocked ? "bg-[#34495e]" : statusColors[appointment.status]
+                                            "rounded-sm px-1.5 py-0.5 cursor-pointer transition-shadow hover:shadow-lg hover:z-20 overflow-hidden text-white",
+                                            isBlocked ? "bg-[#34495e]" : statusColors[appointment.status],
+                                            hasOverlap && "border-l-2 border-white/40"
                                           )}
                                           style={{
                                             height: `${spans * 36 - 2}px`,
                                             position: "absolute",
-                                            left: "1px",
-                                            right: "1px",
+                                            left: hasOverlap ? `${(apptIndex / totalOverlapping) * 100}%` : "1px",
+                                            width: hasOverlap ? `${(1 / totalOverlapping) * 100 - 1}%` : "calc(100% - 2px)",
                                             top: "1px",
                                           }}
                                           onClick={(e) => {
@@ -717,7 +720,7 @@ export default function Agenda() {
                                           ) : (
                                             <>
                                               <div className="text-[10px] font-bold truncate leading-tight">
-                                                {time} {appointment.clients?.name?.toUpperCase() || "CLIENTE"}
+                                                {hasOverlap ? (appointment.clients?.name?.toUpperCase() || "CLIENTE") : `${time} ${appointment.clients?.name?.toUpperCase() || "CLIENTE"}`}
                                               </div>
                                               {appointment.services?.name && (
                                                 <div className="text-[9px] font-medium opacity-90 truncate uppercase leading-tight">
