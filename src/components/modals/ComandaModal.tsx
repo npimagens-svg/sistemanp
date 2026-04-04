@@ -1029,7 +1029,7 @@ export function ComandaModal({ comanda, open, onClose, professionals, services, 
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent className="max-w-[95vw] lg:max-w-6xl max-h-[95vh] overflow-hidden flex flex-col">
         <DialogHeader className="flex-shrink-0">
           <div className="flex items-center justify-between">
             <DialogTitle className="text-primary text-lg">
@@ -1101,17 +1101,17 @@ export function ComandaModal({ comanda, open, onClose, professionals, services, 
 
               {/* Items Table */}
               <Card>
-                <CardContent className="p-0">
-                  <Table>
+                <CardContent className="p-0 overflow-x-auto">
+                  <Table className="min-w-0">
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Item</TableHead>
-                        <TableHead>Profissional</TableHead>
-                        <TableHead className="text-center w-20">Qtd.</TableHead>
-                        <TableHead className="text-right w-28">Valor (R$)</TableHead>
-                        <TableHead className="text-right w-24">Desc. (%)</TableHead>
-                        <TableHead className="text-right w-28">Final (R$)</TableHead>
-                        <TableHead className="w-20"></TableHead>
+                        <TableHead className="min-w-[120px]">Item</TableHead>
+                        <TableHead className="min-w-[100px]">Profissional</TableHead>
+                        <TableHead className="text-center w-16">Qtd</TableHead>
+                        <TableHead className="text-right w-24">Valor</TableHead>
+                        <TableHead className="text-right w-16">Desc%</TableHead>
+                        <TableHead className="text-right w-24">Final</TableHead>
+                        <TableHead className="w-16"></TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -1157,7 +1157,7 @@ export function ComandaModal({ comanda, open, onClose, professionals, services, 
                                   value={item.editProfessionalId || item.professional_id || comanda.professional_id || ""}
                                   onValueChange={(value) => updateItemProfessional(item.id, value)}
                                 >
-                                  <SelectTrigger className="w-36 h-8">
+                                  <SelectTrigger className="w-28 h-8 text-xs">
                                     <SelectValue placeholder="Selecionar" />
                                   </SelectTrigger>
                                   <SelectContent>
