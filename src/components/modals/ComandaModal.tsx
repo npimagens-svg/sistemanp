@@ -18,6 +18,7 @@ import { format, isSameDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useComandaItems, ComandaItem, Comanda } from "@/hooks/useComandas";
 import { supabase } from "@/lib/dynamicSupabaseClient";
+import { sendEmail } from "@/lib/sendEmail";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQueryClient } from "@tanstack/react-query";
@@ -949,6 +950,29 @@ export function ComandaModal({ comanda, open, onClose, professionals, services, 
               min_purchase_amount: 100,
               expires_at: expiresAt.toISOString(),
             });
+
+            // Send cashback email if client has email
+            if (comanda.client?.name && salonId) {
+              const { data: clientData } = await supabase
+                .from("clients")
+                .select("email")
+                .eq("id", comanda.client_id)
+                .single();
+
+              if (clientData?.email) {
+                sendEmail({
+                  type: "cashback",
+                  salon_id: salonId,
+                  to_email: clientData.email,
+                  to_name: comanda.client.name,
+                  client_id: comanda.client_id,
+                  variables: {
+                    credit_amount: creditAmount.toFixed(2),
+                    expires_at: `${expiresAt.getDate().toString().padStart(2, "0")}/${(expiresAt.getMonth() + 1).toString().padStart(2, "0")}/${expiresAt.getFullYear()}`,
+                  },
+                }).catch(() => {});
+              }
+            }
           }
         } catch (creditError) {
           console.error("Erro ao gerar crédito de fidelidade:", creditError);
